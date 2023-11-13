@@ -1,0 +1,9 @@
+.mypy_cache/
+.vscode/
+scene_trajectory_benchmark/
+**/__pycache__/
+docker_history.txt
+dist/
+**.pkl
+**.png
+**.zip

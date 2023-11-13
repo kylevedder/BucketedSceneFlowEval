@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+  "/.*",
+  "/docker",
+  "/launch.sh",
+  "/README.md",
+]
+
+[project]
+name = "bucketed_scene_flow_eval"
+version = "0.0.3"
+authors = [
+  { name="Kyle Vedder", email="kvedder@seas.upenn.edu" },
+]
+description = "Bucketed Scene Flow Evaluation"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy",
+  "iopath",
+  "fvcore",
+  "pandas",
+  "opencv-python",
+  "pyquaternion",
+  "open3d",
+  "pyarrow",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
