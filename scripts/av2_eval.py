@@ -244,7 +244,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--cpu_count",
         type=int,
-        default=multiprocessing.cpu_count(),
+        default=0,
         help="Number of CPUs to use",
     )
     args = parser.parse_args()

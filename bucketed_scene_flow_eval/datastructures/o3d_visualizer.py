@@ -1,6 +1,6 @@
 import open3d as o3d
 from bucketed_scene_flow_eval.datastructures import PointCloud, SE3
-from typing import Tuple, List, Dict, Union
+from typing import Tuple, List, Dict, Union, Optional
 import numpy as np
 
 
@@ -36,11 +36,17 @@ class O3DVisualizer:
     def add_pointcloud(self,
                        pc: PointCloud,
                        pose: SE3 = SE3.identity(),
-                       color: Union[Tuple[float, float, float], None] = None):
+                       color: Optional[Union[np.ndarray, Tuple[float, float, float], List[Tuple[float, float, float]]]] = None):
         pc = pc.transform(pose)
         pc = pc.to_o3d()
         if color is not None:
-            pc = pc.paint_uniform_color(color)
+            color = np.array(color)
+            if color.ndim == 1:
+                pc = pc.paint_uniform_color(color)
+            elif color.ndim == 2:
+                assert len(color) == len(
+                    pc.points), f"Expected color to have length {len(pc.points)}, got {len(color)} instead"
+                pc.colors = o3d.utility.Vector3dVector(color)
         self.add_geometry(pc)
 
     def add_sphere(self, location: np.ndarray, radius: float,
@@ -128,5 +134,3 @@ class O3DVisualizer:
         ctr.set_lookat([0, 0, 0])
         self.vis.run()
 
-    def destroy(self):
-        self.vis.destroy_window()

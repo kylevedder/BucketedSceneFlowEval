@@ -139,6 +139,13 @@ class ArgoverseRawSequence():
         tz = params["tz_m"]
         rotation = self._quat_to_mat(qw, qx, qy, qz)
         translation = np.array([tx, ty, tz])
+
+        coordinate_transform_matrix = np.array([[ 0, -1,  0],  # noqa
+                                                [ 0,  0, -1],  # noqa
+                                                [ 1,  0,  0]]) # noqa
+
+        rotation = rotation @ coordinate_transform_matrix
+
         return SE3(rotation_matrix=rotation, translation=translation)
 
     def _load_ground_height_raster(self):
@@ -260,6 +267,8 @@ class ArgoverseRawSequence():
         # Read the image, keep the same color space
         raw_img = cv2.imread(str(rgb_path), cv2.IMREAD_UNCHANGED).astype(
             np.float32) / 255.0
+        # Convert from CV2 standard BGR to RGB
+        raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
         return RGBImage(raw_img)
 
     def _load_pose(self, idx) -> SE3:

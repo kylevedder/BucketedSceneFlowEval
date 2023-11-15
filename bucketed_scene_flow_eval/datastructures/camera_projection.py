@@ -1,6 +1,8 @@
 from enum import Enum
 import numpy as np
-
+from typing import Tuple
+from .rgb_image import RGBImage
+from .pointcloud import PointCloud
 
 class CameraModel(Enum):
     PINHOLE = 1
@@ -22,6 +24,19 @@ class CameraProjection():
         self.cx = cx
         self.cy = cy
         self.camera_model = camera_model
+
+    def __repr__(self) -> str:
+        return f"CameraProjection(fx={self.fx}, fy={self.fy}, cx={self.cx}, cy={self.cy}, camera_model={self.camera_model})"
+
+    def image_to_image_plane_pc(self, image : RGBImage, depth : float = 1.0) -> Tuple[PointCloud, np.ndarray]:
+        # Make pixel coordinate grid
+        image_shape = image.image.shape[:2]
+        image_coordinates = np.stack(np.meshgrid(np.arange(image_shape[1]), np.arange(image_shape[0])), axis=2).astype(np.float32).reshape(-1, 2)
+        image_coordinate_depths = np.ones((len(image_coordinates), 1)) * depth
+
+        resulting_points = self.to_camera(image_coordinates, image_coordinate_depths)
+        colors = image.image.reshape(-1, 3)
+        return PointCloud(resulting_points), colors
 
     def _camera_to_view_coordinates(self, camera_points: np.ndarray):
         assert len(camera_points.shape) == 2, \
@@ -49,7 +64,37 @@ class CameraProjection():
 
         return view_points @ view_T_camera
 
-    def to_pixels(self, camera_points: np.ndarray):
+    def view_frame_to_pixels(self, view_points: np.ndarray):
+        """
+        Input: camera_frame_ego_points of shape (N, 3)
+        
+        Expects the view frame ego points to be in sensor coordinates, with
+        the sensor looking down the positive Z axis, positive X being right, 
+        and positive Y being down.
+
+        Output: image_points of shape (N, 2)
+
+        The image frame is defined as follows:
+        0,0 is the top left corner
+        """
+
+        assert len(view_points.shape) == 2, \
+            f"view_points must have shape (N, 3), got {view_points.shape}"
+        assert view_points.shape[1] == 3, \
+            f"view_points must have shape (N, 3), got {view_points.shape}"
+
+        K = np.array([
+            [self.fx, 0, self.cx],
+            [0, self.fy, self.cy],
+            [0, 0, 1],
+        ])
+
+        pixel_points_3d = view_points @ K.T
+        pixel_points_2d = pixel_points_3d[:, :2] / pixel_points_3d[:, 2:]
+
+        return pixel_points_2d
+
+    def camera_frame_to_pixels(self, camera_points: np.ndarray):
         """
         Input: camera_frame_ego_points of shape (N, 3)
         
@@ -67,17 +112,9 @@ class CameraProjection():
             f"camera_points must have shape (N, 3), got {camera_points.shape}"
 
         view_points = self._camera_to_view_coordinates(camera_points)
+        return self.view_frame_to_pixels(view_points)
 
-        K = np.array([
-            [self.fx, 0, self.cx],
-            [0, self.fy, self.cy],
-            [0, 0, 1],
-        ])
-
-        pixel_points_3d = view_points @ K.T
-        pixel_points_2d = pixel_points_3d[:, :2] / pixel_points_3d[:, 2:]
-
-        return pixel_points_2d
+       
 
     def to_camera(self, pixel_coordinates, pixel_coordinate_depths):
         """

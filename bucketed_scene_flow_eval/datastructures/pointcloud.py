@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
-from bucketed_scene_flow_eval.datastructures import SE3, CameraProjection
+from typing import Optional
+from bucketed_scene_flow_eval.datastructures import SE3
 
 
 def to_fixed_array(array: np.ndarray,
@@ -85,7 +86,7 @@ class PointCloud():
 
     @staticmethod
     def from_depth_image(depth: np.ndarray,
-                         camera_projection: CameraProjection) -> 'PointCloud':
+                         camera_projection: 'CameraProjection') -> 'PointCloud':
         assert depth.ndim == 2, f'depth must be a 2D array, got {depth.ndim}'
         image_coordinates = make_image_pixel_coordinate_grid(depth.shape)
         image_coordinate_depths = depth.reshape(-1, 1)
@@ -98,7 +99,7 @@ class PointCloud():
     @staticmethod
     def from_points_and_depth(
             image_coordinates: np.ndarray, image_coordinate_depths: np.ndarray,
-            camera_projection: CameraProjection) -> 'PointCloud':
+            camera_projection: 'CameraProjection') -> 'PointCloud':
         return PointCloud(
             camera_projection.to_camera(image_coordinates,
                                         image_coordinate_depths))
@@ -188,5 +189,5 @@ class PointCloud():
     def shape(self) -> tuple:
         return self.points.shape
 
-    def to_o3d(self):
+    def to_o3d(self) -> o3d.geometry.PointCloud:
         return o3d.geometry.PointCloud(o3d.utility.Vector3dVector(self.points))

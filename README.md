@@ -1,33 +1,46 @@
 # Bucketed Scene Flow Evaluation
 
-A standardized dataloader plus eval protocol for various scene flow datasets.
+A standardized dataloader plus eval protocol for scene flow datasets.
 
-## Data Structures:
+Currently supported datasets:
 
-Located in `datastructures/scene_sequence.py`
+ - Argoverse 2
+ - Waymo Open
 
-### `RawSceneSequence`
+## Installation
 
-`RawSceneSequence` describes the raw scene -- raw observations and their global frame poses.
+```
+pip install bucketed-scene-flow-eval
+```
 
-`RawSceneSequence` presents a map interface from `Timestamp` to `RawSceneItem`.
+## Setup
 
-### `QuerySceneSequence`
+Follow our [Getting Started](docs/GETTING_STARTED.md) for setup instructions.
 
-`QuerySceneSequence` is a self-contained description of:
+## Demo
 
- - the raw scene
- - query particles
- - the requested timestamps the prediction method should solve for
+We provide a demo script which shows off the various features of the API.
 
-Query particles are comprised of a series of particles, each associated with a particle id, and a single query timestamp. The query timestamp associates the particles with the requested timestamps. In principle these particles could be at any point in the requested series, although datasets may provide stronger guarantees (e.g. scene flow datasets will have these be the first of two timestamps)
+To run with Argoverse 2:
 
-`QuerySceneSequence` presents a map interface from `ParticleID` to `Tuple[WorldParticle, Timestamp]`.
+```
+python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/
+```
 
-### `EstimatedParticleTrajectories`
+To run with Waymo Open:
 
-`EstimatedParticleTrajectories` describes trajectories for every `ParticleID` over the given timestamps.
+```
+python scripts/demo.py --dataset WaymoOpenSceneFlow --root_dir /efs/waymo_open_processed_flow/validation/
+```
 
-### `EstimatedParticleTrajectories`
+## Evaluating AV2 flow submissions
 
-`EstimatedParticleTrajectories` describes trajectories for every `ParticleID` over the given timestamps, along with semantic class IDs for each particle.
+To evaluate an AV2 Scene Flow challenge entry named `./submission_val.zip` against validation dataset masks `/efs/argoverse2/val_official_masks.zip`, run
+
+```
+python scripts/av2_eval.py /efs/argoverse2/val /efs/argoverse2/val_official_masks.zip ./submission_val.zip
+```
+
+## Documentation
+
+See `docs/` for more documentation .

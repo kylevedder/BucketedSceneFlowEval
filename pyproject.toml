@@ -6,13 +6,16 @@ build-backend = "hatchling.build"
 exclude = [
   "/.*",
   "/docker",
+  "/scripts",
+  "/docs",
+  "/data_prep_scripts",
   "/launch.sh",
   "/README.md",
 ]
 
 [project]
 name = "bucketed_scene_flow_eval"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
   { name="Kyle Vedder", email="kvedder@seas.upenn.edu" },
 ]
