@@ -1,21 +1,21 @@
 from bucketed_scene_flow_eval.datastructures import *
 from pathlib import Path
-from .loader_utils import load_pickle, save_pickle
+from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
 from typing import Tuple, Dict, List
 import time
 import numpy as np
 
-from .argoverse_supervised_scene_flow import ArgoverseSupervisedSceneFlowSequenceLoader, ArgoverseSupervisedSceneFlowSequence, CATEGORY_MAP
-from bucketed_scene_flow_eval.eval import Evaluator, PerClassRawEPEEvaluator, PerClassScaledEPEEvaluator, PerClassThreewayEPEEvaluator, BucketedEPEEvaluator
+from .argoverse_supervised_scene_flow import ArgoverseSupervisedSceneFlowSequenceLoader, CATEGORY_MAP
+from .argoverse_unsupervised_scene_flow import ArgoverseUnsupervisedFlowSequenceLoader
+from bucketed_scene_flow_eval.eval import Evaluator, PerClassRawEPEEvaluator, PerClassThreewayEPEEvaluator, BucketedEPEEvaluator
 import enum
 
 
 class EvalType(enum.Enum):
     RAW_EPE = 0
-    SCALED_EPE = 1
-    CLASS_THREEWAY_EPE = 2
-    BUCKETED_EPE = 3
+    CLASS_THREEWAY_EPE = 1
+    BUCKETED_EPE = 2
 
 
 class Argoverse2SceneFlow():
@@ -30,11 +30,16 @@ class Argoverse2SceneFlow():
                  with_ground: bool = True,
                  with_rgb: bool = True,
                  cache_path: Path = Path("/tmp/"),
+                 use_gt_flow: bool = True,
                  eval_type: str = "bucketed_epe",
                  eval_args=dict()) -> None:
         self.root_dir = Path(root_dir)
-        self.sequence_loader = ArgoverseSupervisedSceneFlowSequenceLoader(
-            root_dir, with_rgb=with_rgb)
+        if use_gt_flow:
+            self.sequence_loader = ArgoverseSupervisedSceneFlowSequenceLoader(
+                root_dir, with_rgb=with_rgb)
+        else:
+            self.sequence_loader = ArgoverseUnsupervisedFlowSequenceLoader(
+                root_dir, with_rgb=with_rgb)
         self.subsequence_length = subsequence_length
         self.cache_path = cache_path
         if with_ground:
@@ -259,8 +264,6 @@ class Argoverse2SceneFlow():
         # Builds the evaluator object for this dataset.
         if self.eval_type == EvalType.RAW_EPE:
             return PerClassRawEPEEvaluator(**self.eval_args)
-        elif self.eval_type == EvalType.SCALED_EPE:
-            return PerClassScaledEPEEvaluator(**self.eval_args)
         elif self.eval_type == EvalType.CLASS_THREEWAY_EPE:
             return PerClassThreewayEPEEvaluator(**self.eval_args)
         elif self.eval_type == EvalType.BUCKETED_EPE:

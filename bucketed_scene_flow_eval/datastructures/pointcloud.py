@@ -156,6 +156,9 @@ class PointCloud():
     def to_array(self) -> np.ndarray:
         return self.points
 
+    def copy(self) -> 'PointCloud':
+        return PointCloud(self.points.copy())
+
     def mask_points(self, mask: np.ndarray) -> 'PointCloud':
         assert isinstance(mask, np.ndarray)
         assert mask.ndim == 1

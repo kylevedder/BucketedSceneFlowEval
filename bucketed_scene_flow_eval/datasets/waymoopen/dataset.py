@@ -1,6 +1,6 @@
 from bucketed_scene_flow_eval.datastructures import *
 from pathlib import Path
-from .loader_utils import load_pickle, save_pickle
+from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
 from typing import Tuple, Dict, List
 import multiprocessing

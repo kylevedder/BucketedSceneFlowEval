@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict, Optional, Any
 import pandas as pd
 from bucketed_scene_flow_eval.datastructures import PointCloud, SE3, SE2, RGBImage, CameraModel, CameraProjection
 import numpy as np
-from .loader_utils import load_pickle
+from bucketed_scene_flow_eval.utils import load_pickle
 
 CATEGORY_MAP = {
     0: 'UNKNOWN',

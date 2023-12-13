@@ -13,6 +13,7 @@ import pickle
 import json
 import enum
 from .eval import Evaluator
+from bucketed_scene_flow_eval.utils import save_json, save_pickle
 import copy
 
 
@@ -307,8 +308,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
     def _save_intermediary_results(self):
         save_path = self.output_path / "eval_frame_results.pkl"
         save_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(save_path, "wb") as f:
-            pickle.dump(self.eval_frame_results, f)
+        save_pickle(save_path, self.eval_frame_results)
 
     def _category_to_per_frame_stats(
             self) -> Dict[BaseSplitKey, List[BaseSplitValue]]:
@@ -352,8 +352,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
     def _save_dict(self, path: Path, data: Dict[Any, float]):
         str_data = {str(k): v for k, v in data.items()}
-        with open(path, 'w') as f:
-            json.dump(str_data, f)
+        save_json(path, str_data)
 
     def _save_stats_tables(self, average_stats: Dict[BaseSplitKey,
                                                      BaseSplitValue]):

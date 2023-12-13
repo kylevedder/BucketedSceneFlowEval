@@ -13,9 +13,9 @@ import pickle
 import json
 import enum
 from .eval import Evaluator
-import copy
 from .base_per_frame_sceneflow_eval import PerFrameSceneFlowEvaluator, BaseEvalFrameResult, BaseSplitKey, BaseSplitValue
-
+import warnings
+from bucketed_scene_flow_eval.utils import save_txt, save_json
 
 class BucketedEvalFrameResult(BaseEvalFrameResult):
     def __init__(
@@ -51,6 +51,9 @@ class BucketResultMatrix:
 
         self.class_names = class_names
         self.speed_buckets = speed_buckets
+
+        assert len(self.class_names) > 0, f"class_names must have at least one entry, got {len(self.class_names)}"
+        assert len(self.speed_buckets) > 0, f"speed_buckets must have at least one entry, got {len(self.speed_buckets)}"
 
         # By default, NaNs are not counted in np.nanmean
         self.epe_storage_matrix = np.zeros(
@@ -106,7 +109,12 @@ class BucketResultMatrix:
     def get_overall_class_errors(self) -> Dict[str, OverallError]:
         error_matrix = self.get_error_matrix()
         static_epes = error_matrix[:, 0]
-        dynamic_errors = np.nanmean(error_matrix[:, 1:], axis=1)
+        # Hide the warning about mean of empty slice
+        # I expect to see RuntimeWarnings in this block
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            dynamic_errors = np.nanmean(error_matrix[:, 1:], axis=1) 
+        
 
         return {
             class_name: OverallError(static_epe, dynamic_error)
@@ -128,6 +136,7 @@ class BucketResultMatrix:
             self, meta_class_lookup: Dict[str,
                                           List[str]]) -> "BucketResultMatrix":
         assert meta_class_lookup is not None, f"meta_class_lookup must be set to merge classes"
+        assert len(meta_class_lookup) > 0, f"meta_class_lookup must have at least one entry, got {len(meta_class_lookup)}"
 
         # Create a new matrix with the merged classes
         merged_matrix = BucketResultMatrix(class_names=sorted(
@@ -147,12 +156,6 @@ class BucketResultMatrix:
                                                    epe, speed, count)
 
         return merged_matrix
-
-    def get_perf_matrix(self):
-        if self.meta_class_lookup is not None:
-            pass
-
-        # Merge the storage matrix according to the meta class lookup
 
     def get_mean_average_values(self) -> OverallError:
         overall_errors = self.get_overall_class_errors()
@@ -205,7 +208,7 @@ class BucketResultMatrix:
 
 class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
     def __init__(self,
-                 bucket_max_speed: float = 10.0 / 10.0,
+                 bucket_max_speed: float = 20.0 / 10.0,
                  num_buckets: int = 50,
                  output_path: Path = Path("/tmp/frame_results/bucketed_epe"),
                  meta_class_lookup: Optional[Dict[str, List[str]]] = None):
@@ -257,18 +260,14 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
             matrix = matrix.merge_matrix_classes(self.meta_class_lookup)
 
         # Save the raw table
-        with open(full_table_save_path, "w") as f:
-            f.write(matrix.to_full_latex())
+        save_txt(full_table_save_path, matrix.to_full_latex())
 
         # Save the per-class results
-        with open(per_class_save_path, "w") as f:
-            json.dump(
-                {
-                    str(k): str(v)
-                    for k, v in matrix.get_overall_class_errors().items()
-                },
-                f,
-                indent=4)
+        save_json(per_class_save_path, {
+            str(k): str(v)
+            for k, v in matrix.get_overall_class_errors().items()
+        }, indent=4)
+        
 
     def _save_stats_tables(self, average_stats: Dict[BaseSplitKey,
                                                      BaseSplitValue]):

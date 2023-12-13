@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from bucketed_scene_flow_eval.datastructures import PointCloud, SE3, SE2, RGBImage, CameraModel, CameraProjection
-from .loader_utils import load_json
+from bucketed_scene_flow_eval.utils import load_json
 from typing import List, Tuple, Dict, Optional, Any
 import time
 import cv2

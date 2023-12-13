@@ -8,7 +8,7 @@ import numpy as np
 from . import ArgoverseRawSequence
 
 CATEGORY_MAP = {
-    -1: '-1BACKGROUND',
+    -1: 'BACKGROUND',
     0: 'ANIMAL',
     1: 'ARTICULATED_BUS',
     2: 'BICYCLE',
@@ -41,7 +41,6 @@ CATEGORY_MAP = {
     29: 'WHEELED_RIDER'
 }
 
-
 class ArgoverseSupervisedSceneFlowSequence(ArgoverseRawSequence):
     def __init__(self,
                  log_id: str,
@@ -67,23 +66,19 @@ class ArgoverseSupervisedSceneFlowSequence(ArgoverseRawSequence):
             return None
         return CATEGORY_MAP[class_id]
 
-    def _load_flow(self, idx):
+    def _load_flow(self, idx) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         assert idx < len(
             self
         ), f'idx {idx} out of range, len {len(self)} for {self.dataset_dir}'
         # There is no flow information for the last pointcloud in the sequence.
         if idx == len(self) - 1 or idx == -1:
-            return None, None, None, None, None, None
+            return None, None
         timestamp = self.timestamp_list[idx]
         flow_data_file = self.timestamp_to_flow_map[timestamp]
         flow_info = dict(np.load(flow_data_file))
         flow_0_1 = flow_info['flow_0_1']
         classes_0 = flow_info['classes_0']
-        classes_1 = flow_info['classes_1']
-        is_ground0 = flow_info['is_ground_0']
-        is_ground1 = flow_info['is_ground_1']
-        ego_motion = flow_info['ego_motion']
-        return flow_0_1, classes_0, classes_1, is_ground0, is_ground1, ego_motion
+        return flow_0_1, classes_0
 
     def load(self, idx: int, relative_to_idx: int) -> Dict[str, Any]:
         assert idx < len(
@@ -95,13 +90,13 @@ class ArgoverseSupervisedSceneFlowSequence(ArgoverseRawSequence):
             img = self._load_rgb(idx)
         else:
             img = None
-        flow_0_1, classes_0, _, is_ground0, _, _ = self._load_flow(idx)
+        flow_0_1, classes_0 = self._load_flow(idx)
         start_pose = self._load_pose(relative_to_idx)
         idx_pose = self._load_pose(idx)
 
         relative_pose = start_pose.inverse().compose(idx_pose)
 
-        # Global frame PC is needed to compute hte ground point mask.
+        # Global frame PC is needed to compute the ground point mask.
         absolute_global_frame_pc = ego_pc.transform(idx_pose)
         is_ground_points = self.is_ground_points(absolute_global_frame_pc)
 
@@ -120,7 +115,6 @@ class ArgoverseSupervisedSceneFlowSequence(ArgoverseRawSequence):
             relative_global_frame_flowed_pc_no_ground = relative_global_frame_flowed_pc.mask_points(
                 ~is_ground_points)
             classes_0_no_ground = classes_0[~is_ground_points]
-            is_ground0 = is_ground0[~is_ground_points]
         else:
             ego_flowed_pc = None
             ego_flowed_pc_no_ground = None
@@ -128,7 +122,6 @@ class ArgoverseSupervisedSceneFlowSequence(ArgoverseRawSequence):
             relative_global_frame_flowed_pc = None
             classes_0 = None
             classes_0_no_ground = None
-            is_ground0 = None
 
         ego_pc_no_ground = ego_pc.mask_points(~is_ground_points)
 
@@ -153,7 +146,6 @@ class ArgoverseSupervisedSceneFlowSequence(ArgoverseRawSequence):
             "relative_flowed_pc_with_ground": relative_global_frame_flowed_pc,
             "pc_classes": classes_0_no_ground,
             "pc_classes_with_ground": classes_0,
-            "pc_is_ground": is_ground0,
             "log_id": self.log_id,
             "log_idx": idx,
             "log_timestamp": timestamp,
@@ -210,8 +202,8 @@ class ArgoverseSupervisedSceneFlowSequenceLoader():
         if num_sequences is not None:
             self.sequence_id_lst = self.sequence_id_lst[:num_sequences]
 
-        self.last_loaded_sequence = None
-        self.last_loaded_sequence_id = None
+        self.last_loaded_sequence : Optional[ArgoverseSupervisedSceneFlowSequence] = None
+        self.last_loaded_sequence_id : Optional[str] = None
 
     def __len__(self):
         return len(self.sequence_id_lst)
