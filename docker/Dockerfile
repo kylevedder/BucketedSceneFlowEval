@@ -23,6 +23,7 @@ RUN conda update -y conda
 RUN conda install numpy python=3.10 pytorch==1.12.1 torchvision torchaudio cudatoolkit=11.3 -c pytorch -y
 RUN pip install iopath fvcore pandas opencv-python pyquaternion open3d pyarrow
 
+RUN apt install unzip -y
 
 ENV PYTHONPATH=/bucketed_scene_flow_eval:${PYTHONPATH}
 COPY bashrc /root/.bashrc

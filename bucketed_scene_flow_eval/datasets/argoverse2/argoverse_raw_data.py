@@ -43,41 +43,27 @@ class ArgoverseRawSequence():
         }
         info_timestamps = set(self.timestamp_to_info_idx_map.keys())
 
-        # Load the lidar frame information.
-        lidar_frame_directory = self.dataset_dir / 'sensors' / 'lidar'
-        self.lidar_frame_paths = sorted(
-            lidar_frame_directory.glob('*.feather'))
-        assert len(self.lidar_frame_paths
-                   ) > 0, f'no frames found in {lidar_frame_directory}'
-        self.timestamp_to_lidar_file_map = {
-            int(e.stem): e
-            for e in self.lidar_frame_paths
-        }
-        lidar_file_timestamps = set(self.timestamp_to_lidar_file_map.keys())
+        self.lidar_frame_paths, self.timestamp_to_lidar_file_map, lidar_file_timestamps = self._load_lidar_info()
 
         # Load the RGB frame information.
         camera_name = 'ring_front_center'
-        image_frame_directory = self.dataset_dir / 'sensors' / 'cameras' / camera_name
-        self.image_frame_paths = sorted(image_frame_directory.glob('*.jpg'))
-        assert len(self.image_frame_paths
-                   ) > 0, f'no frames found in {image_frame_directory}'
-        self.rgb_timestamp_to_rgb_file_map = {
-            int(e.stem): e
-            for e in self.image_frame_paths
-        }
 
-        # Load the RGB intrinsics.
-        self.rgb_camera_projection = self._load_camera_projection(camera_name)
-        self.rgb_camera_ego_pose = self._load_camera_ego_pose(camera_name)
+        if with_rgb:
+            self.rgb_frame_paths, self.rgb_timestamp_to_rgb_file_map = self._load_rgb_info(camera_name)
+    
 
-        # Find the nearest RGB percept to each lidar frame.
-        # This is N^2. TODO: Figure out if this is a bottleneck.
-        self.timestamp_to_rgb_timestamp_map = {
-            lidar_timestamp:
-            min(self.rgb_timestamp_to_rgb_file_map.keys(),
-                key=lambda rgb_timestamp: abs(rgb_timestamp - lidar_timestamp))
-            for lidar_timestamp in lidar_file_timestamps
-        }
+            # Load the RGB intrinsics.
+            self.rgb_camera_projection = self._load_camera_projection(camera_name)
+            self.rgb_camera_ego_pose = self._load_camera_ego_pose(camera_name)
+
+            # Find the nearest RGB percept to each lidar frame.
+            # This is N^2. TODO: Figure out if this is a bottleneck.
+            self.timestamp_to_rgb_timestamp_map = {
+                lidar_timestamp:
+                min(self.rgb_timestamp_to_rgb_file_map.keys(),
+                    key=lambda rgb_timestamp: abs(rgb_timestamp - lidar_timestamp))
+                for lidar_timestamp in lidar_file_timestamps
+            }
 
         self.timestamp_list = sorted(
             lidar_file_timestamps.intersection(info_timestamps))
@@ -96,6 +82,32 @@ class ArgoverseRawSequence():
             )
 
         self.with_rgb = with_rgb
+
+    def _load_lidar_info(self):
+        # Load the lidar frame information.
+        lidar_frame_directory = self.dataset_dir / 'sensors' / 'lidar'
+        lidar_frame_paths = sorted(
+            lidar_frame_directory.glob('*.feather'))
+        assert len(lidar_frame_paths
+                   ) > 0, f'no frames found in {lidar_frame_directory}'
+        timestamp_to_lidar_file_map = {
+            int(e.stem): e
+            for e in lidar_frame_paths
+        }
+        lidar_file_timestamps = set(timestamp_to_lidar_file_map.keys())
+        return lidar_frame_paths, timestamp_to_lidar_file_map, lidar_file_timestamps
+
+    def _load_rgb_info(self, camera_name : str):
+        image_frame_directory = self.dataset_dir / 'sensors' / 'cameras' / camera_name
+        image_frame_paths = sorted(image_frame_directory.glob('*.jpg'))
+        assert len(image_frame_paths
+                   ) > 0, f'no frames found in {image_frame_directory}'
+        rgb_timestamp_to_rgb_file_map = {
+            int(e.stem): e
+            for e in image_frame_paths
+        }
+        return image_frame_paths, rgb_timestamp_to_rgb_file_map
+
 
     def _quat_to_mat(self, qw, qx, qy, qz):
         """Convert a quaternion to a 3D rotation matrix.
