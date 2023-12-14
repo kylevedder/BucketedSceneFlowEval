@@ -21,7 +21,6 @@ from bucketed_scene_flow_eval.datastructures import (
     EstimatedParticleTrajectories,
     RawSceneItem,
 )
-from bucketed_scene_flow_eval.datastructures import PointCloud, O3DVisualizer
 
 
 def read_feather_file(zip_ref: zipfile.ZipFile, file: Path):
@@ -35,7 +34,7 @@ def load_feather_files(
         names = [Path(name) for name in zip_ref.namelist()]
         names = [name for name in names if name.suffix == ".feather"]
         # Create dictionary mapping sequence names to list of files by joining on the name.parent
-        sequence_dirs = {}
+        sequence_dirs : Dict[str, list] = {}
         for name in names:
             sequence_dirs.setdefault(name.parent.name, []).append(
                 (int(name.stem), read_feather_file(zip_ref, name)))

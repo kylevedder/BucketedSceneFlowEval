@@ -64,6 +64,12 @@ class ArgoverseRawSequence():
                     key=lambda rgb_timestamp: abs(rgb_timestamp - lidar_timestamp))
                 for lidar_timestamp in lidar_file_timestamps
             }
+        else:
+            self.rgb_frame_paths = None
+            self.rgb_timestamp_to_rgb_file_map = {}
+            self.timestamp_to_rgb_timestamp_map = {}
+            self.rgb_camera_projection = None
+            self.rgb_camera_ego_pose = None
 
         self.timestamp_list = sorted(
             lidar_file_timestamps.intersection(info_timestamps))

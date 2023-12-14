@@ -2,8 +2,6 @@ from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator
 
 # load the result pickle
 import pickle
-import json
-from pathlib import Path
 # read "eval_frame_results.pkl"
 
 

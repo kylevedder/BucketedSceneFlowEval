@@ -7,6 +7,7 @@ import numpy as np
 
 from .argoverse_supervised_scene_flow import ArgoverseSupervisedSceneFlowSequenceLoader, CATEGORY_MAP
 from .argoverse_unsupervised_scene_flow import ArgoverseUnsupervisedFlowSequenceLoader
+from .av2_metacategories import METACATAGORIES
 from bucketed_scene_flow_eval.eval import Evaluator, PerClassRawEPEEvaluator, PerClassThreewayEPEEvaluator, BucketedEPEEvaluator
 import enum
 
@@ -238,6 +239,8 @@ class Argoverse2SceneFlow():
         elif self.eval_type == EvalType.CLASS_THREEWAY_EPE:
             return PerClassThreewayEPEEvaluator(**self.eval_args)
         elif self.eval_type == EvalType.BUCKETED_EPE:
+            if "meta_class_lookup" not in self.eval_args:
+                self.eval_args["meta_class_lookup"] = METACATAGORIES
             return BucketedEPEEvaluator(**self.eval_args)
         else:
             raise ValueError(f"Unknown eval type {self.eval_type}")
