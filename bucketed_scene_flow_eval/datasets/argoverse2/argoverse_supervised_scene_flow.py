@@ -151,6 +151,20 @@ class ArgoverseSupervisedSceneFlowSequence(ArgoverseRawSequence):
             "log_timestamp": timestamp,
         }
 
+    @staticmethod
+    def category_ids() -> List[int]:
+        return ArgoverseSupervisedSceneFlowSequenceLoader.category_ids()
+
+    @staticmethod
+    def category_id_to_name(category_id: int) -> str:
+        return ArgoverseSupervisedSceneFlowSequenceLoader.category_id_to_name(
+            category_id)
+
+    @staticmethod
+    def category_name_to_id(category_name: str) -> int:
+        return ArgoverseSupervisedSceneFlowSequenceLoader.category_name_to_id(
+            category_name)
+
 
 class ArgoverseSupervisedSceneFlowSequenceLoader():
     def __init__(self,
@@ -234,3 +248,15 @@ class ArgoverseSupervisedSceneFlowSequenceLoader():
                 sequence_id)
             self.last_loaded_sequence_id = sequence_id
         return self.last_loaded_sequence
+
+    @staticmethod
+    def category_ids() -> List[int]:
+        return list(CATEGORY_MAP.keys())
+
+    @staticmethod
+    def category_id_to_name(category_id: int) -> str:
+        return CATEGORY_MAP[category_id]
+
+    @staticmethod
+    def category_name_to_id(category_name: str) -> int:
+        return {v: k for k, v in CATEGORY_MAP.items()}[category_name]

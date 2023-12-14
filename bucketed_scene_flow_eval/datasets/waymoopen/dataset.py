@@ -8,7 +8,7 @@ import time
 import numpy as np
 import enum
 
-from .waymo_supervised_flow import WaymoSupervisedFlowSequenceLoader, WaymoSupervisedFlowSequence, CATEGORY_MAP
+from .waymo_supervised_flow import WaymoSupervisedSceneFlowSequenceLoader, WaymoSupervisedSceneFlowSequence, CATEGORY_MAP
 from bucketed_scene_flow_eval.eval import Evaluator
 
 
@@ -32,7 +32,7 @@ class WaymoOpenSceneFlow():
                  eval_type: str = "bucketed_epe",
                  eval_args=dict()) -> None:
         self.root_dir = Path(root_dir)
-        self.sequence_loader = WaymoSupervisedFlowSequenceLoader(root_dir)
+        self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(root_dir)
         self.subsequence_length = subsequence_length
         self.cache_path = cache_path
 
