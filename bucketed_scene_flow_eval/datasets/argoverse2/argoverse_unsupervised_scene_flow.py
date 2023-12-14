@@ -160,6 +160,12 @@ class ArgoverseUnsupervisedFlowSequenceLoader():
         self.last_loaded_sequence : Optional[ArgoverseUnsupervisedFlowSequence] = None
         self.last_loaded_sequence_id : Optional[str] = None
 
+    def __getitem__(self, idx):
+        return self.load_sequence(self.sequence_id_list[idx])
+
+    def get_sequence_ids(self):
+        return self.sequence_id_list
+
     def get_sequence_ids(self):
         return self.sequence_id_list
 

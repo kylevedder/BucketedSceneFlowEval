@@ -72,7 +72,7 @@ class WaymoOpenSceneFlow():
         return len(self.dataset_to_sequence_subsequence_idx)
 
     def _make_scene_sequence(
-            self, subsequence_frames: List[Dict]) -> RawSceneSequence:
+            self, subsequence_frames: List[Dict], seq_id : str) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
         percept_lookup: Dict[Timestamp, RawSceneItem] = {}
@@ -85,7 +85,7 @@ class WaymoOpenSceneFlow():
             percept_lookup[dataset_idx] = RawSceneItem(
                 pc_frame=point_cloud_frame, rgb_frame=None)
 
-        return RawSceneSequence(percept_lookup)
+        return RawSceneSequence(percept_lookup, seq_id)
 
     def _make_query_scene_sequence(
             self, scene_sequence: RawSceneSequence,
@@ -163,7 +163,7 @@ class WaymoOpenSceneFlow():
 
         if verbose:
             print(
-                f"Argoverse2 Scene Flow dataset __getitem__({dataset_idx}) start"
+                f"Waymo Open Scene Flow dataset __getitem__({dataset_idx}) start"
             )
 
         sequence_idx, subsequence_start_idx = self.dataset_to_sequence_subsequence_idx[
@@ -184,7 +184,7 @@ class WaymoOpenSceneFlow():
         ]
         load_frames_end = time.time()
 
-        scene_sequence = self._make_scene_sequence(subsequence_frames)
+        scene_sequence = self._make_scene_sequence(subsequence_frames, sequence.log_id)
         make_scene_sequence_end = time.time()
 
         query_scene_sequence = self._make_query_scene_sequence(
@@ -206,7 +206,7 @@ class WaymoOpenSceneFlow():
         #       make_results_scene_sequence_end - make_query_scene_sequence_end)
         if verbose:
             print(
-                f"Argoverse2 Scene Flow dataset __getitem__({dataset_idx}) end"
+                f"Waymo Open Scene Flow dataset __getitem__({dataset_idx}) end"
             )
 
         return query_scene_sequence, results_scene_sequence

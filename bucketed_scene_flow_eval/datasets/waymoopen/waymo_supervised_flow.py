@@ -88,6 +88,10 @@ class WaymoSupervisedFlowSequence():
             for idx in range(len(self))
         ]
 
+    @property
+    def log_id(self):
+        return self.sequence_folder.name
+
 
 class WaymoSupervisedFlowSequenceLoader():
     def __init__(self,

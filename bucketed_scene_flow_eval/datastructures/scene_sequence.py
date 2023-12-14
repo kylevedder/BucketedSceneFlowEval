@@ -100,7 +100,7 @@ class RawSceneSequence():
 
     Additionally, we store frame conversions for each percept.
     """
-    def __init__(self, percept_lookup: Dict[Timestamp, RawSceneItem]):
+    def __init__(self, percept_lookup: Dict[Timestamp, RawSceneItem], log_id : str):
         assert isinstance(percept_lookup, dict), \
             f"percept_lookup must be a dict, got {type(percept_lookup)}"
         assert all(
@@ -110,6 +110,7 @@ class RawSceneSequence():
             isinstance(value, RawSceneItem) for value in percept_lookup.values()), \
             f"percept_lookup values must be RawSceneItem, got {[type(value) for value in percept_lookup.values()]}"
         self.percept_lookup = percept_lookup
+        self.log_id = log_id
 
     def get_percept_timesteps(self) -> List[int]:
         return sorted(self.percept_lookup.keys())
@@ -135,7 +136,7 @@ class RawSceneSequence():
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, RawSceneSequence):
             return False
-        return self.percept_lookup == __value.percept_lookup
+        return self.percept_lookup == __value.percept_lookup and self.log_id == __value.log_id
 
 
 class QueryParticleLookup():

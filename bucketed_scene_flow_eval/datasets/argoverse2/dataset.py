@@ -105,7 +105,7 @@ class Argoverse2SceneFlow():
             sequence_loader_idx, sequence_idx)]
 
     def _make_scene_sequence(
-            self, subsequence_frames: List[Dict]) -> RawSceneSequence:
+            self, subsequence_frames: List[Dict], log_id: str) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
         percept_lookup: Dict[Timestamp, RawSceneItem] = {}
@@ -128,7 +128,7 @@ class Argoverse2SceneFlow():
             percept_lookup[dataset_idx] = RawSceneItem(
                 pc_frame=point_cloud_frame, rgb_frame=rgb_frame)
 
-        return RawSceneSequence(percept_lookup)
+        return RawSceneSequence(percept_lookup, log_id)
 
     def _make_query_scene_sequence(
             self, scene_sequence: RawSceneSequence,
@@ -233,7 +233,7 @@ class Argoverse2SceneFlow():
         ]
         load_frames_end = time.time()
 
-        scene_sequence = self._make_scene_sequence(subsequence_frames)
+        scene_sequence = self._make_scene_sequence(subsequence_frames, sequence.log_id)
         make_scene_sequence_end = time.time()
 
         query_scene_sequence = self._make_query_scene_sequence(
