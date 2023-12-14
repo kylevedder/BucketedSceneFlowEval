@@ -3,12 +3,11 @@ from pathlib import Path
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
 from typing import Tuple, Dict, List
-import multiprocessing
 import time
 import numpy as np
 import enum
 
-from .waymo_supervised_flow import WaymoSupervisedSceneFlowSequenceLoader, WaymoSupervisedSceneFlowSequence, CATEGORY_MAP
+from .waymo_supervised_flow import WaymoSupervisedSceneFlowSequenceLoader, CATEGORY_MAP
 from bucketed_scene_flow_eval.eval import Evaluator
 
 
@@ -101,7 +100,6 @@ class WaymoOpenSceneFlow():
 
         query_particles = QueryParticleLookup(len(pc_points_array),
                                               subsequence_src_index)
-        particle_ids = np.arange(len(pc_points_array))
         return QuerySceneSequence(scene_sequence, query_particles,
                                   query_timestamps)
 
@@ -111,8 +109,6 @@ class WaymoOpenSceneFlow():
             subsequence_tgt_index: int) -> GroundTruthParticleTrajectories:
         # Build query scene sequence. This requires enumerating all points in
         # the source frame and the associated flowed points.
-
-        metadata_setup_start = time.time()
 
         source_entry = subsequence_frames[subsequence_src_index]
         source_pc = source_entry[self.relative_pc_key].points
@@ -124,7 +120,6 @@ class WaymoOpenSceneFlow():
             pc_class_ids
         ), f"Source point cloud and class ids must be the same size. Instead got {len(source_pc)} and {len(pc_class_ids)}."
 
-        metadata_setup_end = time.time()
 
         particle_trajectories = GroundTruthParticleTrajectories(
             len(source_pc),
@@ -140,20 +135,8 @@ class WaymoOpenSceneFlow():
 
         particle_trajectories[particle_ids] = (points, is_occluded,
                                                pc_class_ids, is_valids)
-        # for point_idx, (source_point, target_point, pc_class_id) in enumerate(
-        #         zip(source_pc, target_pc, pc_class_ids)):
-        #     key, value = _build_result_entry(
-        #         point_idx, source_point, target_point, pc_class_id,
-        #         subsequence_src_index, subsequence_tgt_index)
-        #     particle_trajectories[key] = value
-
-        # print("\tMetadata setup: ", metadata_setup_end - metadata_setup_start)
-        # print("\tDict build: ", dict_build_end - metadata_setup_end)
-        # print("\tResult build: ", result_build_end - dict_build_end)
 
         return particle_trajectories
-
-    # def _get_item_memory_cache(self, dataset_idx):
 
     def __getitem__(
         self,
@@ -176,34 +159,22 @@ class WaymoOpenSceneFlow():
         in_subsequence_tgt_index = in_subsequence_src_index + 1
         # Load subsequence
 
-        load_frames_start = time.time()
         subsequence_frames = [
             sequence.load(subsequence_start_idx + i,
                           subsequence_start_idx + in_subsequence_tgt_index)
             for i in range(self.subsequence_length)
         ]
-        load_frames_end = time.time()
 
         scene_sequence = self._make_scene_sequence(subsequence_frames, sequence.log_id)
-        make_scene_sequence_end = time.time()
 
         query_scene_sequence = self._make_query_scene_sequence(
             scene_sequence, subsequence_frames, in_subsequence_src_index,
             in_subsequence_tgt_index)
-        make_query_scene_sequence_end = time.time()
 
         results_scene_sequence = self._make_results_scene_sequence(
             query_scene_sequence, subsequence_frames, in_subsequence_src_index,
             in_subsequence_tgt_index)
-        make_results_scene_sequence_end = time.time()
 
-        # print("Load frames: ", load_frames_end - load_frames_start)
-        # print("Make scene sequence: ",
-        #       make_scene_sequence_end - load_frames_end)
-        # print("Make query scene sequence: ",
-        #       make_query_scene_sequence_end - make_scene_sequence_end)
-        # print("Make results scene sequence: ",
-        #       make_results_scene_sequence_end - make_query_scene_sequence_end)
         if verbose:
             print(
                 f"Waymo Open Scene Flow dataset __getitem__({dataset_idx}) end"

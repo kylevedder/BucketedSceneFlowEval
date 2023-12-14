@@ -1,8 +1,6 @@
 from pathlib import Path
-from collections import defaultdict
 from typing import List, Tuple, Dict, Optional, Any
-import pandas as pd
-from bucketed_scene_flow_eval.datastructures import PointCloud, SE3, SE2, RGBImage, CameraModel, CameraProjection
+from bucketed_scene_flow_eval.datastructures import PointCloud, SE3
 import numpy as np
 from bucketed_scene_flow_eval.utils import load_pickle
 
@@ -63,7 +61,8 @@ class WaymoSupervisedSceneFlowSequence():
         car_frame_flowed_pc = ego_pc.flow(ego_flow)
         relative_global_frame_flowed_pc = car_frame_flowed_pc.transform(
             relative_pose)
-
+        
+        # From the Waymo Open dataset.proto:
         # // If the point is not annotated with scene flow information, class is set
         # // to -1. A point is not annotated if it is in a no-label zone or if its label
         # // bounding box does not have a corresponding match in the previous frame,
