@@ -69,7 +69,7 @@ class ArgoverseUnsupervisedFlowSequence(ArgoverseRawSequence):
             relative_global_frame_no_ground_flowed_pc.points[flow_valid_idxes] += relative_global_frame_flow_0_1.reshape(-1, 3)
 
             relative_global_frame_pc_with_ground_flowed_pc = relative_global_frame_pc_with_ground.copy()
-            relative_global_frame_pc_with_ground_flowed_pc.points[~is_ground_points] += relative_global_frame_no_ground_flowed_pc.points
+            relative_global_frame_pc_with_ground_flowed_pc.points[~is_ground_points] = relative_global_frame_no_ground_flowed_pc.points
         else:
             relative_global_frame_no_ground_flowed_pc = relative_global_frame_pc_no_ground.copy()
             relative_global_frame_pc_with_ground_flowed_pc = relative_global_frame_pc_with_ground.copy()
@@ -130,9 +130,9 @@ class ArgoverseUnsupervisedFlowSequenceLoader():
             self.flow_data_path = Path(flow_data_path)
 
         assert self.raw_data_path.is_dir(
-        ), f'raw_data_path {raw_data_path} does not exist'
+        ), f'raw_data_path {self.raw_data_path} does not exist'
         assert self.flow_data_path.is_dir(
-        ), f'flow_data_path {flow_data_path} does not exist'
+        ), f'flow_data_path {self.flow_data_path} does not exist'
 
         # Raw data folders
         raw_data_folders = sorted(self.raw_data_path.glob('*/'))
@@ -162,9 +162,9 @@ class ArgoverseUnsupervisedFlowSequenceLoader():
 
     def __getitem__(self, idx):
         return self.load_sequence(self.sequence_id_list[idx])
-
-    def get_sequence_ids(self):
-        return self.sequence_id_list
+    
+    def __len__(self):
+        return len(self.sequence_id_list)
 
     def get_sequence_ids(self):
         return self.sequence_id_list
