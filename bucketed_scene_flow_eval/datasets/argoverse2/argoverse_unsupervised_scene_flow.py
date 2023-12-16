@@ -1,6 +1,6 @@
 from pathlib import Path
 from collections import defaultdict
-from typing import List, Tuple, Dict, Optional, Any
+from typing import List, Tuple, Dict, Optional, Any, Union
 import pandas as pd
 from bucketed_scene_flow_eval.datastructures import PointCloud, SE3, SE2
 import numpy as np
@@ -115,37 +115,17 @@ class ArgoverseUnsupervisedFlowSequence(ArgoverseRawSequence):
 class ArgoverseUnsupervisedFlowSequenceLoader():
 
     def __init__(self,
-                 raw_data_path: Path,
+                 raw_data_path: Union[Path, List[Path]],
+                 flow_data_path: Optional[Union[Path, List[Path]]] = None,
                  with_rgb: bool = True,
-                 flow_data_path: Optional[Path] = None,
                  log_subset: Optional[List[str]] = None):
-        self.raw_data_path = Path(raw_data_path)
-
-        self.with_rgb = with_rgb
-
-        if flow_data_path is None:
-            self.flow_data_path = self.raw_data_path.parent / (
-                self.raw_data_path.name + '_nsfp_flow')
-        else:
-            self.flow_data_path = Path(flow_data_path)
-
-        assert self.raw_data_path.is_dir(
-        ), f'raw_data_path {self.raw_data_path} does not exist'
-        assert self.flow_data_path.is_dir(
-        ), f'flow_data_path {self.flow_data_path} does not exist'
+        raw_data_path = self._sanitize_raw_data_path(raw_data_path)
+        flow_data_path = self._sanitize_flow_data_path(flow_data_path, raw_data_path)
 
         # Raw data folders
-        raw_data_folders = sorted(self.raw_data_path.glob('*/'))
-        self.sequence_id_to_raw_data = {
-            folder.stem: folder
-            for folder in raw_data_folders
-        }
+        self.sequence_id_to_raw_data = self._load_sequence_data(raw_data_path)
         # Flow data folders
-        flow_data_folders = sorted(self.flow_data_path.glob('*/'))
-        self.sequence_id_to_flow_data = {
-            folder.stem: folder
-            for folder in flow_data_folders
-        }
+        self.sequence_id_to_flow_data = self._load_sequence_data(flow_data_path)
 
         self.sequence_id_list = sorted(
             set(self.sequence_id_to_raw_data.keys()).intersection(
@@ -156,9 +136,48 @@ class ArgoverseUnsupervisedFlowSequenceLoader():
                 sequence_id for sequence_id in self.sequence_id_list
                 if sequence_id in log_subset
             ]
-
+        self.with_rgb = with_rgb
         self.last_loaded_sequence : Optional[ArgoverseUnsupervisedFlowSequence] = None
         self.last_loaded_sequence_id : Optional[str] = None
+
+    def _sanitize_raw_data_path(self, raw_data_path: Union[Path, List[Path]]) -> List[Path]:
+        if isinstance(raw_data_path, str):
+            raw_data_path = Path(raw_data_path)
+        if isinstance(raw_data_path, Path):
+            raw_data_path = [raw_data_path]
+        
+        assert isinstance(raw_data_path, list), f"raw_data_path must be a Path, list of Paths, or a string, got {raw_data_path}"
+        raw_data_path = [Path(path) for path in raw_data_path]
+        # Make sure the paths exist
+        for path in raw_data_path:
+            assert path.exists(), f"raw_data_path {path} does not exist"
+        return raw_data_path
+    
+    def _sanitize_flow_data_path(self, flow_data_path: Optional[Union[Path, List[Path]]], 
+                                 raw_data_path : List[Path]) -> List[Path]:
+        if not flow_data_path is None:
+            return self._sanitize_raw_data_path(flow_data_path)
+        
+        # Load default flow data path
+        flow_paths = [
+            path.parent / (path.name + '_nsfp_flow')
+            for path in raw_data_path
+        ]
+        return flow_paths
+
+    def _load_sequence_data(self, path_info: Union[Path, List[Path]]) -> Dict[str, Path]:
+        if isinstance(path_info, Path):
+            path_info = [path_info]
+
+        sequence_folders : List[Path] = []
+        for path in path_info:
+            sequence_folders.extend(path.glob('*/'))
+
+        sequence_id_to_path = {
+            folder.stem: folder
+            for folder in sorted(sequence_folders)
+        }
+        return sequence_id_to_path
 
     def __getitem__(self, idx):
         return self.load_sequence(self.sequence_id_list[idx])
