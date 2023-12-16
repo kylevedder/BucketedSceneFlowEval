@@ -2,7 +2,7 @@ from bucketed_scene_flow_eval.datastructures import *
 from pathlib import Path
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Union
 import numpy as np
 
 from .argoverse_supervised_scene_flow import ArgoverseSupervisedSceneFlowSequenceLoader, CATEGORY_MAP
@@ -25,23 +25,25 @@ class Argoverse2SceneFlow():
     It provides iterable access over all problems in the dataset.
     """
     def __init__(self,
-                 root_dir: Path,
+                 root_dir: Union[Path, List[Path]],
                  subsequence_length: int = 2,
                  with_ground: bool = True,
                  with_rgb: bool = True,
-                 cache_path: Path = Path("/tmp/"),
+                 cache_root: Path = Path("/tmp/"),
                  use_gt_flow: bool = True,
                  eval_type: str = "bucketed_epe",
                  eval_args=dict()) -> None:
-        self.root_dir = Path(root_dir)
         if use_gt_flow:
+            if isinstance(root_dir, list):
+                raise ValueError(
+                    "Cannot use gt flow with multiple root dirs.")
             self.sequence_loader = ArgoverseSupervisedSceneFlowSequenceLoader(
                 root_dir, with_rgb=with_rgb)
         else:
             self.sequence_loader = ArgoverseUnsupervisedFlowSequenceLoader(
                 root_dir, with_rgb=with_rgb)
         self.subsequence_length = subsequence_length
-        self.cache_path = cache_path
+        self.cache_path = self._cache_path(cache_root, root_dir)
         if with_ground:
             self.ego_pc_key = "ego_pc_with_ground"
             self.ego_pc_flowed_key = "ego_flowed_pc_with_ground"
@@ -70,9 +72,18 @@ class Argoverse2SceneFlow():
         self.eval_type = EvalType[eval_type.strip().upper()]
         self.eval_args = eval_args
 
+    def _cache_path(self, cache_root :Path,  root_dir : Union[Path, List[Path]]) -> Path:
+        if isinstance(root_dir, list):
+            parent_name = "_".join([root_dir_part.parent.name for root_dir_part in root_dir])
+            folder_name = "_".join([root_dir_part.name for root_dir_part in root_dir])
+        else:
+            parent_name = root_dir.parent.name
+            folder_name = root_dir.name
+        return cache_root / "argo" / parent_name / folder_name
+
     def _load_dataset_to_sequence_subsequence_idx(
             self) -> List[Tuple[int, int]]:
-        cache_file = self.cache_path / "argo" / self.root_dir.parent.name / self.root_dir.name / f"dataset_to_sequence_subsequence_idx_cache_len_{self.subsequence_length}.pkl"
+        cache_file = self.cache_path / f"dataset_to_sequence_subsequence_idx_cache_len_{self.subsequence_length}.pkl"
         if cache_file.exists():
             return load_pickle(cache_file)
 
