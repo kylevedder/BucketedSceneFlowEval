@@ -39,10 +39,13 @@ class OverallError:
 
     def __repr__(self) -> str:
         static_epe_val_str = f"{self.static_epe:0.2f}" if np.isfinite(
-            self.static_epe) else "-"
+            self.static_epe) else f"{self.static_epe}"
         dynamic_error_val_str = f"{self.dynamic_error:0.2f}" if np.isfinite(
-            self.dynamic_error) else "-"
+            self.dynamic_error) else f"{self.dynamic_error}"
         return f"({static_epe_val_str}, {dynamic_error_val_str})"
+    
+    def to_tuple(self) -> Tuple[float, float]:
+        return (self.static_epe, self.dynamic_error)
 
 
 class BucketResultMatrix:
@@ -209,7 +212,7 @@ class BucketResultMatrix:
 class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
     def __init__(self,
                  bucket_max_speed: float = 20.0 / 10.0,
-                 num_buckets: int = 50,
+                 num_buckets: int = 51,
                  output_path: Path = Path("/tmp/frame_results/bucketed_epe"),
                  meta_class_lookup: Optional[Dict[str, List[str]]] = None):
         # Bucket the speeds into num_buckets buckets. Add one extra bucket at the end to capture all
@@ -237,6 +240,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
                           distance_threshold: float):
         full_table_save_path = self.output_path / f"full_table_{distance_threshold}.tex"
         per_class_save_path = self.output_path / f"per_class_results_{distance_threshold}.json"
+        mean_average_save_path = self.output_path / f"mean_average_results_{distance_threshold}.json"
 
         unique_category_names = sorted(
             set([k.name for k in average_stats.keys()]))
@@ -267,6 +271,9 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
             str(k): str(v)
             for k, v in matrix.get_overall_class_errors().items()
         }, indent=4)
+
+        # Save the mean average results
+        save_json(mean_average_save_path, matrix.get_mean_average_values().to_tuple(), indent=4)
         
 
     def _save_stats_tables(self, average_stats: Dict[BaseSplitKey,

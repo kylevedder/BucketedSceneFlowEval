@@ -129,6 +129,7 @@ class BaseEvalFrameResult:
 
 class PerFrameSceneFlowEvaluator(Evaluator):
     def __init__(self, output_path: Path = Path("/tmp/frame_results")):
+        output_path = Path(output_path)
         self.eval_frame_results: List[BaseEvalFrameResult] = []
         self.output_path = output_path
         # print(f"Saving results to {self.output_path}")

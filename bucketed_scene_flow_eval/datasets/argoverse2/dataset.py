@@ -74,11 +74,11 @@ class Argoverse2SceneFlow():
 
     def _cache_path(self, cache_root :Path,  root_dir : Union[Path, List[Path]]) -> Path:
         if isinstance(root_dir, list):
-            parent_name = "_".join([root_dir_part.parent.name for root_dir_part in root_dir])
-            folder_name = "_".join([root_dir_part.name for root_dir_part in root_dir])
+            parent_name = "_".join([Path(root_dir_part).parent.name for root_dir_part in root_dir])
+            folder_name = "_".join([Path(root_dir_part).name for root_dir_part in root_dir])
         else:
-            parent_name = root_dir.parent.name
-            folder_name = root_dir.name
+            parent_name = Path(root_dir).parent.name
+            folder_name = Path(root_dir).name
         return cache_root / "argo" / parent_name / folder_name
 
     def _load_dataset_to_sequence_subsequence_idx(
