@@ -14,7 +14,7 @@ class ArgoverseUnsupervisedFlowSequence(ArgoverseRawSequence):
         super().__init__(log_id, dataset_dir, with_rgb=with_rgb)
 
         # The flow data does not have a timestamp, so we need to just rely on the order of the files.
-        self.flow_data_files = sorted(flow_data_lst.glob('*.npz'))
+        self.flow_data_files = sorted(flow_data_lst.glob('*.feather'))
 
         assert len(self.timestamp_list) > len(
             self.flow_data_files
@@ -36,9 +36,19 @@ class ArgoverseUnsupervisedFlowSequence(ArgoverseRawSequence):
             return None, None
 
         flow_data_file = self.flow_data_files[idx]
-        flow_info = dict(np.load(flow_data_file))
-        flow_0_1, valid_idxes = flow_info['flow'], flow_info['valid_idxes']
-        return flow_0_1, valid_idxes
+        # Load the flow data feather file
+        flow_data = pd.read_feather(flow_data_file)
+        is_valid_arr = flow_data['is_valid'].values
+
+        # The flow data is stored as 3 1D arrays, one for each dimension.
+        xs = flow_data['flow_tx_m'].values
+        ys = flow_data['flow_ty_m'].values
+        zs = flow_data['flow_tz_m'].values
+
+        # Nx3 array of flow vectors
+        flow = np.stack([xs, ys, zs], axis=1)
+
+        return flow, is_valid_arr
 
     def load(self, idx, relative_to_idx) -> Dict[str, Any]:
         assert idx < len(
@@ -54,7 +64,7 @@ class ArgoverseUnsupervisedFlowSequence(ArgoverseRawSequence):
         idx_pose = self._load_pose(idx)
         relative_pose = start_pose.inverse().compose(idx_pose)
 
-        relative_global_frame_flow_0_1, flow_valid_idxes = self._load_flow(idx)
+        relative_global_frame_flow_0_1_with_ground, is_valid_flow_with_ground_arr = self._load_flow(idx)
 
         # Global frame PC is needed to compute the ground point mask.
         absolute_global_frame_pc = ego_pc_with_ground.transform(idx_pose)
@@ -64,19 +74,17 @@ class ArgoverseUnsupervisedFlowSequence(ArgoverseRawSequence):
         relative_global_frame_pc_with_ground = ego_pc_with_ground.transform(relative_pose)
         relative_global_frame_pc_no_ground = relative_global_frame_pc_with_ground.mask_points(
             ~is_ground_points)
-        if relative_global_frame_flow_0_1 is not None:
-            relative_global_frame_no_ground_flowed_pc = relative_global_frame_pc_no_ground.copy()
-            relative_global_frame_no_ground_flowed_pc.points[flow_valid_idxes] += relative_global_frame_flow_0_1.reshape(-1, 3)
-
-            relative_global_frame_pc_with_ground_flowed_pc = relative_global_frame_pc_with_ground.copy()
-            relative_global_frame_pc_with_ground_flowed_pc.points[~is_ground_points] = relative_global_frame_no_ground_flowed_pc.points
-        else:
-            relative_global_frame_no_ground_flowed_pc = relative_global_frame_pc_no_ground.copy()
-            relative_global_frame_pc_with_ground_flowed_pc = relative_global_frame_pc_with_ground.copy()
+        
+        relative_global_frame_no_ground_flowed_pc = relative_global_frame_pc_no_ground.copy()
+        relative_global_frame_with_ground_flowed_pc = relative_global_frame_pc_with_ground.copy()
+        if relative_global_frame_flow_0_1_with_ground is not None:
+            relative_global_frame_with_ground_flowed_pc.points[is_valid_flow_with_ground_arr] += relative_global_frame_flow_0_1_with_ground[is_valid_flow_with_ground_arr]
+            relative_global_frame_no_ground_flowed_pc.points = relative_global_frame_with_ground_flowed_pc[~is_ground_points].copy()
+        
 
         ego_flowed_pc_no_ground = relative_global_frame_no_ground_flowed_pc.transform(
             relative_pose.inverse())
-        ego_flowed_pc_with_ground = relative_global_frame_pc_with_ground_flowed_pc.transform(
+        ego_flowed_pc_with_ground = relative_global_frame_with_ground_flowed_pc.transform(
             relative_pose.inverse())
 
         ego_pc_no_ground = ego_pc_with_ground.mask_points(~is_ground_points)
@@ -103,7 +111,7 @@ class ArgoverseUnsupervisedFlowSequence(ArgoverseRawSequence):
             "rgb_camera_ego_pose": self.rgb_camera_ego_pose,
             "relative_pose": relative_pose,
             "relative_flowed_pc": relative_global_frame_no_ground_flowed_pc,
-            "relative_flowed_pc_with_ground": relative_global_frame_pc_with_ground_flowed_pc,
+            "relative_flowed_pc_with_ground": relative_global_frame_with_ground_flowed_pc,
             "pc_classes": classes_0_no_ground,
             "pc_classes_with_ground": classes_0_with_ground,
             "log_id": self.log_id,
@@ -160,7 +168,7 @@ class ArgoverseUnsupervisedFlowSequenceLoader():
         
         # Load default flow data path
         flow_paths = [
-            path.parent / (path.name + '_nsfp_flow')
+            path.parent / (path.name + '_nsfp_flow_feather')
             for path in raw_data_path
         ]
         return flow_paths
