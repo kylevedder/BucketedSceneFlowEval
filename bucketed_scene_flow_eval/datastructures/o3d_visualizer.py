@@ -5,7 +5,7 @@ import numpy as np
 
 
 class O3DVisualizer:
-    def __init__(self):
+    def __init__(self, point_size: float = 0.1):
         # Create o3d visualizer
         vis = o3d.visualization.Visualizer()
         vis.create_window(window_name="Benchmark Visualizer")
@@ -15,7 +15,7 @@ class O3DVisualizer:
         vis.add_geometry(world_frame)
         # vis.add_geometry(center_sphere)
         # Set point size
-        vis.get_render_option().point_size = 0.1
+        vis.get_render_option().point_size = point_size
 
         self.vis = vis
 

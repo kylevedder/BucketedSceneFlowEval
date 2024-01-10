@@ -3,6 +3,7 @@ import json
 import pickle
 import subprocess
 import numpy as np
+import pandas as pd
 
 
 def _compute_size_metric(filepath: Path):
@@ -123,7 +124,7 @@ def save_json(filename: Path, contents, indent=None, verbose: bool = True):
         print(f"\rSaved {filename} of size {_compute_size_metric(filename)}")
 
 
-def load_csv(filename: Path, dtype=str):
+def load_csv(filename: Path, dtype=str, verbose: bool = True):
     print(f'Loading {filename} of size {_compute_size_metric(filename)}')
     with open(filename) as f:
         return [[dtype(e.strip()) for e in line.strip().split(',')]
@@ -144,6 +145,25 @@ def save_csv(filename: Path, contents: list, verbose: bool = True):
         print(f"\rSaved {filename} of size {_compute_size_metric(filename)}")
 
 
+def load_feather(filename: Path, verbose: bool = True):
+    filename = Path(filename)
+    assert filename.exists(), f'{filename} does not exist'
+    if verbose:
+        print(f'Loading {filename} of size {_compute_size_metric(filename)}')
+    return pd.read_feather(filename)
+
+def save_feather(filename: Path, df, verbose: bool = True):
+    filename = Path(filename)
+    if verbose:
+        print(f'Saving {filename}', end='')
+    if filename.exists():
+        filename.unlink()
+    filename.parent.mkdir(parents=True, exist_ok=True)
+    df.to_feather(filename)
+    if verbose:
+        print(f"\rSaved {filename} of size {_compute_size_metric(filename)}")
+
+
 def save_by_extension(filename: Path, contents, verbose: bool = True):
     filename = Path(filename)
     # Make parents if they don't exist
@@ -160,6 +180,8 @@ def save_by_extension(filename: Path, contents, verbose: bool = True):
         save_json(filename, contents, verbose=verbose)
     elif filename.suffix == '.csv':
         save_csv(filename, contents, verbose=verbose)
+    elif filename.suffix == '.feather':
+        save_feather(filename, contents, verbose=verbose)
     else:
         raise ValueError(f'Unknown file extension: {filename.suffix}')
 
@@ -178,6 +200,8 @@ def load_by_extension(filename: Path, verbose: bool = True):
         return load_json(filename, verbose=verbose)
     elif filename.suffix == '.csv':
         return load_csv(filename, verbose=verbose)
+    elif filename.suffix == '.feather':
+        return load_feather(filename, verbose=verbose)
     else:
         raise ValueError(f'Unknown file extension: {filename.suffix}')
 

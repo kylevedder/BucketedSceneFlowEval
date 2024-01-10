@@ -23,7 +23,7 @@ class ArgoverseRawSequence():
                  log_id: str,
                  dataset_dir: Path,
                  verbose: bool = False,
-                 with_rgb: bool = True,
+                 with_rgb: bool = False,
                  POINT_CLOUD_RANGE=(-48, -48, -2.5, 48, 48, 2.5),
                  sample_every: Optional[int] = None):
         self.log_id = log_id
@@ -45,10 +45,11 @@ class ArgoverseRawSequence():
 
         self.lidar_frame_paths, self.timestamp_to_lidar_file_map, lidar_file_timestamps = self._load_lidar_info()
 
-        # Load the RGB frame information.
-        camera_name = 'ring_front_center'
+        self.with_rgb = with_rgb
 
         if with_rgb:
+            # Load the RGB frame information.
+            camera_name = 'ring_front_center'
             self.rgb_frame_paths, self.rgb_timestamp_to_rgb_file_map = self._load_rgb_info(camera_name)
     
 
@@ -86,8 +87,6 @@ class ArgoverseRawSequence():
             print(
                 f'Loaded {len(self.timestamp_list)} frames from {self.dataset_dir} at timestamp {time.time():.3f}'
             )
-
-        self.with_rgb = with_rgb
 
     def _load_lidar_info(self):
         # Load the lidar frame information.

@@ -16,12 +16,11 @@ def color_threshold_distance(distances: np.ndarray, max_distance: float = 10.0):
     return colors
 
 
-def process_lidar_only(pc_frame : PointCloudFrame):
-    o3d_vis = O3DVisualizer()
+def process_lidar_only(o3d_vis : O3DVisualizer, pc_frame : PointCloudFrame):
     o3d_vis.add_pointcloud(pc_frame.global_pc)
     o3d_vis.run()
 
-def process_lidar_rgb(pc_frame : PointCloudFrame, rgb_frame : RGBFrame):
+def process_lidar_rgb(o3d_vis : O3DVisualizer, pc_frame : PointCloudFrame, rgb_frame : RGBFrame):
     image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(rgb_frame.rgb, depth=10)
 
     pc_into_cam_frame_se3 = pc_frame.pose.sensor_to_ego.compose(rgb_frame.pose.sensor_to_ego.inverse())
@@ -32,7 +31,6 @@ def process_lidar_rgb(pc_frame : PointCloudFrame, rgb_frame : RGBFrame):
 
     cam_frame_pc = PointCloud(cam_frame_pc.points[cam_frame_pc.points[:, 0] >= 0])
 
-    o3d_vis = O3DVisualizer()
     o3d_vis.add_pointcloud(cam_frame_pc)
     o3d_vis.add_pointcloud(image_plane_pc, color=colors)
     o3d_vis.run()
@@ -66,6 +64,9 @@ def process_entry(query: QuerySceneSequence, gt: GroundTruthParticleTrajectories
     query_timestamp = query.query_particles.query_init_timestamp
     print("Query timestamp:", query_timestamp)
 
+    gt_timestamps = gt.trajectory_timestamps
+    print("GT timestamps:", gt_timestamps)
+
     # The scene contains RGB image and pointcloud data for each timestamp.
     # These are stored as "frames" with pose and intrinsics information. 
     # This enables the raw percepts to be projected into desired coordinate frames across time.
@@ -73,12 +74,19 @@ def process_entry(query: QuerySceneSequence, gt: GroundTruthParticleTrajectories
         rgb_frame = query.scene_sequence[scene_timestamp].rgb_frame
         pc_frame = query.scene_sequence[scene_timestamp].pc_frame
 
+        o3d_vis = O3DVisualizer(point_size=0.5)
+        gt.visualize(o3d_vis)
+
         if rgb_frame is None:
             print("No RGB frame for timestamp", scene_timestamp, "using lidar only")
-            process_lidar_only(pc_frame)
+            process_lidar_only(o3d_vis, pc_frame)
         else:
             print("RGB frame for timestamp", scene_timestamp, "using lidar and rgb")
-            process_lidar_rgb(pc_frame, rgb_frame)
+            process_lidar_rgb(o3d_vis, pc_frame, rgb_frame)
+
+        del o3d_vis
+
+        
 
 
 
@@ -92,10 +100,7 @@ if __name__ == "__main__":
 
     dataset = construct_dataset(args.dataset, dict(root_dir = args.root_dir))
 
-    # dataset = construct_dataset('Argoverse2SceneFlow', dict(root_dir ='/efs/argoverse2/val'))
-    # dataset = construct_dataset('WaymoOpenSceneFlow', dict(root_dir ='/efs/waymo_open_processed_flow/validation/'))
-
     print("Dataset contains", len(dataset), "samples")
 
-    query, gt = dataset[1000]
+    query, gt = dataset[0]
     process_entry(query, gt)
