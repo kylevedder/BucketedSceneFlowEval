@@ -6,7 +6,6 @@ importable_classes = [Argoverse2SceneFlow, WaymoOpenSceneFlow]
 name_to_class_lookup = {cls.__name__.lower(): cls for cls in importable_classes}
 
 
-
 def construct_dataset(name: str, args: dict):
     name = name.lower()
     if name not in name_to_class_lookup:

@@ -19,8 +19,7 @@ def load_data(path: Path):
     return keys, values
 
 
-data_entries = [(e.name, load_data(e / "metric_table_35.json"))
-                for e in subdirs]
+data_entries = [(e.name, load_data(e / "metric_table_35.json")) for e in subdirs]
 
 
 def data_index_to_bar_width_location(data_index: int) -> Tuple[float, float]:
@@ -34,10 +33,12 @@ def data_index_to_bar_width_location(data_index: int) -> Tuple[float, float]:
 for i, (name, (keys, values)) in enumerate(data_entries):
     bar_width, bar_location = data_index_to_bar_width_location(i)
     # Plot the bar chart with the data offset by i
-    plt.bar([x + bar_location for x in range(len(keys))],
-            values,
-            label=name,
-            width=bar_width)
+    plt.bar(
+        [x + bar_location for x in range(len(keys))],
+        values,
+        label=name,
+        width=bar_width,
+    )
 
 # Set the x-axis labels
 plt.xticks(range(len(keys)), keys)

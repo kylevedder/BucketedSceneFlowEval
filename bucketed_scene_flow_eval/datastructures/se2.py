@@ -11,7 +11,7 @@ class SE2:
             ValueError: if rotation or translation do not have the required shapes.
         """
         assert rotation.shape == (2, 2)
-        assert translation.shape == (2, )
+        assert translation.shape == (2,)
         self.rotation = rotation
         self.translation = translation
         self.transform_matrix = np.eye(3)
@@ -40,11 +40,11 @@ class SE2:
         Returns:
             inverse of this SE2 transformation.
         """
-        return SE2(rotation=self.rotation.T,
-                   translation=self.rotation.T.dot(-self.translation))
+        return SE2(
+            rotation=self.rotation.T, translation=self.rotation.T.dot(-self.translation)
+        )
 
-    def inverse_transform_point_cloud(self,
-                                      point_cloud: np.ndarray) -> np.ndarray:
+    def inverse_transform_point_cloud(self, point_cloud: np.ndarray) -> np.ndarray:
         """Transform the point_cloud by the inverse of this SE2.
         Args:
             point_cloud: Numpy array of shape (N,2).
@@ -60,8 +60,7 @@ class SE2:
         Returns:
             The composed transformation.
         """
-        chained_transform_matrix = self.transform_matrix.dot(
-            right_se2.transform_matrix)
+        chained_transform_matrix = self.transform_matrix.dot(right_se2.transform_matrix)
         chained_se2 = SE2(
             rotation=chained_transform_matrix[:2, :2],
             translation=chained_transform_matrix[:2, 2],

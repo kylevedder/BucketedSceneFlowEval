@@ -4,15 +4,15 @@ from pyquaternion import Quaternion
 
 class SE3:
     """An SE3 class allows point cloud rotation and translation operations."""
-    def __init__(self, rotation_matrix: np.ndarray,
-                 translation: np.ndarray) -> None:
+
+    def __init__(self, rotation_matrix: np.ndarray, translation: np.ndarray) -> None:
         """Initialize an SE3 instance with its rotation and translation matrices.
         Args:
             rotation: Array of shape (3, 3)
             translation: Array of shape (3,)
         """
         assert rotation_matrix.shape == (3, 3)
-        assert translation.shape == (3, )
+        assert translation.shape == (3,)
         self.rotation_matrix = rotation_matrix
         self.translation = translation
 
@@ -20,6 +20,7 @@ class SE3:
             self.transform_matrix = np.eye(4)
         else:
             import torch
+
             self.transform_matrix = torch.eye(4)
         self.transform_matrix[:3, :3] = self.rotation_matrix
         self.transform_matrix[:3, 3] = self.translation
@@ -40,9 +41,12 @@ class SE3:
         if isinstance(translation, list):
             translation = np.array(translation)
         assert translation.shape == (
-            3, ), f"Translation must be a 3D vector, got {translation.shape}"
-        return SE3(rotation_matrix=self.rotation_matrix,
-                   translation=self.translation + translation)
+            3,
+        ), f"Translation must be a 3D vector, got {translation.shape}"
+        return SE3(
+            rotation_matrix=self.rotation_matrix,
+            translation=self.translation + translation,
+        )
 
     def transform_points(self, point_cloud: np.ndarray) -> np.ndarray:
         """Apply the SE(3) transformation to this point cloud.
@@ -65,8 +69,10 @@ class SE3:
             src_SE3_target: instance of SE3 class, representing
                 inverse of SE3 transformation target_SE3_src
         """
-        return SE3(rotation_matrix=self.rotation_matrix.T,
-                   translation=self.rotation_matrix.T.dot(-self.translation))
+        return SE3(
+            rotation_matrix=self.rotation_matrix.T,
+            translation=self.rotation_matrix.T.dot(-self.translation),
+        )
 
     def compose(self, right_se3: "SE3") -> "SE3":
         """Compose (right multiply) this class' transformation matrix T with another SE3 instance.
@@ -110,13 +116,14 @@ class SE3:
         origin_ball.paint_uniform_color([0, 0, 0])
 
         cone = o3d.geometry.TriangleMesh.create_cone(radius=0.1, height=0.5)
-        point_forward = np.array([
-            [0, 0, 1],
-            [0, 1, 0],
-            [1, 0, 0],
-        ])
-        cone = cone.rotate(self.rotation_matrix @ point_forward,
-                           center=(0, 0, 0))
+        point_forward = np.array(
+            [
+                [0, 0, 1],
+                [0, 1, 0],
+                [1, 0, 0],
+            ]
+        )
+        cone = cone.rotate(self.rotation_matrix @ point_forward, center=(0, 0, 0))
         cone = cone.translate(self.translation)
         cone = cone.compute_vertex_normals()
 
@@ -132,8 +139,7 @@ class SE3:
 
         # Draw ball at unit length in x direction
         forward_ball = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
-        forward_ball = forward_ball.translate(self.translation +
-                                              forward_rotated_vec)
+        forward_ball = forward_ball.translate(self.translation + forward_rotated_vec)
         forward_ball.paint_uniform_color([1, 0, 0])
 
         left_ball = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
@@ -147,8 +153,8 @@ class SE3:
         # Draw line between balls
         line = o3d.geometry.LineSet()
         line.points = o3d.utility.Vector3dVector(
-            np.vstack(
-                (self.translation, self.translation + forward_rotated_vec)))
+            np.vstack((self.translation, self.translation + forward_rotated_vec))
+        )
         line.lines = o3d.utility.Vector2iVector(np.array([[0, 1]]))
 
         return [origin_ball, forward_ball, left_ball, up_ball, line, cone]

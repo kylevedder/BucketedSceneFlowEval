@@ -28,16 +28,16 @@ def read_feather_file(zip_ref: zipfile.ZipFile, file: Path):
         return pd.read_feather(file)
 
 
-def load_feather_files(
-        zip_path: Path) -> Dict[str, List[Tuple[int, pd.DataFrame]]]:
+def load_feather_files(zip_path: Path) -> Dict[str, List[Tuple[int, pd.DataFrame]]]:
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
         names = [Path(name) for name in zip_ref.namelist()]
         names = [name for name in names if name.suffix == ".feather"]
         # Create dictionary mapping sequence names to list of files by joining on the name.parent
-        sequence_dirs : Dict[str, list] = {}
+        sequence_dirs: Dict[str, list] = {}
         for name in names:
             sequence_dirs.setdefault(name.parent.name, []).append(
-                (int(name.stem), read_feather_file(zip_ref, name)))
+                (int(name.stem), read_feather_file(zip_ref, name))
+            )
         for k in sequence_dirs.keys():
             sequence_dirs[k] = sorted(sequence_dirs[k], key=lambda x: x[0])
         return sequence_dirs
@@ -77,8 +77,7 @@ def perform_evaluate(
 
     ego_frame_pc1 = pc1_frame.pc
     global_pc1 = ego_frame_pc1.transform(pc1_frame.global_pose)
-    ego_flowed_pc2 = ego_frame_pc1.flow_masked(uncompensated_flow_array,
-                                               mask_array)
+    ego_flowed_pc2 = ego_frame_pc1.flow_masked(uncompensated_flow_array, mask_array)
     global_flowed_pc2 = ego_flowed_pc2.transform(pc2_frame.global_pose)
 
     # visualizer = O3DVisualizer()
@@ -87,8 +86,7 @@ def perform_evaluate(
     # gt.visualize(visualizer)
     # visualizer.run()
 
-    stacked_points = np.stack([global_pc1.points, global_flowed_pc2.points],
-                              axis=1)
+    stacked_points = np.stack([global_pc1.points, global_flowed_pc2.points], axis=1)
 
     masked_array_idxes = np.arange(len(mask_array))[mask_array]
 
@@ -103,8 +101,13 @@ def perform_evaluate(
 
 
 def process_problem(
-    input: Tuple[int, str, List[Tuple[int, pd.DataFrame]],
-                 List[Tuple[int, pd.DataFrame]], Argoverse2SceneFlow, ]
+    input: Tuple[
+        int,
+        str,
+        List[Tuple[int, pd.DataFrame]],
+        List[Tuple[int, pd.DataFrame]],
+        Argoverse2SceneFlow,
+    ]
 ) -> Evaluator:
     idx, sequence_name, mask_sequence, result_sequence, dataset = input
     evaluator = dataset.evaluator()
@@ -121,22 +124,23 @@ def process_problem(
         result_data = result_timestamp_to_data[timestamp]
 
         return (
-            dataset._av2_sequence_id_and_timestamp_to_idx(
-                sequence_name, timestamp),
+            dataset._av2_sequence_id_and_timestamp_to_idx(sequence_name, timestamp),
             mask_data,
             result_data,
         )
 
-    dataset_idxes, mask_datas, result_datas = zip(*[
-        timestamp_to_dataset_idx(timestamp)
-        for timestamp in sorted(mask_timestamp_to_data.keys())
-    ])
+    dataset_idxes, mask_datas, result_datas = zip(
+        *[
+            timestamp_to_dataset_idx(timestamp)
+            for timestamp in sorted(mask_timestamp_to_data.keys())
+        ]
+    )
 
     for dataset_idx, mask_data, result_data in tqdm.tqdm(
-            list(zip(dataset_idxes, mask_datas, result_datas)),
-            disable=True,
-            position=idx // 10 + 1,
-            desc=f"Seq {idx:04d}",
+        list(zip(dataset_idxes, mask_datas, result_datas)),
+        disable=True,
+        position=idx // 10 + 1,
+        desc=f"Seq {idx:04d}",
     ):
         query, gt = dataset[dataset_idx]
         perform_evaluate(mask_data, result_data, query, gt, evaluator)
@@ -147,8 +151,15 @@ def build_process_problems(
     mask_sequence_map: Dict[str, List[Tuple[int, pd.DataFrame]]],
     result_sequence_map: Dict[str, List[Tuple[int, pd.DataFrame]]],
     dataset: Argoverse2SceneFlow,
-) -> List[Tuple[int, str, List[Tuple[int, pd.DataFrame]], List[Tuple[
-        int, pd.DataFrame]], Argoverse2SceneFlow, ]]:
+) -> List[
+    Tuple[
+        int,
+        str,
+        List[Tuple[int, pd.DataFrame]],
+        List[Tuple[int, pd.DataFrame]],
+        Argoverse2SceneFlow,
+    ]
+]:
     mask_key_set = set(mask_sequence_map.keys())
     result_key_set = set(result_sequence_map.keys())
 
@@ -164,8 +175,9 @@ def build_process_problems(
         yield (idx, sequence_name, mask_sequence, result_sequence, dataset)
 
 
-def main_loop(mask_zip: Path, result_zip: Path, dataset: Argoverse2SceneFlow,
-              multiprocessor):
+def main_loop(
+    mask_zip: Path, result_zip: Path, dataset: Argoverse2SceneFlow, multiprocessor
+):
     mask_sequence_map, result_sequence_map = multiprocessor(
         load_feather_files,
         [mask_zip, result_zip],
@@ -174,11 +186,11 @@ def main_loop(mask_zip: Path, result_zip: Path, dataset: Argoverse2SceneFlow,
     )
 
     problems = list(
-        build_process_problems(mask_sequence_map, result_sequence_map,
-                               dataset))
-    evaluators: List[Evaluator] = multiprocessor(process_problem,
-                                                 problems,
-                                                 desc="Problems")
+        build_process_problems(mask_sequence_map, result_sequence_map, dataset)
+    )
+    evaluators: List[Evaluator] = multiprocessor(
+        process_problem, problems, desc="Problems"
+    )
     sum(evaluators).compute_results()
 
 
@@ -192,7 +204,8 @@ def build_multiprocessor(cpu_count: int):
         bar_format: str = "\033[91m{l_bar}{bar}{r_bar}\033[0m",
     ):
         return [
-            worker(problem) for problem in tqdm.tqdm(
+            worker(problem)
+            for problem in tqdm.tqdm(
                 problems,
                 disable=not verbose,
                 leave=leave,
@@ -219,7 +232,8 @@ def build_multiprocessor(cpu_count: int):
                     leave=leave,
                     bar_format=bar_format,
                     desc=desc,
-                ))
+                )
+            )
 
     if cpu_count <= 1:
         print("Using single threaded process")
@@ -230,16 +244,15 @@ def build_multiprocessor(cpu_count: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Iterate over .feather files in a result zip file.")
-    parser.add_argument("root_dir",
-                        type=Path,
-                        help="Path to the root directory of the dataset")
-    parser.add_argument("mask_zip_file",
-                        type=Path,
-                        help="Path to the mask zip file")
-    parser.add_argument("result_zip_file",
-                        type=Path,
-                        help="Path to the result zip file")
+        description="Iterate over .feather files in a result zip file."
+    )
+    parser.add_argument(
+        "root_dir", type=Path, help="Path to the root directory of the dataset"
+    )
+    parser.add_argument("mask_zip_file", type=Path, help="Path to the mask zip file")
+    parser.add_argument(
+        "result_zip_file", type=Path, help="Path to the result zip file"
+    )
     parser.add_argument(
         "--cpu_count",
         type=int,
@@ -248,20 +261,18 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    assert args.root_dir.exists(
-    ), f"Root directory {args.root_dir} does not exist."
+    assert args.root_dir.exists(), f"Root directory {args.root_dir} does not exist."
 
-    assert (args.mask_zip_file.exists()
-            ), f"Mask zip file {args.mask_zip_file} does not exist."
+    assert (
+        args.mask_zip_file.exists()
+    ), f"Mask zip file {args.mask_zip_file} does not exist."
 
-    assert (args.result_zip_file.exists()
-            ), f"Result zip file {args.result_zip_file} does not exist."
+    assert (
+        args.result_zip_file.exists()
+    ), f"Result zip file {args.result_zip_file} does not exist."
 
-    dataset = Argoverse2SceneFlow(args.root_dir,
-                                  with_ground=True,
-                                  with_rgb=False)
+    dataset = Argoverse2SceneFlow(args.root_dir, with_ground=True, with_rgb=False)
 
     multiprocessor = build_multiprocessor(args.cpu_count)
 
-    main_loop(args.mask_zip_file, args.result_zip_file, dataset,
-              multiprocessor)
+    main_loop(args.mask_zip_file, args.result_zip_file, dataset, multiprocessor)

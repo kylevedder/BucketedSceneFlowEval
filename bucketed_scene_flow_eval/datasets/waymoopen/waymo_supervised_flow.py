@@ -5,23 +5,24 @@ import numpy as np
 from bucketed_scene_flow_eval.utils import load_pickle
 
 CATEGORY_MAP = {
-    0: 'BACKGROUND',
-    1: 'VEHICLE',
-    2: 'PEDESTRIAN',
-    3: 'SIGN',
-    4: 'CYCLIST',
+    0: "BACKGROUND",
+    1: "VEHICLE",
+    2: "PEDESTRIAN",
+    3: "SIGN",
+    4: "CYCLIST",
 }
 
 
-class WaymoSupervisedSceneFlowSequence():
+class WaymoSupervisedSceneFlowSequence:
     def __init__(self, sequence_folder: Path, verbose: bool = False):
         self.sequence_folder = Path(sequence_folder)
-        self.sequence_files = sorted(self.sequence_folder.glob('*.pkl'))
-        assert len(self.sequence_files
-                   ) > 0, f'no frames found in {self.sequence_folder}'
+        self.sequence_files = sorted(self.sequence_folder.glob("*.pkl"))
+        assert (
+            len(self.sequence_files) > 0
+        ), f"no frames found in {self.sequence_folder}"
 
     def __repr__(self) -> str:
-        return f'WaymoRawSequence with {len(self)} frames'
+        return f"WaymoRawSequence with {len(self)} frames"
 
     def __len__(self):
         return len(self.sequence_files)
@@ -29,13 +30,13 @@ class WaymoSupervisedSceneFlowSequence():
     def _load_idx(self, idx: int):
         assert idx < len(
             self
-        ), f'idx {idx} out of range, len {len(self)} for {self.dataset_dir}'
+        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         pickle_path = self.sequence_files[idx]
         pkl = load_pickle(pickle_path, verbose=False)
-        pc = PointCloud(pkl['car_frame_pc'])
-        flow = pkl['flow']
-        labels = pkl['label']
-        pose = SE3.from_array(pkl['pose'])
+        pc = PointCloud(pkl["car_frame_pc"])
+        flow = pkl["flow"]
+        labels = pkl["label"]
+        pose = SE3.from_array(pkl["pose"])
         return pc, flow, labels, pose
 
     def cleanup_flow(self, flow):
@@ -48,7 +49,7 @@ class WaymoSupervisedSceneFlowSequence():
     def load(self, idx: int, relative_to_idx: int) -> Dict[str, Any]:
         assert idx < len(
             self
-        ), f'idx {idx} out of range, len {len(self)} for {self.dataset_dir}'
+        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
 
         ego_pc, ego_flow, idx_labels, idx_pose = self._load_idx(idx)
         # Unfortunatly, the flow has some artifacts that we need to clean up. These are very adhoc and will
@@ -59,9 +60,8 @@ class WaymoSupervisedSceneFlowSequence():
         relative_pose = start_pose.inverse().compose(idx_pose)
         relative_global_frame_pc = ego_pc.transform(relative_pose)
         car_frame_flowed_pc = ego_pc.flow(ego_flow)
-        relative_global_frame_flowed_pc = car_frame_flowed_pc.transform(
-            relative_pose)
-        
+        relative_global_frame_flowed_pc = car_frame_flowed_pc.transform(relative_pose)
+
         # From the Waymo Open dataset.proto:
         # // If the point is not annotated with scene flow information, class is set
         # // to -1. A point is not annotated if it is in a no-label zone or if its label
@@ -76,7 +76,7 @@ class WaymoSupervisedSceneFlowSequence():
         # //   2: pedestrian, i.e., the point corresponds to a pedestrian label box.
         # //   3: sign, i.e., the point corresponds to a sign label box.
         # //   4: cyclist, i.e., the point corresponds to a cyclist label box.
-    
+
         cleaned_idx_labels = idx_labels.astype(np.int32)
         cleaned_idx_labels[cleaned_idx_labels == -1] = 0
 
@@ -85,8 +85,7 @@ class WaymoSupervisedSceneFlowSequence():
             "ego_pc_with_ground": ego_pc,
             "relative_pc": relative_global_frame_pc,
             "relative_pc_with_ground": relative_global_frame_pc,
-            "is_ground_points": np.zeros(len(relative_global_frame_pc),
-                                         dtype=bool),
+            "is_ground_points": np.zeros(len(relative_global_frame_pc), dtype=bool),
             "relative_pose": relative_pose,
             "relative_flowed_pc": relative_global_frame_flowed_pc,
             "pc_classes": cleaned_idx_labels,
@@ -95,12 +94,9 @@ class WaymoSupervisedSceneFlowSequence():
             "log_idx": idx,
         }
 
-    def load_frame_list(
-            self, relative_to_idx: Optional[int]) -> List[Dict[str, Any]]:
-
+    def load_frame_list(self, relative_to_idx: Optional[int]) -> List[Dict[str, Any]]:
         return [
-            self.load(idx,
-                      relative_to_idx if relative_to_idx is not None else idx)
+            self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))
         ]
 
@@ -114,24 +110,23 @@ class WaymoSupervisedSceneFlowSequence():
 
     @staticmethod
     def category_id_to_name(category_id: int) -> str:
-        return WaymoSupervisedSceneFlowSequenceLoader.category_id_to_name(
-            category_id)
+        return WaymoSupervisedSceneFlowSequenceLoader.category_id_to_name(category_id)
 
     @staticmethod
     def category_name_to_id(category_name: str) -> int:
-        return WaymoSupervisedSceneFlowSequenceLoader.category_name_to_id(
-            category_name)
+        return WaymoSupervisedSceneFlowSequenceLoader.category_name_to_id(category_name)
 
 
-class WaymoSupervisedSceneFlowSequenceLoader():
-    def __init__(self,
-                 sequence_dir: Path,
-                 log_subset: Optional[List[str]] = None,
-                 verbose: bool = False):
+class WaymoSupervisedSceneFlowSequenceLoader:
+    def __init__(
+        self,
+        sequence_dir: Path,
+        log_subset: Optional[List[str]] = None,
+        verbose: bool = False,
+    ):
         self.dataset_dir = Path(sequence_dir)
         self.verbose = verbose
-        assert self.dataset_dir.is_dir(
-        ), f'dataset_dir {sequence_dir} does not exist'
+        assert self.dataset_dir.is_dir(), f"dataset_dir {sequence_dir} does not exist"
 
         # Load list of sequences from sequence_dir
         sequence_dir_lst = sorted(self.dataset_dir.glob("*/"))
@@ -141,9 +136,7 @@ class WaymoSupervisedSceneFlowSequenceLoader():
         # Intersect with log_subset
         if log_subset is not None:
             self.log_lookup = {
-                k: v
-                for k, v in sorted(self.log_lookup.items())
-                if k in set(log_subset)
+                k: v for k, v in sorted(self.log_lookup.items()) if k in set(log_subset)
             }
 
         self.log_lookup_keys = sorted(self.log_lookup.keys())
@@ -159,8 +152,7 @@ class WaymoSupervisedSceneFlowSequenceLoader():
 
     def load_sequence(self, log_id: str) -> WaymoSupervisedSceneFlowSequence:
         sequence_folder = self.log_lookup[log_id]
-        return WaymoSupervisedSceneFlowSequence(sequence_folder,
-                                           verbose=self.verbose)
+        return WaymoSupervisedSceneFlowSequence(sequence_folder, verbose=self.verbose)
 
     @staticmethod
     def category_ids() -> List[int]:
