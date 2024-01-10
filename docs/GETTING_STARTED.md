@@ -10,26 +10,26 @@ argoverse2/val
 argoverse2/test
 ```
 
-and generate the train and val supervision labels to
+Please note that when downloaded from the cloud, these files may have a different top level directory format (their stored format keeps changing); you can solve this by moving the files or symlinking the appropriate directories into a different tree. 
+
+Generate the train and val supervision labels to
 
 ```
-argoverse2/train_sceneflow
-argoverse2/val_sceneflow
+argoverse2/train_sceneflow_feather
+argoverse2/val_sceneflow_feather
 ```
 
-
-The [Argoverse 2 Scene Flow generation script](https://github.com/kylevedder/argoverse2-sf) to compute ground truth flows for both `train/` and `val/`.
-
-Please note that when downloaded from the cloud, these files may have a different top level directory format (their stored format keeps changing); you can solve this by moving the files or symlinking the appropriate directories into a different tree. We have uploaded [a prebuilt DockerHub image](https://hub.docker.com/repository/docker/kylevedder/argoverse2_sf/general) for running the generation script.
+To generate these supervision labels, use the generation script in `data_prep_scripts/argo/create_gt_flow.py`. We have uploaded [a prebuilt DockerHub image](https://hub.docker.com/repository/docker/kylevedder/argoverse2_sf/general) for running the generation script; it can be run using `./local_av2.sh`.
 
 ### Argoverse 2 Tiny Demo Dataset
 
-To get started, we provide a directly downloadable [tiny demo dataset](https://github.com/kylevedder/zeroflow/files/13059582/argoverse2_tiny.zip) (5.5MB).
+To get started, we provide a directly downloadable [tiny demo dataset](https://github.com/kylevedder/BucketedSceneFlowEval/files/13881746/argoverse2_tiny.zip) (5.5MB).
 
-`argoverse2_tiny` contains three subfolders:
+`argoverse2_tiny` contains four subfolders:
 
  - `argoverse2_tiny/val`: a single sequence with the single frame pair
- - `argoverse2_tiny/val_sceneflow`: the supervised ground truth for this frame pair
+ - `argoverse2_tiny/val_sceneflow_feather`: the supervised ground truth for this frame pair
+ - `argoverse2_tiny/val_nsfp_flow_feather`: the NSFP pseudolabels for this frame pair
  - `argoverse2_tiny/val_supervised_out`: the output of the forward pass of [FastFlow3D, a supervised scene flow estimator](http://vedder.io/zeroflow). 
  
 ### Waymo Open
