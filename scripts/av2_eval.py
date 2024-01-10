@@ -3,6 +3,7 @@ import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
+import torch  # For some reason, things hang if you do not import this first.
 import argparse
 import zipfile
 from pathlib import Path
@@ -11,7 +12,6 @@ import pandas as pd
 import numpy as np
 import multiprocessing
 import tqdm
-import time
 
 from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow
 from bucketed_scene_flow_eval.eval import Evaluator
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--cpu_count",
         type=int,
-        default=0,
+        default=multiprocessing.cpu_count(),
         help="Number of CPUs to use",
     )
     args = parser.parse_args()
