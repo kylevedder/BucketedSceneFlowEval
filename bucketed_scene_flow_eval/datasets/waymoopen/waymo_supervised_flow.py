@@ -30,7 +30,7 @@ class WaymoSupervisedSceneFlowSequence:
     def _load_idx(self, idx: int):
         assert idx < len(
             self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        ), f"idx {idx} out of range, len {len(self)} for {self.sequence_folder}"
         pickle_path = self.sequence_files[idx]
         pkl = load_pickle(pickle_path, verbose=False)
         pc = PointCloud(pkl["car_frame_pc"])
@@ -49,7 +49,7 @@ class WaymoSupervisedSceneFlowSequence:
     def load(self, idx: int, relative_to_idx: int) -> Dict[str, Any]:
         assert idx < len(
             self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        ), f"idx {idx} out of range, len {len(self)} for {self.sequence_folder}"
 
         ego_pc, ego_flow, idx_labels, idx_pose = self._load_idx(idx)
         # Unfortunatly, the flow has some artifacts that we need to clean up. These are very adhoc and will

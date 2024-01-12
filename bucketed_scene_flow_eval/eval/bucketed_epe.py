@@ -1,6 +1,6 @@
 from bucketed_scene_flow_eval.datastructures import (
-    EstimatedParticleTrajectories,
-    GroundTruthParticleTrajectories,
+    EstimatedPointFlow,
+    GroundTruthPointFlow,
     Timestamp,
     ParticleClassId,
 )

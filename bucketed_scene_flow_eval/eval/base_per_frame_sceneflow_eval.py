@@ -1,6 +1,6 @@
 from bucketed_scene_flow_eval.datastructures import (
-    EstimatedParticleTrajectories,
-    GroundTruthParticleTrajectories,
+    EstimatedPointFlow,
+    GroundTruthPointFlow,
     Timestamp,
     ParticleClassId,
 )
@@ -173,15 +173,15 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
     def _validate_inputs(
         self,
-        predictions: EstimatedParticleTrajectories,
-        ground_truth: GroundTruthParticleTrajectories,
+        predictions: EstimatedPointFlow,
+        ground_truth: GroundTruthPointFlow,
     ):
         assert isinstance(
-            predictions, EstimatedParticleTrajectories
+            predictions, EstimatedPointFlow
         ), f"predictions must be a EstimatedParticleTrajectories, got {type(predictions)}"
 
         assert isinstance(
-            ground_truth, GroundTruthParticleTrajectories
+            ground_truth, GroundTruthPointFlow
         ), f"ground_truth must be a GroundTruthParticleTrajectories, got {type(ground_truth)}"
 
         # Validate that the predictions and ground truth have the same number of predictions.
@@ -218,8 +218,8 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
     def _get_indices_of_timestamps(
         self,
-        predictions: EstimatedParticleTrajectories,
-        ground_truth: GroundTruthParticleTrajectories,
+        predictions: EstimatedPointFlow,
+        ground_truth: GroundTruthPointFlow,
         query_timestamp: Timestamp,
     ):
         # create an numpy array
@@ -241,8 +241,8 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
     def eval(
         self,
-        predictions: EstimatedParticleTrajectories,
-        ground_truth: GroundTruthParticleTrajectories,
+        predictions: EstimatedPointFlow,
+        ground_truth: GroundTruthPointFlow,
         query_timestamp: Timestamp,
     ):
         self._validate_inputs(predictions, ground_truth)
@@ -321,7 +321,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         gt_class_ids: np.ndarray,
         gt_flow: np.ndarray,
         pred_flow: np.ndarray,
-        ground_truth: GroundTruthParticleTrajectories,
+        ground_truth: GroundTruthPointFlow,
     ) -> BaseEvalFrameResult:
         return BaseEvalFrameResult(
             pc1,

@@ -17,8 +17,8 @@ from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow
 from bucketed_scene_flow_eval.eval import Evaluator
 from bucketed_scene_flow_eval.datastructures import (
     QuerySceneSequence,
-    GroundTruthParticleTrajectories,
-    EstimatedParticleTrajectories,
+    GroundTruthPointFlow,
+    EstimatedPointFlow,
     RawSceneItem,
 )
 
@@ -47,7 +47,7 @@ def perform_evaluate(
     mask: pd.DataFrame,
     result: pd.DataFrame,
     query: QuerySceneSequence,
-    gt: GroundTruthParticleTrajectories,
+    gt: GroundTruthPointFlow,
     evaluator: Evaluator,
 ):
     mask_array = mask["mask"].to_numpy()
@@ -75,7 +75,7 @@ def perform_evaluate(
     pc1_frame = raw_scene_item_pc1.pc_frame
     pc2_frame = raw_scene_item_pc2.pc_frame
 
-    ego_frame_pc1 = pc1_frame.pc
+    ego_frame_pc1 = pc1_frame.full_pc
     global_pc1 = ego_frame_pc1.transform(pc1_frame.global_pose)
     ego_flowed_pc2 = ego_frame_pc1.flow_masked(uncompensated_flow_array, mask_array)
     global_flowed_pc2 = ego_flowed_pc2.transform(pc2_frame.global_pose)
@@ -90,7 +90,7 @@ def perform_evaluate(
 
     masked_array_idxes = np.arange(len(mask_array))[mask_array]
 
-    lookup = EstimatedParticleTrajectories(len(gt), gt.trajectory_timestamps)
+    lookup = EstimatedPointFlow(len(gt), gt.trajectory_timestamps)
     lookup[masked_array_idxes] = (
         stacked_points[masked_array_idxes],
         [0, 1],

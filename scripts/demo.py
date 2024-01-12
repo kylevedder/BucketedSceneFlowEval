@@ -1,7 +1,7 @@
 from bucketed_scene_flow_eval.datasets import construct_dataset
 from bucketed_scene_flow_eval.datastructures import (
     QuerySceneSequence,
-    GroundTruthParticleTrajectories,
+    GroundTruthPointFlow,
     O3DVisualizer,
     PointCloud,
     PointCloudFrame,
@@ -39,7 +39,7 @@ def process_lidar_rgb(
     pc_into_cam_frame_se3 = pc_frame.pose.sensor_to_ego.compose(
         rgb_frame.pose.sensor_to_ego.inverse()
     )
-    cam_frame_pc = pc_frame.pc.transform(pc_into_cam_frame_se3)
+    cam_frame_pc = pc_frame.full_pc.transform(pc_into_cam_frame_se3)
 
     # To prevent points behind the camera from being projected into the image, we had to remove them from the pointcloud.
     # These points have a negative X value in the camera frame.
@@ -75,7 +75,7 @@ def process_lidar_rgb(
     plt.show()
 
 
-def process_entry(query: QuerySceneSequence, gt: GroundTruthParticleTrajectories):
+def process_entry(query: QuerySceneSequence, gt: GroundTruthPointFlow):
     # The query specifies the raw scene and query points at a particular timestamp
     # These query points can be thought of as the specification of the valid points for
     # scene flow in the pointcloud at `t` for prediction to timestamp `t+1`

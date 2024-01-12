@@ -8,7 +8,12 @@ import numpy as np
 import enum
 
 from .waymo_supervised_flow import WaymoSupervisedSceneFlowSequenceLoader, CATEGORY_MAP
-from bucketed_scene_flow_eval.eval import Evaluator
+from bucketed_scene_flow_eval.eval import (
+    Evaluator,
+    PerClassRawEPEEvaluator,
+    PerClassThreewayEPEEvaluator,
+    BucketedEPEEvaluator,
+)
 
 
 class EvalType(enum.Enum):
@@ -92,8 +97,9 @@ class WaymoOpenSceneFlow:
             pc: PointCloud = entry[self.ego_pc_key]
             lidar_to_ego = SE3.identity()
             ego_to_world: SE3 = entry["relative_pose"]
+            mask = entry["pc_is_ground"]
             point_cloud_frame = PointCloudFrame(
-                pc, PoseInfo(lidar_to_ego, ego_to_world)
+                pc, PoseInfo(lidar_to_ego, ego_to_world), mask
             )
             percept_lookup[dataset_idx] = RawSceneItem(
                 pc_frame=point_cloud_frame, rgb_frame=None
@@ -117,9 +123,7 @@ class WaymoOpenSceneFlow:
 
         pc_points_array = source_entry[self.relative_pc_key].points
 
-        query_particles = QueryParticleLookup(
-            len(pc_points_array), subsequence_src_index
-        )
+        query_particles = QueryPointLookup(len(pc_points_array), subsequence_src_index)
         return QuerySceneSequence(scene_sequence, query_particles, query_timestamps)
 
     def _make_results_scene_sequence(
@@ -128,7 +132,7 @@ class WaymoOpenSceneFlow:
         subsequence_frames: List[Dict],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
-    ) -> GroundTruthParticleTrajectories:
+    ) -> GroundTruthPointFlow:
         # Build query scene sequence. This requires enumerating all points in
         # the source frame and the associated flowed points.
 
@@ -143,7 +147,7 @@ class WaymoOpenSceneFlow:
             pc_class_ids
         ), f"Source point cloud and class ids must be the same size. Instead got {len(source_pc)} and {len(pc_class_ids)}."
 
-        particle_trajectories = GroundTruthParticleTrajectories(
+        particle_trajectories = GroundTruthPointFlow(
             len(source_pc),
             np.array([subsequence_src_index, subsequence_tgt_index]),
             query.query_particles.query_init_timestamp,
@@ -168,7 +172,7 @@ class WaymoOpenSceneFlow:
 
     def __getitem__(
         self, dataset_idx, verbose: bool = False
-    ) -> Tuple[QuerySceneSequence, GroundTruthParticleTrajectories]:
+    ) -> Tuple[QuerySceneSequence, GroundTruthPointFlow]:
         if verbose:
             print(f"Waymo Open Scene Flow dataset __getitem__({dataset_idx}) start")
 
@@ -216,8 +220,6 @@ class WaymoOpenSceneFlow:
         # Builds the evaluator object for this dataset.
         if self.eval_type == EvalType.RAW_EPE:
             return PerClassRawEPEEvaluator(**self.eval_args)
-        elif self.eval_type == EvalType.SCALED_EPE:
-            return PerClassScaledEPEEvaluator(**self.eval_args)
         elif self.eval_type == EvalType.CLASS_THREEWAY_EPE:
             return PerClassThreewayEPEEvaluator(**self.eval_args)
         elif self.eval_type == EvalType.BUCKETED_EPE:

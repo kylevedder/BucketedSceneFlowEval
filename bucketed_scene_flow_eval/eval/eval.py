@@ -1,6 +1,6 @@
 from bucketed_scene_flow_eval.datastructures import (
-    EstimatedParticleTrajectories,
-    GroundTruthParticleTrajectories,
+    EstimatedPointFlow,
+    GroundTruthPointFlow,
     Timestamp,
     ParticleClassId,
 )
@@ -21,8 +21,8 @@ class Evaluator(ABC):
     @abstractmethod
     def eval(
         self,
-        predictions: EstimatedParticleTrajectories,
-        ground_truth: GroundTruthParticleTrajectories,
+        predictions: EstimatedPointFlow,
+        ground_truth: GroundTruthPointFlow,
         query_timestamp: Timestamp,
     ):
         pass

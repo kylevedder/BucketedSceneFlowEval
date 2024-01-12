@@ -40,25 +40,21 @@ class Argoverse2SceneFlow:
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
     ) -> None:
+        self.with_ground = with_ground
         self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
             root_dir, with_rgb=with_rgb, use_gt_flow=use_gt_flow
         )
         self.subsequence_length = subsequence_length
         self.cache_path = self._cache_path(cache_root, root_dir)
-        if with_ground:
-            self.ego_pc_key = "ego_pc_with_ground"
-            self.ego_pc_flowed_key = "ego_flowed_pc_with_ground"
-            self.relative_pc_key = "relative_pc_with_ground"
-            self.relative_pc_flowed_key = "relative_flowed_pc_with_ground"
-            self.pc_classes_key = "pc_classes_with_ground"
-            self.in_range_mask_key = "in_range_mask_with_ground"
-        else:
-            self.ego_pc_key = "ego_pc"
-            self.ego_pc_flowed_key = "ego_flowed_pc"
-            self.relative_pc_key = "relative_pc"
-            self.relative_pc_flowed_key = "relative_flowed_pc"
-            self.pc_classes_key = "pc_classes"
-            self.in_range_mask_key = "in_range_mask"
+
+        # Lookup keys
+        self.ego_pc_key = "ego_pc_with_ground"
+        self.ego_pc_flowed_key = "ego_flowed_pc_with_ground"
+        self.relative_pc_key = "relative_pc_with_ground"
+        self.relative_pc_flowed_key = "relative_flowed_pc_with_ground"
+        self.pc_classes_key = "pc_classes_with_ground"
+        self.in_range_mask_key = "in_range_mask_with_ground"
+        self.is_ground_key = "is_ground_points"
 
         self.with_rgb = with_rgb
 
@@ -134,8 +130,13 @@ class Argoverse2SceneFlow:
             pc: PointCloud = entry[self.ego_pc_key]
             lidar_to_ego = SE3.identity()
             ego_to_world: SE3 = entry["relative_pose"]
+
+            mask = entry[self.is_ground_key]
+            if self.with_ground:
+                mask = np.ones_like(mask, dtype=bool)
+
             point_cloud_frame = PointCloudFrame(
-                pc, PoseInfo(lidar_to_ego, ego_to_world)
+                pc, PoseInfo(lidar_to_ego, ego_to_world), mask
             )
 
             rgb_to_ego: SE3 = entry["rgb_camera_ego_pose"]
@@ -171,9 +172,7 @@ class Argoverse2SceneFlow:
         pc_points_array = source_entry[self.relative_pc_key].points
         in_range_points_array = source_entry[self.in_range_mask_key]
 
-        query_particles = QueryParticleLookup(
-            len(pc_points_array), subsequence_src_index
-        )
+        query_particles = QueryPointLookup(len(pc_points_array), subsequence_src_index)
         particle_ids = np.arange(len(pc_points_array))
         query_particles[particle_ids[in_range_points_array]] = pc_points_array[
             in_range_points_array
@@ -186,7 +185,7 @@ class Argoverse2SceneFlow:
         subsequence_frames: List[Dict],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
-    ) -> GroundTruthParticleTrajectories:
+    ) -> GroundTruthPointFlow:
         # Build query scene sequence. This requires enumerating all points in
         # the source frame and the associated flowed points.
 
@@ -202,7 +201,7 @@ class Argoverse2SceneFlow:
             pc_class_ids
         ), f"Source point cloud and class ids must be the same size. Instead got {len(source_pc)} and {len(pc_class_ids)}."
 
-        particle_trajectories = GroundTruthParticleTrajectories(
+        particle_trajectories = GroundTruthPointFlow(
             len(source_pc),
             np.array([subsequence_src_index, subsequence_tgt_index]),
             query.query_particles.query_init_timestamp,
@@ -227,7 +226,7 @@ class Argoverse2SceneFlow:
 
     def __getitem__(
         self, dataset_idx, verbose: bool = False
-    ) -> Tuple[QuerySceneSequence, GroundTruthParticleTrajectories]:
+    ) -> Tuple[QuerySceneSequence, GroundTruthPointFlow]:
         if verbose:
             print(f"Argoverse2 Scene Flow dataset __getitem__({dataset_idx}) start")
 
