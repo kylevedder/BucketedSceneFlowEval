@@ -1,4 +1,5 @@
 .mypy_cache/
+.pytest_cache/
 .vscode/
 scene_trajectory_benchmark/
 **/__pycache__/

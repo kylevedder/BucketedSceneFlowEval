@@ -31,6 +31,7 @@ dependencies = [
   "pyquaternion",
   "open3d",
   "pyarrow",
+  "pytest",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

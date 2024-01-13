@@ -24,6 +24,7 @@ RUN conda install numpy python=3.10 pytorch==1.12.1 torchvision torchaudio cudat
 RUN pip install iopath fvcore pandas opencv-python pyquaternion open3d pyarrow
 RUN pip install av2
 RUN apt install unzip -y
+RUN pip install pytest
 
 ENV PYTHONPATH=/bucketed_scene_flow_eval:${PYTHONPATH}
 COPY bashrc /root/.bashrc

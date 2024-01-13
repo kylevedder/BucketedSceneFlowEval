@@ -13,4 +13,4 @@ rm -rf /tmp/waymo_open_processed_flow_tiny
 wget https://github.com/kylevedder/BucketedSceneFlowEval/files/13924555/waymo_open_processed_flow_tiny.zip -O /tmp/waymo_open_processed_flow_tiny.zip
 unzip -q /tmp/waymo_open_processed_flow_tiny.zip -d /tmp/
 
-python tests/integration_tests.py
+pytest tests/integration_tests.py
