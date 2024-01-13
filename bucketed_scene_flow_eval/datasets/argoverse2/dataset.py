@@ -131,7 +131,7 @@ class Argoverse2SceneFlow:
             lidar_to_ego = SE3.identity()
             ego_to_world: SE3 = entry["relative_pose"]
 
-            mask = entry[self.is_ground_key]
+            mask = ~entry[self.is_ground_key]
             if self.with_ground:
                 mask = np.ones_like(mask, dtype=bool)
 
@@ -209,15 +209,12 @@ class Argoverse2SceneFlow:
         )
 
         points = np.stack([source_pc, target_pc], axis=1)
-        # Stack the false false array len(source_pc) times.
-        is_occluded = np.tile([False, False], (len(source_pc), 1))
 
         particle_ids = np.arange(len(source_pc))
-        is_valids = np.ones((len(source_pc), 2), dtype=bool)
+        is_valids = np.ones((len(source_pc),), dtype=bool)
 
         particle_trajectories[particle_ids[in_range_points_array]] = (
             points[in_range_points_array],
-            is_occluded[in_range_points_array],
             pc_class_ids[in_range_points_array],
             is_valids[in_range_points_array],
         )

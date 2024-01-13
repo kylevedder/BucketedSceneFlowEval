@@ -199,10 +199,10 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         # the Ground Truth Particle Trajectories.
 
         predictions_intersection_ground_truth = (
-            predictions.is_valid & ground_truth.is_valid
+            predictions.is_valid_flow & ground_truth.is_valid_flow
         )
         predictions_match_ground_truth = (
-            predictions_intersection_ground_truth == ground_truth.is_valid
+            predictions_intersection_ground_truth == ground_truth.is_valid_flow
         )
         vectors = ground_truth.world_points[~predictions_match_ground_truth]
         assert (
@@ -262,11 +262,11 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
         eval_particle_ids = ground_truth.valid_particle_ids()
 
-        gt_is_valids = ground_truth.is_valid[eval_particle_ids][
+        gt_is_valids = ground_truth.is_valid_flow[eval_particle_ids][
             :, matched_time_axis_indices
         ]
 
-        pred_is_valids = predictions.is_valid[eval_particle_ids][
+        pred_is_valids = predictions.is_valid_flow[eval_particle_ids][
             :, matched_time_axis_indices
         ]
 

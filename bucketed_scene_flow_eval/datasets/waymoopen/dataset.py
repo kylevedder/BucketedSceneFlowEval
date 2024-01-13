@@ -97,7 +97,7 @@ class WaymoOpenSceneFlow:
             pc: PointCloud = entry[self.ego_pc_key]
             lidar_to_ego = SE3.identity()
             ego_to_world: SE3 = entry["relative_pose"]
-            mask = entry["pc_is_ground"]
+            mask = ~entry["pc_is_ground"]
             point_cloud_frame = PointCloudFrame(
                 pc, PoseInfo(lidar_to_ego, ego_to_world), mask
             )
@@ -156,14 +156,12 @@ class WaymoOpenSceneFlow:
 
         points = np.stack([source_pc, target_pc], axis=1)
         # Stack the false false array len(source_pc) times.
-        is_occluded = np.tile([False, False], (len(source_pc), 1))
 
         particle_ids = np.arange(len(source_pc))
-        is_valids = np.ones((len(source_pc), 2), dtype=bool)
+        is_valids = np.ones((len(source_pc),), dtype=bool)
 
         particle_trajectories[particle_ids] = (
             points,
-            is_occluded,
             pc_class_ids,
             is_valids,
         )

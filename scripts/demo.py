@@ -25,6 +25,7 @@ def color_threshold_distance(distances: np.ndarray, max_distance: float = 10.0):
 
 
 def process_lidar_only(o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame):
+    print(f"Adding Lidar pointcloud with {len(pc_frame.global_pc)} points")
     o3d_vis.add_pointcloud(pc_frame.global_pc)
     o3d_vis.run()
 
@@ -100,10 +101,10 @@ def process_entry(query: QuerySceneSequence, gt: GroundTruthPointFlow):
         gt.visualize(o3d_vis)
 
         if rgb_frame is None:
-            print("No RGB frame for timestamp", scene_timestamp, "using lidar only")
+            print(f"No RGB frame for timestamp {scene_timestamp}, using lidar only")
             process_lidar_only(o3d_vis, pc_frame)
         else:
-            print("RGB frame for timestamp", scene_timestamp, "using lidar and rgb")
+            print(f"RGB frame for timestamp {scene_timestamp}, using lidar and rgb")
             process_lidar_rgb(o3d_vis, pc_frame, rgb_frame)
 
         del o3d_vis

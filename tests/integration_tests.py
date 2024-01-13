@@ -44,6 +44,13 @@ for query, gt in waymo_dataset_gt:
         gt, GroundTruthPointFlow
     ), f"Expected GroundTruthParticleTrajectories, got {type(gt)}"
 
+    t1, t2 = query.scene_sequence.get_percept_timesteps()
+    pc_frame = query.scene_sequence[t1].pc_frame
+
+    assert (
+        len(pc_frame.global_pc) == 124364
+    ), f"Expected 124364 points, got {len(pc_frame.global_pc)} for WaymoOpen"
+
 for query, gt in argo_dataset_gt:
     assert isinstance(
         query, QuerySceneSequence
@@ -52,6 +59,15 @@ for query, gt in argo_dataset_gt:
         gt, GroundTruthPointFlow
     ), f"Expected GroundTruthParticleTrajectories, got {type(gt)}"
 
+    t1, t2 = query.scene_sequence.get_percept_timesteps()
+    pc_frame = query.scene_sequence[t1].pc_frame
+
+    assert (
+        len(pc_frame.global_pc) == 90430
+    ), f"Expected 90430 points, got {len(pc_frame.global_pc)} for Argoverse2"
+
+    print(len(pc_frame.global_pc))
+
 for query, gt in argo_dataset_pseudo:
     assert isinstance(
         query, QuerySceneSequence
@@ -59,3 +75,10 @@ for query, gt in argo_dataset_pseudo:
     assert isinstance(
         gt, GroundTruthPointFlow
     ), f"Expected GroundTruthParticleTrajectories, got {type(gt)}"
+
+    t1, t2 = query.scene_sequence.get_percept_timesteps()
+    pc_frame = query.scene_sequence[t1].pc_frame
+
+    assert (
+        len(pc_frame.global_pc) == 90430
+    ), f"Expected 90430 points, got {len(pc_frame.global_pc)} for Argoverse2"

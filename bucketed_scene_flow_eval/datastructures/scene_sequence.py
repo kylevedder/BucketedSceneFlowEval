@@ -264,24 +264,19 @@ class EstimatedPointFlow:
             (num_entries, self.trajectory_length, 3), dtype=np.float32
         )
 
-        self.is_occluded = np.zeros((num_entries, self.trajectory_length), dtype=bool)
         # By default, all trajectories are invalid
-        self.is_valid = np.zeros((num_entries, self.trajectory_length), dtype=bool)
+        self.is_valid_flow = np.zeros((num_entries,), dtype=bool)
 
     def valid_particle_ids(self) -> NDArray:
-        is_valid_sum = self.is_valid.sum(axis=1)
-        return np.arange(self.num_entries)[is_valid_sum > 0]
+        return np.arange(self.num_entries)[self.is_valid_flow]
 
     def __len__(self) -> int:
         return self.num_entries
 
-    def __setitem__(
-        self, particle_id: ParticleID, data_tuple: Tuple[NDArray, NDArray, NDArray]
-    ):
-        points, timestamps, is_occludeds = data_tuple
+    def __setitem__(self, particle_id: ParticleID, data_tuple: Tuple[NDArray, NDArray]):
+        points, timestamps = data_tuple
         self.world_points[particle_id] = points
-        self.is_occluded[particle_id] = is_occludeds
-        self.is_valid[particle_id] = True
+        self.is_valid_flow[particle_id] = True
 
     def visualize(
         self,
@@ -298,9 +293,8 @@ class EstimatedPointFlow:
             every_kth_particle = 1
 
         # Shape: points, 2, 3
-        world_points = self.world_points
-        is_valid = self.is_valid
-        world_points = world_points[is_valid]
+        world_points = self.world_points.copy()
+        world_points = world_points[self.is_valid_flow]
         world_points = world_points[::every_kth_particle]
 
         vis.add_trajectories(world_points)
@@ -330,18 +324,17 @@ class GroundTruthPointFlow(EstimatedPointFlow):
             len(mask) == self.num_entries
         ), f"mask must be the same length as the number of entries, got {len(mask)} and {self.num_entries} instead"
 
-        self.is_valid[~mask] = False
+        self.is_valid_flow[~mask] = False
 
     def __setitem__(
         self,
         particle_id: ParticleID,
-        data_tuple: Tuple[NDArray, NDArray, ParticleClassId, NDArray],
+        data_tuple: Tuple[NDArray, ParticleClassId, NDArray],
     ):
-        points, is_occludeds, cls_ids, is_valids = data_tuple
+        points, cls_ids, is_valids = data_tuple
         self.world_points[particle_id] = points
-        self.is_occluded[particle_id] = is_occludeds
         self.cls_ids[particle_id] = cls_ids
-        self.is_valid[particle_id] = is_valids
+        self.is_valid_flow[particle_id] = is_valids
 
     def pretty_name(self, class_id: ParticleClassId) -> str:
         if self.class_name_map is None:
