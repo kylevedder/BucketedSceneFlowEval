@@ -37,6 +37,11 @@ class PointCloudFrame:
         return self.full_pc.mask_points(self.mask)
 
     @property
+    def full_global_pc(self) -> PointCloud:
+        pose = self.global_pose
+        return self.full_pc.transform(pose)
+
+    @property
     def global_pc(self) -> PointCloud:
         pose = self.global_pose
         return self.pc.transform(pose)

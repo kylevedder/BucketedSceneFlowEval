@@ -41,6 +41,7 @@ class Argoverse2SceneFlow:
         eval_args=dict(),
     ) -> None:
         self.with_ground = with_ground
+        self.use_gt_flow = use_gt_flow
         self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
             root_dir, with_rgb=with_rgb, use_gt_flow=use_gt_flow
         )
@@ -85,10 +86,14 @@ class Argoverse2SceneFlow:
     def _load_dataset_to_sequence_subsequence_idx(self) -> List[Tuple[int, int]]:
         cache_file = (
             self.cache_path
-            / f"dataset_to_sequence_subsequence_idx_cache_len_{self.subsequence_length}.pkl"
+            / f"dataset_to_sequence_subsequence_idx_cache_len_{self.subsequence_length}_use_gt_{self.use_gt_flow}_with_rgb_{self.with_rgb}_with_ground_{self.with_ground}.pkl"
         )
         if cache_file.exists():
-            return load_pickle(cache_file)
+            cache_pkl = load_pickle(cache_file)
+            # Sanity check that the cache is the right length by ensuring that it
+            # has the same length as the sequence loader.
+            if len(cache_pkl) == len(self.sequence_loader):
+                return cache_pkl
 
         print("Building dataset index...")
         # Build map from dataset index to sequence and subsequence index.
@@ -211,7 +216,14 @@ class Argoverse2SceneFlow:
         points = np.stack([source_pc, target_pc], axis=1)
 
         particle_ids = np.arange(len(source_pc))
-        is_valids = np.ones((len(source_pc),), dtype=bool)
+
+        # is_valids needs to respect the points mask described in the query scene sequence pointcloud.
+        first_timestamp = query.scene_sequence.get_percept_timesteps()[0]
+        is_valids = query.scene_sequence[first_timestamp].pc_frame.mask
+
+        assert len(is_valids) == len(
+            points
+        ), f"Is valids and points have different lengths. Is valids: {len(is_valids)}, points: {len(points)}"
 
         particle_trajectories[particle_ids[in_range_points_array]] = (
             points[in_range_points_array],

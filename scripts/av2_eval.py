@@ -75,7 +75,7 @@ def perform_evaluate(
     pc1_frame = raw_scene_item_pc1.pc_frame
     pc2_frame = raw_scene_item_pc2.pc_frame
 
-    ego_frame_pc1 = pc1_frame.full_pc
+    ego_frame_pc1 = pc1_frame.pc
     global_pc1 = ego_frame_pc1.transform(pc1_frame.global_pose)
     ego_flowed_pc2 = ego_frame_pc1.flow_masked(uncompensated_flow_array, mask_array)
     global_flowed_pc2 = ego_flowed_pc2.transform(pc2_frame.global_pose)
