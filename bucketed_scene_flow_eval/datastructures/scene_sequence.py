@@ -276,10 +276,9 @@ class EstimatedPointFlow:
         return np.arange(self.num_entries)[self.is_valid_flow]
 
     def __len__(self) -> int:
-        return self.num_entries
+        return self.is_valid_flow.sum()
 
-    def __setitem__(self, particle_id: ParticleID, data_tuple: Tuple[NDArray, NDArray]):
-        points, timestamps = data_tuple
+    def __setitem__(self, particle_id: ParticleID, points: NDArray):
         self.world_points[particle_id] = points
         self.is_valid_flow[particle_id] = True
 

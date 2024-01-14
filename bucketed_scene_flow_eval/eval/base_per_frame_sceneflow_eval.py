@@ -184,11 +184,21 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             ground_truth, GroundTruthPointFlow
         ), f"ground_truth must be a GroundTruthParticleTrajectories, got {type(ground_truth)}"
 
-        # Validate that the predictions and ground truth have the same number of predictions.
+        # Validate that the predictions and ground truth have the same underlying size.
+        assert (
+            predictions.num_entries == ground_truth.num_entries
+        ), f"predictions and ground_truth must have the same number of predictions, got {predictions.num_entries} and {ground_truth.num_entries}"
 
-        assert len(predictions) == len(
-            ground_truth
-        ), f"predictions and ground_truth must have the same number of predictions, got {len(predictions)} and {len(ground_truth)}"
+        # Validate that the valid ground truths are the same as the valid predictions (it's OK to have more valid predictions than ground truths).
+        assert (
+            predictions.is_valid_flow.shape == ground_truth.is_valid_flow.shape
+        ), f"predictions and ground_truth must have the same shape, got {predictions.is_valid_flow.shape} and {ground_truth.is_valid_flow.shape}"
+        assert (
+            (predictions.is_valid_flow & ground_truth.is_valid_flow)
+            == ground_truth.is_valid_flow
+        ).all(), f"predictions and ground_truth must have the same valid entries, however some were missing."
+
+        predictions.is_valid_flow = ground_truth.is_valid_flow
 
         assert (
             len(predictions) > 0
@@ -262,13 +272,9 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
         eval_particle_ids = ground_truth.valid_particle_ids()
 
-        gt_is_valids = ground_truth.is_valid_flow[eval_particle_ids][
-            :, matched_time_axis_indices
-        ]
+        gt_is_valids = ground_truth.is_valid_flow[eval_particle_ids]
 
-        pred_is_valids = predictions.is_valid_flow[eval_particle_ids][
-            :, matched_time_axis_indices
-        ]
+        pred_is_valids = predictions.is_valid_flow[eval_particle_ids]
 
         # Make sure that all the pred_is_valids are true if gt_is_valids is true.
         assert (
@@ -279,12 +285,6 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             :, matched_time_axis_indices
         ]
         pred_world_points = predictions.world_points[eval_particle_ids][
-            :, matched_time_axis_indices
-        ]
-        gt_is_occluded = ground_truth.is_occluded[eval_particle_ids][
-            :, matched_time_axis_indices
-        ]
-        pred_is_occluded = predictions.is_occluded[eval_particle_ids][
             :, matched_time_axis_indices
         ]
 
