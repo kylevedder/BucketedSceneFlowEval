@@ -1,10 +1,9 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pytest
 import tqdm
 
-import bucketed_scene_flow_eval
 from bucketed_scene_flow_eval.datasets import construct_dataset
 from bucketed_scene_flow_eval.datastructures import *
 
@@ -71,18 +70,18 @@ def argo_dataset_pseudo_no_ground():
 
 def _process_query(
     query: QuerySceneSequence,
-) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[SE3, SE3], List[np.ndarray], List[SE3]]:
+) -> tuple[tuple[np.ndarray, np.ndarray], tuple[SE3, SE3], list[np.ndarray], list[SE3]]:
     assert (
         len(query.query_flow_timestamps) == 2
     ), f"Query {query} has more than two timestamps. Only Scene Flow problems are supported."
     scene = query.scene_sequence
 
     # These contain the all problem percepts, not just the ones in the query.
-    all_percept_pc_arrays: List[np.ndarray] = []
-    all_percept_poses: List[SE3] = []
+    all_percept_pc_arrays: list[np.ndarray] = []
+    all_percept_poses: list[SE3] = []
     # These contain only the percepts in the query.
-    query_pc_arrays: List[np.ndarray] = []
-    query_poses: List[SE3] = []
+    query_pc_arrays: list[np.ndarray] = []
+    query_poses: list[SE3] = []
 
     for timestamp in scene.get_percept_timesteps():
         pc_frame = scene[timestamp].pc_frame

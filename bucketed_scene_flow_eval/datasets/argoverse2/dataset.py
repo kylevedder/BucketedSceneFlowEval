@@ -1,6 +1,6 @@
 import enum
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Union
 
 import numpy as np
 
@@ -32,7 +32,7 @@ class Argoverse2SceneFlow:
 
     def __init__(
         self,
-        root_dir: Union[Path, List[Path]],
+        root_dir: Union[Path, list[Path]],
         subsequence_length: int = 2,
         with_ground: bool = True,
         with_rgb: bool = False,
@@ -68,7 +68,7 @@ class Argoverse2SceneFlow:
         self.eval_type = EvalType[eval_type.strip().upper()]
         self.eval_args = eval_args
 
-    def _cache_path(self, cache_root: Path, root_dir: Union[Path, List[Path]]) -> Path:
+    def _cache_path(self, cache_root: Path, root_dir: Union[Path, list[Path]]) -> Path:
         if isinstance(root_dir, list):
             parent_name = "_".join([Path(root_dir_part).parent.name for root_dir_part in root_dir])
             folder_name = "_".join([Path(root_dir_part).name for root_dir_part in root_dir])
@@ -77,7 +77,7 @@ class Argoverse2SceneFlow:
             folder_name = Path(root_dir).name
         return cache_root / "argo" / parent_name / folder_name
 
-    def _load_dataset_to_sequence_subsequence_idx(self) -> List[Tuple[int, int]]:
+    def _load_dataset_to_sequence_subsequence_idx(self) -> list[tuple[int, int]]:
         cache_file = (
             self.cache_path
             / f"dataset_to_sequence_subsequence_idx_cache_len_{self.subsequence_length}_use_gt_{self.use_gt_flow}_with_rgb_{self.with_rgb}_with_ground_{self.with_ground}.pkl"
@@ -111,10 +111,10 @@ class Argoverse2SceneFlow:
         sequence_idx = sequence._timestamp_to_idx(timestamp)
         return self.sequence_subsequence_idx_to_dataset_idx[(sequence_loader_idx, sequence_idx)]
 
-    def _make_scene_sequence(self, subsequence_frames: List[Dict], log_id: str) -> RawSceneSequence:
+    def _make_scene_sequence(self, subsequence_frames: list[dict], log_id: str) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
-        percept_lookup: Dict[Timestamp, RawSceneItem] = {}
+        percept_lookup: dict[Timestamp, RawSceneItem] = {}
         for dataset_idx, entry in enumerate(subsequence_frames):
             pc: PointCloud = entry[self.ego_pc_key]
             lidar_to_ego = SE3.identity()
@@ -145,12 +145,12 @@ class Argoverse2SceneFlow:
     def _make_query_scene_sequence(
         self,
         scene_sequence: RawSceneSequence,
-        subsequence_frames: List[Dict],
+        subsequence_frames: list[dict],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> QuerySceneSequence:
         # Build query scene sequence. This requires enumerating all points in the source frame.
-        query_timestamps: List[Timestamp] = [
+        query_timestamps: list[Timestamp] = [
             subsequence_src_index,
             subsequence_tgt_index,
         ]
@@ -169,7 +169,7 @@ class Argoverse2SceneFlow:
     def _make_results_scene_sequence(
         self,
         query: QuerySceneSequence,
-        subsequence_frames: List[Dict],
+        subsequence_frames: list[dict],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> GroundTruthPointFlow:
@@ -217,7 +217,7 @@ class Argoverse2SceneFlow:
 
     def __getitem__(
         self, dataset_idx, verbose: bool = False
-    ) -> Tuple[QuerySceneSequence, GroundTruthPointFlow]:
+    ) -> tuple[QuerySceneSequence, GroundTruthPointFlow]:
         if verbose:
             print(f"Argoverse2 Scene Flow dataset __getitem__({dataset_idx}) start")
 

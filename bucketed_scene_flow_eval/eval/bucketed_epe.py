@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 
@@ -26,7 +26,7 @@ class BucketedEvalFrameResult(BaseEvalFrameResult):
 
     def _scale_flows(
         self, gt_flow: np.ndarray, pred_flow: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         return gt_flow, pred_flow
 
 
@@ -46,12 +46,12 @@ class OverallError:
         )
         return f"({static_epe_val_str}, {dynamic_error_val_str})"
 
-    def to_tuple(self) -> Tuple[float, float]:
+    def to_tuple(self) -> tuple[float, float]:
         return (self.static_epe, self.dynamic_error)
 
 
 class BucketResultMatrix:
-    def __init__(self, class_names: List[str], speed_buckets: List[Tuple[float, float]]):
+    def __init__(self, class_names: list[str], speed_buckets: list[tuple[float, float]]):
         self.class_names = class_names
         self.speed_buckets = speed_buckets
 
@@ -75,7 +75,7 @@ class BucketResultMatrix:
     def accumulate_value(
         self,
         class_name: str,
-        speed_bucket: Tuple[float, float],
+        speed_bucket: tuple[float, float],
         average_epe: float,
         average_speed: float,
         count: int,
@@ -112,7 +112,7 @@ class BucketResultMatrix:
         error_matrix[:, 1:] = error_matrix[:, 1:] / self.speed_storage_matrix[:, 1:]
         return error_matrix
 
-    def get_overall_class_errors(self) -> Dict[str, OverallError]:
+    def get_overall_class_errors(self) -> dict[str, OverallError]:
         error_matrix = self.get_error_matrix()
         static_epes = error_matrix[:, 0]
         # Hide the warning about mean of empty slice
@@ -128,7 +128,7 @@ class BucketResultMatrix:
             )
         }
 
-    def get_class_entries(self, class_name: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_class_entries(self, class_name: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         class_idx = self.class_names.index(class_name)
 
         epe = self.epe_storage_matrix[class_idx, :]
@@ -136,7 +136,7 @@ class BucketResultMatrix:
         count = self.count_storage_matrix[class_idx, :]
         return epe, speed, count
 
-    def merge_matrix_classes(self, meta_class_lookup: Dict[str, List[str]]) -> "BucketResultMatrix":
+    def merge_matrix_classes(self, meta_class_lookup: dict[str, list[str]]) -> "BucketResultMatrix":
         assert meta_class_lookup is not None, f"meta_class_lookup must be set to merge classes"
         assert (
             len(meta_class_lookup) > 0
@@ -217,7 +217,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
         bucket_max_speed: float = 20.0 / 10.0,
         num_buckets: int = 51,
         output_path: Path = Path("/tmp/frame_results/bucketed_epe"),
-        meta_class_lookup: Optional[Dict[str, List[str]]] = None,
+        meta_class_lookup: Optional[dict[str, list[str]]] = None,
     ):
         # Bucket the speeds into num_buckets buckets. Add one extra bucket at the end to capture all
         # the speeds above bucket_max_speed_meters_per_second.
@@ -245,7 +245,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
 
     def _build_stat_table(
         self,
-        average_stats: Dict[BaseSplitKey, BaseSplitValue],
+        average_stats: dict[BaseSplitKey, BaseSplitValue],
         distance_threshold: float,
     ):
         full_table_save_path = self.output_path / f"full_table_{distance_threshold}.tex"
@@ -290,7 +290,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
             indent=4,
         )
 
-    def _save_stats_tables(self, average_stats: Dict[BaseSplitKey, BaseSplitValue]):
+    def _save_stats_tables(self, average_stats: dict[BaseSplitKey, BaseSplitValue]):
         super()._save_stats_tables(average_stats)
 
         # Compute averages over the speed buckets

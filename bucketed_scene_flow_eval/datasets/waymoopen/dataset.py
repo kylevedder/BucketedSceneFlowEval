@@ -1,7 +1,5 @@
 import enum
-import time
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -82,10 +80,10 @@ class WaymoOpenSceneFlow:
     def __len__(self):
         return len(self.dataset_to_sequence_subsequence_idx)
 
-    def _make_scene_sequence(self, subsequence_frames: List[Dict], seq_id: str) -> RawSceneSequence:
+    def _make_scene_sequence(self, subsequence_frames: list[dict], seq_id: str) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
-        percept_lookup: Dict[Timestamp, RawSceneItem] = {}
+        percept_lookup: dict[Timestamp, RawSceneItem] = {}
         for dataset_idx, entry in enumerate(subsequence_frames):
             pc: PointCloud = entry[self.ego_pc_key]
             lidar_to_ego = SE3.identity()
@@ -99,12 +97,12 @@ class WaymoOpenSceneFlow:
     def _make_query_scene_sequence(
         self,
         scene_sequence: RawSceneSequence,
-        subsequence_frames: List[Dict],
+        subsequence_frames: list[dict],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> QuerySceneSequence:
         # Build query scene sequence. This requires enumerating all points in the source frame.
-        query_timestamps: List[Timestamp] = [
+        query_timestamps: list[Timestamp] = [
             subsequence_src_index,
             subsequence_tgt_index,
         ]
@@ -118,7 +116,7 @@ class WaymoOpenSceneFlow:
     def _make_results_scene_sequence(
         self,
         query: QuerySceneSequence,
-        subsequence_frames: List[Dict],
+        subsequence_frames: list[dict],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> GroundTruthPointFlow:
@@ -159,7 +157,7 @@ class WaymoOpenSceneFlow:
 
     def __getitem__(
         self, dataset_idx, verbose: bool = False
-    ) -> Tuple[QuerySceneSequence, GroundTruthPointFlow]:
+    ) -> tuple[QuerySceneSequence, GroundTruthPointFlow]:
         if verbose:
             print(f"Waymo Open Scene Flow dataset __getitem__({dataset_idx}) start")
 

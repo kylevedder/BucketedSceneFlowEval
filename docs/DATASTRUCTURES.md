@@ -18,7 +18,7 @@ Located in `datastructures/scene_sequence.py`
 
 Query particles are comprised of a series of particles, each associated with a particle id, and a single query timestamp. The query timestamp associates the particles with the requested timestamps. In principle these particles could be at any point in the requested series, although datasets may provide stronger guarantees (e.g. scene flow datasets will have these be the first of two timestamps)
 
-`QuerySceneSequence` presents a map interface from `ParticleID` to `Tuple[WorldParticle, Timestamp]`.
+`QuerySceneSequence` presents a map interface from `ParticleID` to `tuple[WorldParticle, Timestamp]`.
 
 ### `EstimatedParticleTrajectories`
 

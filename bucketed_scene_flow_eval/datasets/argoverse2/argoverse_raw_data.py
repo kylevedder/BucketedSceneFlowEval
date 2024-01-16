@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import cv2
 import numpy as np
@@ -304,7 +304,7 @@ class ArgoverseRawSequence:
         )
         return se3
 
-    def load(self, idx: int, relative_to_idx: int) -> Dict[str, Any]:
+    def load(self, idx: int, relative_to_idx: int) -> dict[str, Any]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc = self._load_pc(idx)
@@ -343,7 +343,7 @@ class ArgoverseRawSequence:
             "log_timestamp": timestamp,
         }
 
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> List[Dict[str, Any]]:
+    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[dict[str, Any]]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))
@@ -354,7 +354,7 @@ class ArgoverseRawSequenceLoader:
     def __init__(
         self,
         sequence_dir: Path,
-        log_subset: Optional[List[str]] = None,
+        log_subset: Optional[list[str]] = None,
         verbose: bool = False,
         num_sequences: Optional[int] = None,
         per_sequence_sample_every: Optional[int] = None,

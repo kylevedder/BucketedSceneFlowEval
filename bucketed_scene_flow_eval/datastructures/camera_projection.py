@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Tuple
 
 import numpy as np
 
@@ -33,7 +32,7 @@ class CameraProjection:
 
     def image_to_image_plane_pc(
         self, image: RGBImage, depth: float = 1.0
-    ) -> Tuple[PointCloud, np.ndarray]:
+    ) -> tuple[PointCloud, np.ndarray]:
         # Make pixel coordinate grid
         image_shape = image.image.shape[:2]
         image_coordinates = (

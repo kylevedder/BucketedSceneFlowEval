@@ -1,7 +1,7 @@
 import numpy as np
 import open3d as o3d
 
-from bucketed_scene_flow_eval.datastructures import SE3
+from .se3 import SE3
 
 
 def to_fixed_array(array: np.ndarray, max_len: int, pad_val=np.nan) -> np.ndarray:

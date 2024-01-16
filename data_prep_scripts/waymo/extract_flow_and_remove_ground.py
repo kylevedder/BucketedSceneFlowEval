@@ -6,7 +6,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import argparse
 import multiprocessing
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 import open3d as o3d
@@ -214,7 +213,7 @@ def get_pc(frame: dataset_pb2.Frame) -> np.ndarray:
 
 def get_car_pc_global_pc_flow_transform(
     frame: dataset_pb2.Frame,
-) -> Tuple[PointCloud, PointCloud, np.ndarray, SE3]:
+) -> tuple[PointCloud, PointCloud, np.ndarray, SE3]:
     # Parse the frame lidar data into range images.
     (
         range_images,

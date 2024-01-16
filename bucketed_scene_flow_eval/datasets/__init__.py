@@ -1,5 +1,3 @@
-from typing import Dict
-
 from bucketed_scene_flow_eval.datasets.argoverse2 import Argoverse2SceneFlow
 from bucketed_scene_flow_eval.datasets.waymoopen import WaymoOpenSceneFlow
 

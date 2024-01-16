@@ -6,13 +6,12 @@ import os
 from argparse import ArgumentParser
 from multiprocessing import Pool, current_process
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
-import av2
 import numpy as np
 import pandas as pd
 from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
-from av2.structures.cuboid import Cuboid, CuboidList
+from av2.structures.cuboid import Cuboid, Cuboidlist
 from av2.structures.sweep import Sweep
 from av2.utils.io import read_feather
 from tqdm import tqdm
@@ -24,8 +23,8 @@ from bucketed_scene_flow_eval.utils.loaders import save_feather
 
 
 def get_ids_and_cuboids_at_lidar_timestamps(
-    dataset: AV2SensorDataLoader, log_id: str, lidar_timestamps_ns: List[int]
-) -> List[Dict[str, Cuboid]]:
+    dataset: AV2SensorDataLoader, log_id: str, lidar_timestamps_ns: list[int]
+) -> list[dict[str, Cuboid]]:
     """Load the sweep annotations at the provided timestamp with unique ids.
     Args:
         log_id: Log unique id.
@@ -38,7 +37,7 @@ def get_ids_and_cuboids_at_lidar_timestamps(
     # Load annotations from disk.
     # NOTE: This file contains annotations for the ENTIRE sequence.
     # The sweep annotations are selected below.
-    cuboid_list = CuboidList.from_feather(annotations_feather_path)
+    cuboid_list = Cuboidlist.from_feather(annotations_feather_path)
 
     raw_data = read_feather(annotations_feather_path)
     ids = raw_data.track_uuid.to_numpy()
@@ -56,15 +55,15 @@ def get_ids_and_cuboids_at_lidar_timestamps(
 
 
 def compute_sceneflow(
-    dataset: AV2SensorDataLoader, log_id: str, timestamps: Tuple[int, int]
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    dataset: AV2SensorDataLoader, log_id: str, timestamps: tuple[int, int]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute sceneflow between the sweeps at the given timestamps.
     Args:
       dataset: Sensor dataset.
       log_id: unique id.
       timestamps: the timestamps of the lidar sweeps to compute flow between
     Returns:
-      Dictionary with fields:
+      dictionary with fields:
         pcl_0: Nx3 array containing the points at time 0
         pcl_1: Mx3 array containing the points at time 1
         flow_0_1: Nx3 array containing flow from timestamp 0 to 1

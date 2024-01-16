@@ -1,7 +1,7 @@
 import copy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Set
 
 import numpy as np
 
@@ -19,7 +19,7 @@ from .eval import Evaluator
 class BaseSplitKey:
     name: str
     distance_threshold: float
-    speed_thresholds: Tuple[float, float]
+    speed_thresholds: tuple[float, float]
 
     def __eq__(self, __value: object) -> bool:
         # TODO: This is a hack because the hash function works but the autogen eq function doesn't.
@@ -45,8 +45,8 @@ class BaseEvalFrameResult:
         gt_flow: np.ndarray,
         pred_flow: np.ndarray,
         class_id_to_name=lambda e: e,
-        distance_thresholds: List[float] = [35, np.inf],
-        max_speed_thresholds: List[Tuple[float, float]] = [(0, np.inf)],
+        distance_thresholds: list[float] = [35, np.inf],
+        max_speed_thresholds: list[tuple[float, float]] = [(0, np.inf)],
     ):
         self.distance_thresholds = distance_thresholds
         self.max_speed_thresholds = max_speed_thresholds
@@ -80,20 +80,20 @@ class BaseEvalFrameResult:
     def _get_gt_classes(self, gt_class_ids: np.ndarray) -> Set[int]:
         return np.unique(gt_class_ids)
 
-    def _get_distance_thresholds(self) -> List[float]:
+    def _get_distance_thresholds(self) -> list[float]:
         return self.distance_thresholds
 
-    def _get_max_speed_thresholds(self) -> List[Tuple[float, float]]:
+    def _get_max_speed_thresholds(self) -> list[tuple[float, float]]:
         return self.max_speed_thresholds
 
     def _scale_flows(
         self, gt_flow: np.ndarray, pred_flow: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         return gt_flow, pred_flow
 
     def make_splits(
         self, gt_world_points, gt_speeds, gt_class_ids, epe_errors, class_id_to_name
-    ) -> List[Tuple[BaseSplitKey, BaseSplitValue]]:
+    ) -> list[tuple[BaseSplitKey, BaseSplitValue]]:
         unique_gt_classes = self._get_gt_classes(gt_class_ids)
         distance_thresholds = self._get_distance_thresholds()
         speed_threshold_tuples = self._get_max_speed_thresholds()
@@ -132,14 +132,14 @@ class BaseEvalFrameResult:
 class PerFrameSceneFlowEvaluator(Evaluator):
     def __init__(self, output_path: Path = Path("/tmp/frame_results")):
         output_path = Path(output_path)
-        self.eval_frame_results: List[BaseEvalFrameResult] = []
+        self.eval_frame_results: list[BaseEvalFrameResult] = []
         self.output_path = output_path
         # print(f"Saving results to {self.output_path}")
         # make the directory if it doesn't exist
         self.output_path.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def from_evaluator_list(evaluator_list: List["PerFrameSceneFlowEvaluator"]):
+    def from_evaluator_list(evaluator_list: list["PerFrameSceneFlowEvaluator"]):
         assert len(evaluator_list) > 0, "evaluator_list must have at least one evaluator"
 
         return sum(evaluator_list)
@@ -321,7 +321,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         save_path.parent.mkdir(parents=True, exist_ok=True)
         save_pickle(save_path, self.eval_frame_results)
 
-    def _category_to_per_frame_stats(self) -> Dict[BaseSplitKey, List[BaseSplitValue]]:
+    def _category_to_per_frame_stats(self) -> dict[BaseSplitKey, list[BaseSplitValue]]:
         # From list of dicts to dict of lists
         merged_class_error_dict = dict()
         for eval_frame_result in self.eval_frame_results:
@@ -333,8 +333,8 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         return merged_class_error_dict
 
     def _category_to_average_stats(
-        self, merged_class_error_dict: Dict[BaseSplitKey, List[BaseSplitValue]]
-    ) -> Dict[BaseSplitKey, BaseSplitValue]:
+        self, merged_class_error_dict: dict[BaseSplitKey, list[BaseSplitValue]]
+    ) -> dict[BaseSplitKey, BaseSplitValue]:
         # Compute the average EPE for each key
         result_dict = dict()
         for k in sorted(merged_class_error_dict.keys()):
@@ -361,11 +361,11 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             )
         return result_dict
 
-    def _save_dict(self, path: Path, data: Dict[Any, float]):
+    def _save_dict(self, path: Path, data: dict[Any, float]):
         str_data = {str(k): v for k, v in data.items()}
         save_json(path, str_data)
 
-    def _save_stats_tables(self, average_stats: Dict[BaseSplitKey, BaseSplitValue]):
+    def _save_stats_tables(self, average_stats: dict[BaseSplitKey, BaseSplitValue]):
         assert (
             len(average_stats) > 0
         ), f"average_stats must have at least one entry, got {len(average_stats)}"
@@ -403,7 +403,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             self._save_dict(raw_table_save_path, epe_dict)
             self._save_dict(speed_table_save_path, speed_dict)
 
-    def compute_results(self, save_results: bool = True) -> Dict[BaseSplitKey, BaseSplitValue]:
+    def compute_results(self, save_results: bool = True) -> dict[BaseSplitKey, BaseSplitValue]:
         assert (
             len(self.eval_frame_results) > 0
         ), "Must call eval at least once before calling compute"
