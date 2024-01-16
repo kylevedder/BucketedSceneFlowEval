@@ -1,16 +1,17 @@
-from sklearn.neighbors import NearestNeighbors
 import os
 
+from sklearn.neighbors import NearestNeighbors
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import tensorflow as tf
 import argparse
+import json
 import multiprocessing
 from pathlib import Path
-from joblib import Parallel, delayed
-import numpy as np
 
+import numpy as np
+import tensorflow as tf
+from joblib import Parallel, delayed
 from waymo_open_dataset import dataset_pb2
-import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument("waymo_directory", type=Path, help="Path to Waymo Open directory.")
@@ -45,9 +46,9 @@ print("Output directory:", args.output_directory)
 
 
 def build_knn(points, num_neighbors):
-    return NearestNeighbors(
-        n_neighbors=num_neighbors, radius=20, leaf_size=num_neighbors
-    ).fit(points)
+    return NearestNeighbors(n_neighbors=num_neighbors, radius=20, leaf_size=num_neighbors).fit(
+        points
+    )
 
 
 def build_global_grid(points, cells_per_meter):
@@ -62,12 +63,8 @@ def build_global_grid(points, cells_per_meter):
     grid_shape = np.ceil(area_grid_global_frame * cells_per_meter).astype(int) + 1
 
     def global_to_grid_float(pts):
-        assert (
-            pts <= grid_max_global_frame
-        ).all(), f"({pts} <= {grid_max_global_frame})"
-        assert (
-            pts >= grid_min_global_frame
-        ).all(), f"({pts} >= {grid_min_global_frame})"
+        assert (pts <= grid_max_global_frame).all(), f"({pts} <= {grid_max_global_frame})"
+        assert (pts >= grid_min_global_frame).all(), f"({pts} >= {grid_min_global_frame})"
         relative_to_grid_origin = pts - grid_min_global_frame
         floating_point_grid_coordinate = relative_to_grid_origin * cells_per_meter
         return floating_point_grid_coordinate
@@ -88,9 +85,7 @@ def render_heightmap(points, cells_per_meter, num_neighbors):
         grid_min_global_frame,
     ) = build_global_grid(points, cells_per_meter)
 
-    polygon_grid_points = np.array(
-        [(*global_to_grid_index(p[:2]), p[2]) for p in points]
-    )
+    polygon_grid_points = np.array([(*global_to_grid_index(p[:2]), p[2]) for p in points])
     mean_z = np.mean([e[2] for e in polygon_grid_points])
     knn = build_knn(polygon_grid_points, num_neighbors)
 
@@ -126,9 +121,7 @@ def save_grid_global_offset(
         "s": cells_per_meter,
     }
 
-    save_folder = (
-        args.output_directory / file_path.parent.name / (file_path.stem + "_map")
-    )
+    save_folder = args.output_directory / file_path.parent.name / (file_path.stem + "_map")
     save_folder.mkdir(parents=True, exist_ok=True)
 
     se2_name = "se2.json"
@@ -190,9 +183,7 @@ def process_record(file_path: Path):
         break
 
     points = collect_points(frame)
-    grid, grid_min_global_frame = render_heightmap(
-        points, args.cells_per_meter, args.num_neighbors
-    )
+    grid, grid_min_global_frame = render_heightmap(points, args.cells_per_meter, args.num_neighbors)
     save_grid_global_offset(
         file_path, grid, grid_min_global_frame, args.cells_per_meter, verbose=True
     )

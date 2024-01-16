@@ -1,19 +1,21 @@
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import cv2
 import numpy as np
 import pandas as pd
-from pathlib import Path
+from scipy.spatial.transform import Rotation
+
 from bucketed_scene_flow_eval.datastructures import (
-    PointCloud,
-    SE3,
     SE2,
-    RGBImage,
+    SE3,
     CameraModel,
     CameraProjection,
+    PointCloud,
+    RGBImage,
 )
 from bucketed_scene_flow_eval.utils import load_json
-from typing import List, Tuple, Dict, Optional, Any
-import time
-import cv2
-from scipy.spatial.transform import Rotation
 
 GROUND_HEIGHT_THRESHOLD = 0.4  # 40 centimeters
 
@@ -43,9 +45,7 @@ class ArgoverseRawSequence:
         assert self.dataset_dir.is_dir(), f"dataset_dir {dataset_dir} does not exist"
 
         # Load the vehicle pose information.
-        self.frame_infos = pd.read_feather(
-            self.dataset_dir / "city_SE3_egovehicle.feather"
-        )
+        self.frame_infos = pd.read_feather(self.dataset_dir / "city_SE3_egovehicle.feather")
         self.timestamp_to_info_idx_map = {
             int(timestamp): idx
             for idx, timestamp in enumerate(self.frame_infos["timestamp_ns"].values)
@@ -88,12 +88,8 @@ class ArgoverseRawSequence:
             self.rgb_camera_projection = None
             self.rgb_camera_ego_pose = None
 
-        self.timestamp_list = sorted(
-            lidar_file_timestamps.intersection(info_timestamps)
-        )
-        assert (
-            len(self.timestamp_list) > 0
-        ), f"no timestamps found in {self.dataset_dir}"
+        self.timestamp_list = sorted(lidar_file_timestamps.intersection(info_timestamps))
+        assert len(self.timestamp_list) > 0, f"no timestamps found in {self.dataset_dir}"
 
         if sample_every is not None:
             self.timestamp_list = self.timestamp_list[::sample_every]
@@ -153,9 +149,7 @@ class ArgoverseRawSequence:
         return CameraProjection(fx, fy, cx, cy, CameraModel.PINHOLE)
 
     def _load_camera_ego_pose(self, sensor_name: str) -> SE3:
-        sensor_poses_feather = (
-            self.dataset_dir / "calibration" / "egovehicle_SE3_sensor.feather"
-        )
+        sensor_poses_feather = self.dataset_dir / "calibration" / "egovehicle_SE3_sensor.feather"
         assert (
             sensor_poses_feather.is_file()
         ), f"Expected sensor poses feather file at {sensor_poses_feather}"
@@ -173,8 +167,8 @@ class ArgoverseRawSequence:
         translation = np.array([tx, ty, tz])
 
         coordinate_transform_matrix = np.array(
-            [[0, -1, 0], [0, 0, -1], [1, 0, 0]]  # noqa  # noqa
-        )  # noqa
+            [[0, -1, 0], [0, 0, -1], [1, 0, 0]]
+        )  # noqa  # noqa  # noqa
 
         rotation = rotation @ coordinate_transform_matrix
 
@@ -190,9 +184,7 @@ class ArgoverseRawSequence:
         raster_height_path = raster_height_paths[0]
 
         transform_paths = list((self.dataset_dir / "map").glob("*img_Sim2_city.json"))
-        assert (
-            len(transform_paths) == 1
-        ), f"Expected 1 transform, got {len(transform_paths)}"
+        assert len(transform_paths) == 1, f"Expected 1 transform, got {len(transform_paths)}"
         transform_path = transform_paths[0]
 
         raster_heightmap = np.load(raster_height_path)
@@ -202,9 +194,7 @@ class ArgoverseRawSequence:
         transform_translation = np.array(transform["t"])
         transform_scale = np.array(transform["s"])
 
-        transform_se2 = SE2(
-            rotation=transform_rotation, translation=transform_translation
-        )
+        transform_se2 = SE2(rotation=transform_rotation, translation=transform_translation)
 
         return raster_heightmap, transform_se2, transform_scale
 
@@ -227,13 +217,9 @@ class ArgoverseRawSequence:
 
         ground_height_values = np.full((raster_points_xy.shape[0]), np.nan)
         # outside max X
-        outside_max_x = (
-            raster_points_xy[:, 0] >= self.raster_heightmap.shape[1]
-        ).astype(bool)
+        outside_max_x = (raster_points_xy[:, 0] >= self.raster_heightmap.shape[1]).astype(bool)
         # outside max Y
-        outside_max_y = (
-            raster_points_xy[:, 1] >= self.raster_heightmap.shape[0]
-        ).astype(bool)
+        outside_max_y = (raster_points_xy[:, 1] >= self.raster_heightmap.shape[0]).astype(bool)
         # outside min X
         outside_min_x = (raster_points_xy[:, 0] < 0).astype(bool)
         # outside min Y
@@ -258,8 +244,7 @@ class ArgoverseRawSequence:
         """
         ground_height_values = self.get_ground_heights(global_point_cloud)
         is_ground_boolean_arr = (
-            np.absolute(global_point_cloud[:, 2] - ground_height_values)
-            <= GROUND_HEIGHT_THRESHOLD
+            np.absolute(global_point_cloud[:, 2] - ground_height_values) <= GROUND_HEIGHT_THRESHOLD
         ) | (np.array(global_point_cloud[:, 2] - ground_height_values) < 0)
         return is_ground_boolean_arr
 
@@ -282,9 +267,7 @@ class ArgoverseRawSequence:
         return self.timestamp_list.index(timestamp)
 
     def _load_pc(self, idx) -> PointCloud:
-        assert idx < len(
-            self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         frame_path = self.timestamp_to_lidar_file_map[timestamp]
         frame_content = pd.read_feather(frame_path)
@@ -295,24 +278,18 @@ class ArgoverseRawSequence:
         return PointCloud(points)
 
     def _load_rgb(self, idx) -> RGBImage:
-        assert idx < len(
-            self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         rgb_timestamp = self.timestamp_to_rgb_timestamp_map[timestamp]
         rgb_path = self.rgb_timestamp_to_rgb_file_map[rgb_timestamp]
         # Read the image, keep the same color space
-        raw_img = (
-            cv2.imread(str(rgb_path), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
-        )
+        raw_img = cv2.imread(str(rgb_path), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
         # Convert from CV2 standard BGR to RGB
         raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
         return RGBImage(raw_img)
 
     def _load_pose(self, idx) -> SE3:
-        assert idx < len(
-            self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         infos_idx = self.timestamp_to_info_idx_map[timestamp]
         frame_info = self.frame_infos.iloc[infos_idx]
@@ -328,9 +305,7 @@ class ArgoverseRawSequence:
         return se3
 
     def load(self, idx: int, relative_to_idx: int) -> Dict[str, Any]:
-        assert idx < len(
-            self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc = self._load_pc(idx)
         if self.with_rgb:
@@ -343,14 +318,12 @@ class ArgoverseRawSequence:
         absolute_global_frame_pc = ego_pc.transform(idx_pose)
         is_ground_points = self.is_ground_points(absolute_global_frame_pc)
         relative_global_frame_pc_with_ground = ego_pc.transform(relative_pose)
-        relative_global_frame_pc_no_ground = (
-            relative_global_frame_pc_with_ground.mask_points(~is_ground_points)
+        relative_global_frame_pc_no_ground = relative_global_frame_pc_with_ground.mask_points(
+            ~is_ground_points
         )
         ego_pc_no_ground = ego_pc.mask_points(~is_ground_points)
 
-        in_range_mask_with_ground = self.is_in_range(
-            relative_global_frame_pc_with_ground
-        )
+        in_range_mask_with_ground = self.is_in_range(relative_global_frame_pc_with_ground)
         in_range_mask_no_ground = self.is_in_range(relative_global_frame_pc_no_ground)
 
         return {
@@ -397,15 +370,11 @@ class ArgoverseRawSequenceLoader:
             assert log_subset.issubset(
                 log_keys
             ), f"log_subset {log_subset} is not a subset of {log_keys}"
-            self.log_lookup = {
-                k: v for k, v in self.log_lookup.items() if k in log_subset
-            }
+            self.log_lookup = {k: v for k, v in self.log_lookup.items() if k in log_subset}
 
         if num_sequences is not None:
             self.log_lookup = {
-                k: v
-                for idx, (k, v) in enumerate(self.log_lookup.items())
-                if idx < num_sequences
+                k: v for idx, (k, v) in enumerate(self.log_lookup.items()) if idx < num_sequences
             }
 
         if self.verbose:
@@ -418,9 +387,7 @@ class ArgoverseRawSequenceLoader:
         return sorted(self.log_lookup.keys())
 
     def _load_sequence_uncached(self, log_id: str) -> ArgoverseRawSequence:
-        assert (
-            log_id in self.log_lookup
-        ), f"log_id {log_id} is not in the {len(self.log_lookup)}"
+        assert log_id in self.log_lookup, f"log_id {log_id} is not in the {len(self.log_lookup)}"
         log_dir = self.log_lookup[log_id]
         assert log_dir.is_dir(), f"log_id {log_id} does not exist"
         return ArgoverseRawSequence(

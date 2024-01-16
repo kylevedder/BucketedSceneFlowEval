@@ -1,10 +1,12 @@
-from pathlib import Path
 from collections import defaultdict
-from typing import List, Tuple, Dict, Optional, Any, Union
-import pandas as pd
-from bucketed_scene_flow_eval.datastructures import PointCloud, SE3, SE2
-from bucketed_scene_flow_eval.utils.loaders import load_feather
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
+import pandas as pd
+
+from bucketed_scene_flow_eval.datastructures import SE2, SE3, PointCloud
+from bucketed_scene_flow_eval.utils.loaders import load_feather
 
 from . import ArgoverseRawSequence
 
@@ -77,14 +79,11 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
     def _load_flow(
         self, idx, ego_pc_with_ground: PointCloud
     ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
-        assert idx < len(
-            self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         # There is no flow information for the last pointcloud in the sequence.
 
         classes_0 = (
-            np.ones(len(ego_pc_with_ground.points), dtype=np.int32)
-            * CATEGORY_MAP_INV["BACKGROUND"]
+            np.ones(len(ego_pc_with_ground.points), dtype=np.int32) * CATEGORY_MAP_INV["BACKGROUND"]
         )
         if idx == len(self) - 1 or idx == -1:
             return None, None, classes_0
@@ -105,9 +104,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         return flow_0_1, is_valid_arr, classes_0
 
     def load(self, idx: int, relative_to_idx: int) -> Dict[str, Any]:
-        assert idx < len(
-            self
-        ), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc_with_ground = self._load_pc(idx)
         if self.with_rgb:
@@ -132,13 +129,13 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         relative_global_frame_pc_with_ground = ego_pc_with_ground.transform(relative_pose)
         relative_global_frame_pc_no_ground = relative_global_frame_pc_with_ground.mask_points(
             ~is_ground_points)
-        
+
         relative_global_frame_no_ground_flowed_pc = relative_global_frame_pc_no_ground.copy()
         relative_global_frame_with_ground_flowed_pc = relative_global_frame_pc_with_ground.copy()
         if relative_global_frame_flow_0_1_with_ground is not None:
             relative_global_frame_with_ground_flowed_pc.points[is_valid_flow_with_ground_arr] += relative_global_frame_flow_0_1_with_ground[is_valid_flow_with_ground_arr]
             relative_global_frame_no_ground_flowed_pc.points = relative_global_frame_with_ground_flowed_pc[~is_ground_points].copy()
-        
+
 
         ego_flowed_pc_no_ground = relative_global_frame_no_ground_flowed_pc.transform(
             relative_pose.inverse())
@@ -200,9 +197,7 @@ class ArgoverseSceneFlowSequenceLoader:
     ):
         self.use_gt_flow = use_gt_flow
         raw_data_path = self._sanitize_raw_data_path(raw_data_path)
-        flow_data_path = self._sanitize_flow_data_path(
-            use_gt_flow, flow_data_path, raw_data_path
-        )
+        flow_data_path = self._sanitize_flow_data_path(use_gt_flow, flow_data_path, raw_data_path)
 
         # Raw data folders
         self.sequence_id_to_raw_data = self._load_sequence_data(raw_data_path)
@@ -217,17 +212,13 @@ class ArgoverseSceneFlowSequenceLoader:
 
         if log_subset is not None:
             self.sequence_id_lst = [
-                sequence_id
-                for sequence_id in self.sequence_id_lst
-                if sequence_id in log_subset
+                sequence_id for sequence_id in self.sequence_id_lst if sequence_id in log_subset
             ]
         self.with_rgb = with_rgb
         self.last_loaded_sequence: Optional[ArgoverseSceneFlowSequence] = None
         self.last_loaded_sequence_id: Optional[str] = None
 
-    def _sanitize_raw_data_path(
-        self, raw_data_path: Union[Path, List[Path]]
-    ) -> List[Path]:
+    def _sanitize_raw_data_path(self, raw_data_path: Union[Path, List[Path]]) -> List[Path]:
         if isinstance(raw_data_path, str):
             raw_data_path = Path(raw_data_path)
         if isinstance(raw_data_path, Path):
@@ -256,9 +247,7 @@ class ArgoverseSceneFlowSequenceLoader:
         flow_paths = [path.parent / (path.name + flow_suffix) for path in raw_data_path]
         return flow_paths
 
-    def _load_sequence_data(
-        self, path_info: Union[Path, List[Path]]
-    ) -> Dict[str, Path]:
+    def _load_sequence_data(self, path_info: Union[Path, List[Path]]) -> Dict[str, Path]:
         if isinstance(path_info, Path):
             path_info = [path_info]
 
@@ -266,9 +255,7 @@ class ArgoverseSceneFlowSequenceLoader:
         for path in path_info:
             sequence_folders.extend(path.glob("*/"))
 
-        sequence_id_to_path = {
-            folder.stem: folder for folder in sorted(sequence_folders)
-        }
+        sequence_id_to_path = {folder.stem: folder for folder in sorted(sequence_folders)}
         return sequence_id_to_path
 
     def __len__(self):

@@ -40,9 +40,7 @@ class SE2:
         Returns:
             inverse of this SE2 transformation.
         """
-        return SE2(
-            rotation=self.rotation.T, translation=self.rotation.T.dot(-self.translation)
-        )
+        return SE2(rotation=self.rotation.T, translation=self.rotation.T.dot(-self.translation))
 
     def inverse_transform_point_cloud(self, point_cloud: np.ndarray) -> np.ndarray:
         """Transform the point_cloud by the inverse of this SE2.

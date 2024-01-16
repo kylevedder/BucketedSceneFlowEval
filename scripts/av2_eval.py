@@ -3,24 +3,25 @@ import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
-import torch  # For some reason, things hang if you do not import this first.
+import torch  # isort: skip For some reason, things hang if you do not import this first.
 import argparse
+import multiprocessing
 import zipfile
 from pathlib import Path
 from typing import Dict, List, Tuple
-import pandas as pd
+
 import numpy as np
-import multiprocessing
+import pandas as pd
 import tqdm
 
 from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow
-from bucketed_scene_flow_eval.eval import Evaluator
 from bucketed_scene_flow_eval.datastructures import (
-    QuerySceneSequence,
-    GroundTruthPointFlow,
     EstimatedPointFlow,
+    GroundTruthPointFlow,
+    QuerySceneSequence,
     RawSceneItem,
 )
+from bucketed_scene_flow_eval.eval import Evaluator
 
 
 def read_feather_file(zip_ref: zipfile.ZipFile, file: Path):
@@ -175,9 +176,7 @@ def build_process_problems(
         yield (idx, sequence_name, mask_sequence, result_sequence, dataset)
 
 
-def main_loop(
-    mask_zip: Path, result_zip: Path, dataset: Argoverse2SceneFlow, multiprocessor
-):
+def main_loop(mask_zip: Path, result_zip: Path, dataset: Argoverse2SceneFlow, multiprocessor):
     mask_sequence_map, result_sequence_map = multiprocessor(
         load_feather_files,
         [mask_zip, result_zip],
@@ -185,12 +184,8 @@ def main_loop(
         desc="Loading zip files",
     )
 
-    problems = list(
-        build_process_problems(mask_sequence_map, result_sequence_map, dataset)
-    )
-    evaluators: List[Evaluator] = multiprocessor(
-        process_problem, problems, desc="Problems"
-    )
+    problems = list(build_process_problems(mask_sequence_map, result_sequence_map, dataset))
+    evaluators: List[Evaluator] = multiprocessor(process_problem, problems, desc="Problems")
     sum(evaluators).compute_results()
 
 
@@ -246,13 +241,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Iterate over .feather files in a result zip file."
     )
-    parser.add_argument(
-        "root_dir", type=Path, help="Path to the root directory of the dataset"
-    )
+    parser.add_argument("root_dir", type=Path, help="Path to the root directory of the dataset")
     parser.add_argument("mask_zip_file", type=Path, help="Path to the mask zip file")
-    parser.add_argument(
-        "result_zip_file", type=Path, help="Path to the result zip file"
-    )
+    parser.add_argument("result_zip_file", type=Path, help="Path to the result zip file")
     parser.add_argument(
         "--cpu_count",
         type=int,
@@ -263,13 +254,9 @@ if __name__ == "__main__":
 
     assert args.root_dir.exists(), f"Root directory {args.root_dir} does not exist."
 
-    assert (
-        args.mask_zip_file.exists()
-    ), f"Mask zip file {args.mask_zip_file} does not exist."
+    assert args.mask_zip_file.exists(), f"Mask zip file {args.mask_zip_file} does not exist."
 
-    assert (
-        args.result_zip_file.exists()
-    ), f"Result zip file {args.result_zip_file} does not exist."
+    assert args.result_zip_file.exists(), f"Result zip file {args.result_zip_file} does not exist."
 
     dataset = Argoverse2SceneFlow(args.root_dir, with_ground=True, with_rgb=False)
 

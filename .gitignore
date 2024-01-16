@@ -1,6 +1,16 @@
+### VisualStudioCode ###
+.vscode/**/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+**/.history
+
 .mypy_cache/
 .pytest_cache/
-.vscode/
 scene_trajectory_benchmark/
 **/__pycache__/
 docker_history.txt

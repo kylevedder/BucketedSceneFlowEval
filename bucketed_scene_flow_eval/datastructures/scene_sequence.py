@@ -1,15 +1,14 @@
-import numpy as np
-from typing import Dict, List, Tuple, Any, Union, Optional
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 from numpy._typing import NDArray
 
 from .camera_projection import CameraProjection
+from .o3d_visualizer import O3DVisualizer
 from .pointcloud import PointCloud
 from .rgb_image import RGBImage
 from .se3 import SE3
-from .o3d_visualizer import O3DVisualizer
-
-from dataclasses import dataclass
 
 # Type alias for particle IDs
 ParticleID = int
@@ -64,7 +63,7 @@ class RawSceneItem:
     rgb_frame: Optional[RGBFrame]
 
 
-def _particle_id_to_color(particle_id: ParticleID) -> Tuple[float, float, float]:
+def _particle_id_to_color(particle_id: ParticleID) -> NDArray:
     particle_id = int(particle_id)
     assert isinstance(
         particle_id, ParticleID
@@ -112,9 +111,7 @@ class RawSceneSequence:
         return len(self.get_percept_timesteps())
 
     def __getitem__(self, timestamp: int) -> RawSceneItem:
-        assert isinstance(
-            timestamp, int
-        ), f"timestamp must be an int, got {type(timestamp)}"
+        assert isinstance(timestamp, int), f"timestamp must be an int, got {type(timestamp)}"
         return self.percept_lookup[timestamp]
 
     def visualize(self, vis: O3DVisualizer) -> O3DVisualizer:
@@ -130,10 +127,7 @@ class RawSceneSequence:
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, RawSceneSequence):
             return False
-        return (
-            self.percept_lookup == __value.percept_lookup
-            and self.log_id == __value.log_id
-        )
+        return self.percept_lookup == __value.percept_lookup and self.log_id == __value.log_id
 
 
 class QueryPointLookup:
@@ -148,7 +142,7 @@ class QueryPointLookup:
         self.is_valid = np.zeros((num_entries,), dtype=bool)
 
     def __len__(self) -> int:
-        return self.num_entries
+        return self.is_valid.sum()
 
     def __getitem__(self, particle_id: ParticleID) -> Tuple[WorldParticle, Timestamp]:
         assert (
@@ -265,9 +259,7 @@ class EstimatedPointFlow:
         self.trajectory_timestamps = trajectory_timestamps
         self.trajectory_length = len(trajectory_timestamps)
 
-        self.world_points = np.zeros(
-            (num_entries, self.trajectory_length, 3), dtype=np.float32
-        )
+        self.world_points = np.zeros((num_entries, self.trajectory_length, 3), dtype=np.float32)
 
         # By default, all trajectories are invalid
         self.is_valid_flow = np.zeros((num_entries,), dtype=bool)

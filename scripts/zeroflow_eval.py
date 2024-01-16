@@ -1,7 +1,7 @@
-from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator
-
 # load the result pickle
 import pickle
+
+from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator
 
 # read "eval_frame_results.pkl"
 
@@ -56,8 +56,6 @@ METACATAGORIES = {
 }
 
 evaluator = BucketedEPEEvaluator(meta_class_lookup=METACATAGORIES)
-eval_frame_results = load_pickle(
-    "/tmp/frame_results/bucketed_epe/eval_frame_results.pkl"
-)
+eval_frame_results = load_pickle("/tmp/frame_results/bucketed_epe/eval_frame_results.pkl")
 evaluator.eval_frame_results = eval_frame_results
 evaluator.compute_results(save_results=False)

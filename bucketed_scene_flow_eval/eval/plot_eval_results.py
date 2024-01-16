@@ -1,7 +1,8 @@
 import json
-import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple
+
+import matplotlib.pyplot as plt
 
 path = Path("/tmp/frame_results/scaled_epe")
 

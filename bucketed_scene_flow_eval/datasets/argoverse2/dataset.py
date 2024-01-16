@@ -1,19 +1,20 @@
-from bucketed_scene_flow_eval.datastructures import *
+import enum
 from pathlib import Path
-from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
+from typing import Dict, List, Tuple, Union
 
-from typing import Tuple, Dict, List, Union
 import numpy as np
 
-from .argoverse_scene_flow import ArgoverseSceneFlowSequenceLoader, CATEGORY_MAP
-from .av2_metacategories import METACATAGORIES
+from bucketed_scene_flow_eval.datastructures import *
 from bucketed_scene_flow_eval.eval import (
+    BucketedEPEEvaluator,
     Evaluator,
     PerClassRawEPEEvaluator,
     PerClassThreewayEPEEvaluator,
-    BucketedEPEEvaluator,
 )
-import enum
+from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
+
+from .argoverse_scene_flow import CATEGORY_MAP, ArgoverseSceneFlowSequenceLoader
+from .av2_metacategories import METACATAGORIES
 
 
 class EvalType(enum.Enum):
@@ -59,12 +60,9 @@ class Argoverse2SceneFlow:
 
         self.with_rgb = with_rgb
 
-        self.dataset_to_sequence_subsequence_idx = (
-            self._load_dataset_to_sequence_subsequence_idx()
-        )
+        self.dataset_to_sequence_subsequence_idx = self._load_dataset_to_sequence_subsequence_idx()
         self.sequence_subsequence_idx_to_dataset_idx = {
-            value: key
-            for key, value in enumerate(self.dataset_to_sequence_subsequence_idx)
+            value: key for key, value in enumerate(self.dataset_to_sequence_subsequence_idx)
         }
 
         self.eval_type = EvalType[eval_type.strip().upper()]
@@ -72,12 +70,8 @@ class Argoverse2SceneFlow:
 
     def _cache_path(self, cache_root: Path, root_dir: Union[Path, List[Path]]) -> Path:
         if isinstance(root_dir, list):
-            parent_name = "_".join(
-                [Path(root_dir_part).parent.name for root_dir_part in root_dir]
-            )
-            folder_name = "_".join(
-                [Path(root_dir_part).name for root_dir_part in root_dir]
-            )
+            parent_name = "_".join([Path(root_dir_part).parent.name for root_dir_part in root_dir])
+            folder_name = "_".join([Path(root_dir_part).name for root_dir_part in root_dir])
         else:
             parent_name = Path(root_dir).parent.name
             folder_name = Path(root_dir).name
@@ -99,12 +93,8 @@ class Argoverse2SceneFlow:
         # Build map from dataset index to sequence and subsequence index.
         dataset_to_sequence_subsequence_idx = []
         for sequence_idx, sequence in enumerate(self.sequence_loader):
-            for subsequence_start_idx in range(
-                len(sequence) - self.subsequence_length + 1
-            ):
-                dataset_to_sequence_subsequence_idx.append(
-                    (sequence_idx, subsequence_start_idx)
-                )
+            for subsequence_start_idx in range(len(sequence) - self.subsequence_length + 1):
+                dataset_to_sequence_subsequence_idx.append((sequence_idx, subsequence_start_idx))
 
         print(
             f"Loaded {len(dataset_to_sequence_subsequence_idx)} subsequence pairs. Saving it to {cache_file}"
@@ -115,19 +105,13 @@ class Argoverse2SceneFlow:
     def __len__(self):
         return len(self.dataset_to_sequence_subsequence_idx)
 
-    def _av2_sequence_id_and_timestamp_to_idx(
-        self, av2_sequence_id: str, timestamp: int
-    ) -> int:
+    def _av2_sequence_id_and_timestamp_to_idx(self, av2_sequence_id: str, timestamp: int) -> int:
         sequence_loader_idx = self.sequence_loader._sequence_id_to_idx(av2_sequence_id)
         sequence = self.sequence_loader.load_sequence(av2_sequence_id)
         sequence_idx = sequence._timestamp_to_idx(timestamp)
-        return self.sequence_subsequence_idx_to_dataset_idx[
-            (sequence_loader_idx, sequence_idx)
-        ]
+        return self.sequence_subsequence_idx_to_dataset_idx[(sequence_loader_idx, sequence_idx)]
 
-    def _make_scene_sequence(
-        self, subsequence_frames: List[Dict], log_id: str
-    ) -> RawSceneSequence:
+    def _make_scene_sequence(self, subsequence_frames: List[Dict], log_id: str) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
         percept_lookup: Dict[Timestamp, RawSceneItem] = {}
@@ -140,9 +124,7 @@ class Argoverse2SceneFlow:
             if self.with_ground:
                 mask = np.ones_like(mask, dtype=bool)
 
-            point_cloud_frame = PointCloudFrame(
-                pc, PoseInfo(lidar_to_ego, ego_to_world), mask
-            )
+            point_cloud_frame = PointCloudFrame(pc, PoseInfo(lidar_to_ego, ego_to_world), mask)
 
             rgb_to_ego: SE3 = entry["rgb_camera_ego_pose"]
             rgb_camera_projection: CameraProjection = entry["rgb_camera_projection"]
@@ -239,9 +221,7 @@ class Argoverse2SceneFlow:
         if verbose:
             print(f"Argoverse2 Scene Flow dataset __getitem__({dataset_idx}) start")
 
-        sequence_idx, subsequence_start_idx = self.dataset_to_sequence_subsequence_idx[
-            dataset_idx
-        ]
+        sequence_idx, subsequence_start_idx = self.dataset_to_sequence_subsequence_idx[dataset_idx]
 
         # Load sequence
         sequence = self.sequence_loader[sequence_idx]

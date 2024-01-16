@@ -1,20 +1,18 @@
+import copy
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Set, Tuple
+
+import numpy as np
+
 from bucketed_scene_flow_eval.datastructures import (
     EstimatedPointFlow,
     GroundTruthPointFlow,
     Timestamp,
-    ParticleClassId,
 )
-import pandas as pd
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Tuple, Dict, List, Set, Any, Union
-import numpy as np
-import pickle
-import json
-import enum
-from .eval import Evaluator
 from bucketed_scene_flow_eval.utils import save_json, save_pickle
-import copy
+
+from .eval import Evaluator
 
 
 @dataclass(frozen=True, eq=True, order=True, repr=True)
@@ -53,15 +51,11 @@ class BaseEvalFrameResult:
         self.distance_thresholds = distance_thresholds
         self.max_speed_thresholds = max_speed_thresholds
 
-        assert (
-            gt_world_points.ndim == 2
-        ), f"gt_world_points must be 3D, got {gt_world_points.ndim}"
+        assert gt_world_points.ndim == 2, f"gt_world_points must be 3D, got {gt_world_points.ndim}"
         assert (
             gt_world_points.shape == gt_flow.shape
         ), f"gt_world_points and gt_flow must have the same shape, got {gt_world_points.shape} and {gt_flow.shape}"
-        assert (
-            gt_class_ids.ndim == 1
-        ), f"gt_class_ids must be 1D, got {gt_class_ids.ndim}"
+        assert gt_class_ids.ndim == 1, f"gt_class_ids must be 1D, got {gt_class_ids.ndim}"
         assert (
             gt_flow.shape == pred_flow.shape
         ), f"gt_flow and pred_flow must have the same shape, got {gt_flow.shape} and {pred_flow.shape}"
@@ -146,9 +140,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
     @staticmethod
     def from_evaluator_list(evaluator_list: List["PerFrameSceneFlowEvaluator"]):
-        assert (
-            len(evaluator_list) > 0
-        ), "evaluator_list must have at least one evaluator"
+        assert len(evaluator_list) > 0, "evaluator_list must have at least one evaluator"
 
         return sum(evaluator_list)
 
@@ -194,8 +186,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             predictions.is_valid_flow.shape == ground_truth.is_valid_flow.shape
         ), f"predictions and ground_truth must have the same shape, got {predictions.is_valid_flow.shape} and {ground_truth.is_valid_flow.shape}"
         assert (
-            (predictions.is_valid_flow & ground_truth.is_valid_flow)
-            == ground_truth.is_valid_flow
+            (predictions.is_valid_flow & ground_truth.is_valid_flow) == ground_truth.is_valid_flow
         ).all(), f"predictions and ground_truth must have the same valid entries, however some were missing."
 
         predictions.is_valid_flow = ground_truth.is_valid_flow
@@ -240,9 +231,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         # index of first occurrence of each value
         sorter = np.argsort(pred_timestamps)
 
-        matched_idxes = sorter[
-            np.searchsorted(pred_timestamps, traj_timestamps, sorter=sorter)
-        ]
+        matched_idxes = sorter[np.searchsorted(pred_timestamps, traj_timestamps, sorter=sorter)]
 
         # find the index of the query timestamp in traj_timestamps
         query_idx = np.where(traj_timestamps == query_timestamp)[0][0]
@@ -266,9 +255,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
         # We only support Scene Flow
         if query_idx != 0:
-            raise NotImplementedError(
-                "TODO: Handle query_idx != 0 when computing speed bucketing."
-            )
+            raise NotImplementedError("TODO: Handle query_idx != 0 when computing speed bucketing.")
 
         eval_particle_ids = ground_truth.valid_particle_ids()
 
@@ -281,9 +268,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             (gt_is_valids & pred_is_valids) == gt_is_valids
         ).all(), f"all gt_is_valids must be true if pred_is_valids is true."
 
-        gt_world_points = ground_truth.world_points[eval_particle_ids][
-            :, matched_time_axis_indices
-        ]
+        gt_world_points = ground_truth.world_points[eval_particle_ids][:, matched_time_axis_indices]
         pred_world_points = predictions.world_points[eval_particle_ids][
             :, matched_time_axis_indices
         ]
@@ -394,12 +379,8 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         unique_category_names = sorted(set([k.name for k in average_stats.keys()]))
 
         for distance_threshold in unique_distance_thresholds:
-            raw_table_save_path = (
-                self.output_path / f"metric_table_{distance_threshold}.json"
-            )
-            speed_table_save_path = (
-                self.output_path / f"speed_table_{distance_threshold}.json"
-            )
+            raw_table_save_path = self.output_path / f"metric_table_{distance_threshold}.json"
+            speed_table_save_path = self.output_path / f"speed_table_{distance_threshold}.json"
 
             # Rows are category names, columns are for speed buckets
 
@@ -408,9 +389,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
             for category_name in unique_category_names:
                 for speed_threshold_tuple in unique_speed_threshold_tuples:
-                    key = BaseSplitKey(
-                        category_name, distance_threshold, speed_threshold_tuple
-                    )
+                    key = BaseSplitKey(category_name, distance_threshold, speed_threshold_tuple)
                     avg_epe = np.NaN
                     avg_speed = np.NaN
                     if key in average_stats:
@@ -424,9 +403,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             self._save_dict(raw_table_save_path, epe_dict)
             self._save_dict(speed_table_save_path, speed_dict)
 
-    def compute_results(
-        self, save_results: bool = True
-    ) -> Dict[BaseSplitKey, BaseSplitValue]:
+    def compute_results(self, save_results: bool = True) -> Dict[BaseSplitKey, BaseSplitValue]:
         assert (
             len(self.eval_frame_results) > 0
         ), "Must call eval at least once before calling compute"
@@ -435,8 +412,6 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
         # From list of dicts to dict of lists
         category_to_per_frame_stats = self._category_to_per_frame_stats()
-        category_to_average_stats = self._category_to_average_stats(
-            category_to_per_frame_stats
-        )
+        category_to_average_stats = self._category_to_average_stats(category_to_per_frame_stats)
         self._save_stats_tables(category_to_average_stats)
         return category_to_average_stats

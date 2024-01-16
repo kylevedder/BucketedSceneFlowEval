@@ -1,20 +1,18 @@
-from .base_per_frame_sceneflow_eval import (
-    PerFrameSceneFlowEvaluator,
-    BaseEvalFrameResult,
-)
-
-from typing import Dict, List, Tuple, Any, Union
 from pathlib import Path
+
 import numpy as np
+
+from .base_per_frame_sceneflow_eval import (
+    BaseEvalFrameResult,
+    PerFrameSceneFlowEvaluator,
+)
 
 
 class ThreewayEPEEvalFrameResult(BaseEvalFrameResult):
     # Pass through all arguments to super class
     def __init__(self, *args, **kwargs):
         # Add additional 0.05 threshold (0.5m/s)
-        super().__init__(
-            *args, **kwargs, max_speed_thresholds=[(0, 0.05), (0.05, np.inf)]
-        )
+        super().__init__(*args, **kwargs, max_speed_thresholds=[(0, 0.05), (0.05, np.inf)])
 
 
 class PerClassThreewayEPEEvaluator(PerFrameSceneFlowEvaluator):

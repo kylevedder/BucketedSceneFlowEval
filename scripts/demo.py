@@ -1,15 +1,17 @@
+import argparse
+
+import numpy as np
+from matplotlib import pyplot as plt
+
 from bucketed_scene_flow_eval.datasets import construct_dataset
 from bucketed_scene_flow_eval.datastructures import (
-    QuerySceneSequence,
     GroundTruthPointFlow,
     O3DVisualizer,
     PointCloud,
     PointCloudFrame,
+    QuerySceneSequence,
     RGBFrame,
 )
-from matplotlib import pyplot as plt
-import numpy as np
-import argparse
 
 
 def color_threshold_distance(distances: np.ndarray, max_distance: float = 10.0):
@@ -30,9 +32,7 @@ def process_lidar_only(o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame):
     o3d_vis.run()
 
 
-def process_lidar_rgb(
-    o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame, rgb_frame: RGBFrame
-):
+def process_lidar_rgb(o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame, rgb_frame: RGBFrame):
     image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
         rgb_frame.rgb, depth=10
     )
@@ -51,9 +51,7 @@ def process_lidar_rgb(
     o3d_vis.add_pointcloud(image_plane_pc, color=colors)
     o3d_vis.run()
 
-    projected_points = rgb_frame.camera_projection.camera_frame_to_pixels(
-        cam_frame_pc.points
-    )
+    projected_points = rgb_frame.camera_projection.camera_frame_to_pixels(cam_frame_pc.points)
     projected_points = projected_points.astype(np.int32)
 
     # Use distance to color points, normalized to [0, 1]. Let points more than 10m away be black.

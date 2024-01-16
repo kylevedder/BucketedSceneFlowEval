@@ -1,7 +1,9 @@
-import open3d as o3d
-from bucketed_scene_flow_eval.datastructures import PointCloud, SE3
-from typing import Tuple, List, Dict, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
+
 import numpy as np
+import open3d as o3d
+
+from bucketed_scene_flow_eval.datastructures import SE3, PointCloud
 
 
 class O3DVisualizer:
@@ -40,9 +42,7 @@ class O3DVisualizer:
         pc: PointCloud,
         pose: SE3 = SE3.identity(),
         color: Optional[
-            Union[
-                np.ndarray, Tuple[float, float, float], List[Tuple[float, float, float]]
-            ]
+            Union[np.ndarray, Tuple[float, float, float], List[Tuple[float, float, float]]]
         ] = None,
     ):
         pc = pc.transform(pose)
@@ -58,9 +58,7 @@ class O3DVisualizer:
                 pc.colors = o3d.utility.Vector3dVector(color)
         self.add_geometry(pc)
 
-    def add_sphere(
-        self, location: np.ndarray, radius: float, color: Tuple[float, float, float]
-    ):
+    def add_sphere(self, location: np.ndarray, radius: float, color: Tuple[float, float, float]):
         sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius, resolution=2)
         sphere = sphere.translate(location)
         sphere.paint_uniform_color(color)
@@ -77,9 +75,7 @@ class O3DVisualizer:
         ), f"Expected locations and colors to have the same length, got {len(locations)} and {len(colors)} instead"
         triangle_mesh = o3d.geometry.TriangleMesh()
         for i, location in enumerate(locations):
-            sphere = o3d.geometry.TriangleMesh.create_sphere(
-                radius=radius, resolution=2
-            )
+            sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius, resolution=2)
             sphere = sphere.translate(location)
             sphere.paint_uniform_color(colors[i])
             triangle_mesh += sphere

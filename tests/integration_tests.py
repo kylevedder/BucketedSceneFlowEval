@@ -1,10 +1,12 @@
-import pytest
-import bucketed_scene_flow_eval
-from bucketed_scene_flow_eval.datastructures import *
-from bucketed_scene_flow_eval.datasets import construct_dataset
-from typing import Tuple, Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
+import pytest
 import tqdm
+
+import bucketed_scene_flow_eval
+from bucketed_scene_flow_eval.datasets import construct_dataset
+from bucketed_scene_flow_eval.datastructures import *
 
 
 @pytest.fixture
@@ -124,9 +126,7 @@ def _validate_dataloader_elements(
     gt: GroundTruthPointFlow,
     expected_pc_size: Optional[int],
 ):
-    assert isinstance(
-        query, QuerySceneSequence
-    ), f"Expected QuerySceneSequence, got {type(query)}"
+    assert isinstance(query, QuerySceneSequence), f"Expected QuerySceneSequence, got {type(query)}"
     assert isinstance(
         gt, GroundTruthPointFlow
     ), f"Expected GroundTruthParticleTrajectories, got {type(gt)}"
@@ -164,9 +164,7 @@ def _validate_dataloader_elements(
 
 
 def _validate_dataloader(dataloader, pc_size: Optional[int], expected_len: int = 1):
-    assert (
-        len(dataloader) == expected_len
-    ), f"Expected {expected_len} scene, got {len(dataloader)}"
+    assert len(dataloader) == expected_len, f"Expected {expected_len} scene, got {len(dataloader)}"
 
     num_iteration_entries = 0
     for query, gt in tqdm.tqdm(dataloader):
