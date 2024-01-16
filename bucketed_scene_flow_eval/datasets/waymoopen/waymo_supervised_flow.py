@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 
@@ -46,7 +46,7 @@ class WaymoSupervisedSceneFlowSequence:
         flow[flow_speed > 30] = 0
         return flow
 
-    def load(self, idx: int, relative_to_idx: int) -> Dict[str, Any]:
+    def load(self, idx: int, relative_to_idx: int) -> dict[str, Any]:
         assert idx < len(
             self
         ), f"idx {idx} out of range, len {len(self)} for {self.sequence_folder}"
@@ -94,7 +94,7 @@ class WaymoSupervisedSceneFlowSequence:
             "log_idx": idx,
         }
 
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> List[Dict[str, Any]]:
+    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[dict[str, Any]]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))
@@ -105,7 +105,7 @@ class WaymoSupervisedSceneFlowSequence:
         return self.sequence_folder.name
 
     @staticmethod
-    def category_ids() -> List[int]:
+    def category_ids() -> list[int]:
         return WaymoSupervisedSceneFlowSequenceLoader.category_ids()
 
     @staticmethod
@@ -121,7 +121,7 @@ class WaymoSupervisedSceneFlowSequenceLoader:
     def __init__(
         self,
         sequence_dir: Path,
-        log_subset: Optional[List[str]] = None,
+        log_subset: Optional[list[str]] = None,
         verbose: bool = False,
     ):
         self.dataset_dir = Path(sequence_dir)
@@ -155,7 +155,7 @@ class WaymoSupervisedSceneFlowSequenceLoader:
         return WaymoSupervisedSceneFlowSequence(sequence_folder, verbose=self.verbose)
 
     @staticmethod
-    def category_ids() -> List[int]:
+    def category_ids() -> list[int]:
         return list(CATEGORY_MAP.keys())
 
     @staticmethod

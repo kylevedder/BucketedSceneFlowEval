@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from typing import Tuple
 
 import matplotlib.pyplot as plt
 
@@ -23,7 +22,7 @@ def load_data(path: Path):
 data_entries = [(e.name, load_data(e / "metric_table_35.json")) for e in subdirs]
 
 
-def data_index_to_bar_width_location(data_index: int) -> Tuple[float, float]:
+def data_index_to_bar_width_location(data_index: int) -> tuple[float, float]:
     num_data_entries = len(data_entries)
     bar_width = 1 / num_data_entries
 

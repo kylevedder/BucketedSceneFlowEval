@@ -3,12 +3,10 @@ import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
-import torch  # isort: skip For some reason, things hang if you do not import this first.
 import argparse
 import multiprocessing
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -29,12 +27,12 @@ def read_feather_file(zip_ref: zipfile.ZipFile, file: Path):
         return pd.read_feather(file)
 
 
-def load_feather_files(zip_path: Path) -> Dict[str, List[Tuple[int, pd.DataFrame]]]:
+def load_feather_files(zip_path: Path) -> dict[str, list[tuple[int, pd.DataFrame]]]:
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
         names = [Path(name) for name in zip_ref.namelist()]
         names = [name for name in names if name.suffix == ".feather"]
         # Create dictionary mapping sequence names to list of files by joining on the name.parent
-        sequence_dirs: Dict[str, list] = {}
+        sequence_dirs: dict[str, list] = {}
         for name in names:
             sequence_dirs.setdefault(name.parent.name, []).append(
                 (int(name.stem), read_feather_file(zip_ref, name))
@@ -102,11 +100,11 @@ def perform_evaluate(
 
 
 def process_problem(
-    input: Tuple[
+    input: tuple[
         int,
         str,
-        List[Tuple[int, pd.DataFrame]],
-        List[Tuple[int, pd.DataFrame]],
+        list[tuple[int, pd.DataFrame]],
+        list[tuple[int, pd.DataFrame]],
         Argoverse2SceneFlow,
     ]
 ) -> Evaluator:
@@ -149,15 +147,15 @@ def process_problem(
 
 
 def build_process_problems(
-    mask_sequence_map: Dict[str, List[Tuple[int, pd.DataFrame]]],
-    result_sequence_map: Dict[str, List[Tuple[int, pd.DataFrame]]],
+    mask_sequence_map: dict[str, list[tuple[int, pd.DataFrame]]],
+    result_sequence_map: dict[str, list[tuple[int, pd.DataFrame]]],
     dataset: Argoverse2SceneFlow,
-) -> List[
-    Tuple[
+) -> list[
+    tuple[
         int,
         str,
-        List[Tuple[int, pd.DataFrame]],
-        List[Tuple[int, pd.DataFrame]],
+        list[tuple[int, pd.DataFrame]],
+        list[tuple[int, pd.DataFrame]],
         Argoverse2SceneFlow,
     ]
 ]:
@@ -185,7 +183,7 @@ def main_loop(mask_zip: Path, result_zip: Path, dataset: Argoverse2SceneFlow, mu
     )
 
     problems = list(build_process_problems(mask_sequence_map, result_sequence_map, dataset))
-    evaluators: List[Evaluator] = multiprocessor(process_problem, problems, desc="Problems")
+    evaluators: list[Evaluator] = multiprocessor(process_problem, problems, desc="Problems")
     sum(evaluators).compute_results()
 
 

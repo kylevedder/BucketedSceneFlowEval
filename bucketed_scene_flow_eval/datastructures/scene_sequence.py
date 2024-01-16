@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 from numpy._typing import NDArray
@@ -91,7 +91,7 @@ class RawSceneSequence:
     Additionally, we store frame conversions for each percept.
     """
 
-    def __init__(self, percept_lookup: Dict[Timestamp, RawSceneItem], log_id: str):
+    def __init__(self, percept_lookup: dict[Timestamp, RawSceneItem], log_id: str):
         assert isinstance(
             percept_lookup, dict
         ), f"percept_lookup must be a dict, got {type(percept_lookup)}"
@@ -104,7 +104,7 @@ class RawSceneSequence:
         self.percept_lookup = percept_lookup
         self.log_id = log_id
 
-    def get_percept_timesteps(self) -> List[int]:
+    def get_percept_timesteps(self) -> list[int]:
         return sorted(self.percept_lookup.keys())
 
     def __len__(self):
@@ -144,7 +144,7 @@ class QueryPointLookup:
     def __len__(self) -> int:
         return self.is_valid.sum()
 
-    def __getitem__(self, particle_id: ParticleID) -> Tuple[WorldParticle, Timestamp]:
+    def __getitem__(self, particle_id: ParticleID) -> tuple[WorldParticle, Timestamp]:
         assert (
             particle_id < self.num_entries
         ), f"particle_id {particle_id} must be less than {self.num_entries}"
@@ -178,7 +178,7 @@ class QuerySceneSequence:
         self,
         scene_sequence: RawSceneSequence,
         query_points: QueryPointLookup,
-        query_flow_timestamps: List[Timestamp],
+        query_flow_timestamps: list[Timestamp],
     ):
         assert isinstance(
             scene_sequence, RawSceneSequence
@@ -246,7 +246,7 @@ class EstimatedPointFlow:
     def __init__(
         self,
         num_entries: int,
-        trajectory_timestamps: Union[List[Timestamp], np.ndarray],
+        trajectory_timestamps: Union[list[Timestamp], np.ndarray],
     ):
         self.num_entries = num_entries
 
@@ -301,9 +301,9 @@ class GroundTruthPointFlow(EstimatedPointFlow):
     def __init__(
         self,
         num_entries: int,
-        trajectory_timestamps: Union[List[Timestamp], np.ndarray],
+        trajectory_timestamps: Union[list[Timestamp], np.ndarray],
         query_timestamp: int,
-        class_name_map: Optional[Dict[ParticleClassId, str]] = None,
+        class_name_map: Optional[dict[ParticleClassId, str]] = None,
     ):
         super().__init__(num_entries, trajectory_timestamps)
         self.class_name_map = class_name_map
@@ -325,7 +325,7 @@ class GroundTruthPointFlow(EstimatedPointFlow):
     def __setitem__(
         self,
         particle_id: ParticleID,
-        data_tuple: Tuple[NDArray, ParticleClassId, NDArray],
+        data_tuple: tuple[NDArray, ParticleClassId, NDArray],
     ):
         points, cls_ids, is_valids = data_tuple
         self.world_points[particle_id] = points

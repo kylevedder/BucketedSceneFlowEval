@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import open3d as o3d
 
-from bucketed_scene_flow_eval.datastructures import SE3, PointCloud
+from .pointcloud import PointCloud
+from .se3 import SE3
 
 
 class O3DVisualizer:
@@ -33,7 +34,7 @@ class O3DVisualizer:
     def add_pc_frame(
         self,
         pc_frame: "PointCloudFrame",
-        color: Union[Tuple[float, float, float], None] = None,
+        color: Union[tuple[float, float, float], None] = None,
     ):
         self.add_pointcloud(pc_frame.global_pc, color=color)
 
@@ -42,7 +43,7 @@ class O3DVisualizer:
         pc: PointCloud,
         pose: SE3 = SE3.identity(),
         color: Optional[
-            Union[np.ndarray, Tuple[float, float, float], List[Tuple[float, float, float]]]
+            Union[np.ndarray, tuple[float, float, float], list[tuple[float, float, float]]]
         ] = None,
     ):
         pc = pc.transform(pose)
@@ -58,7 +59,7 @@ class O3DVisualizer:
                 pc.colors = o3d.utility.Vector3dVector(color)
         self.add_geometry(pc)
 
-    def add_sphere(self, location: np.ndarray, radius: float, color: Tuple[float, float, float]):
+    def add_sphere(self, location: np.ndarray, radius: float, color: tuple[float, float, float]):
         sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius, resolution=2)
         sphere = sphere.translate(location)
         sphere.paint_uniform_color(color)
@@ -66,9 +67,9 @@ class O3DVisualizer:
 
     def add_spheres(
         self,
-        locations: List[np.ndarray],
+        locations: list[np.ndarray],
         radius: float,
-        colors: List[Tuple[float, float, float]],
+        colors: list[tuple[float, float, float]],
     ):
         assert len(locations) == len(
             colors
@@ -124,8 +125,8 @@ class O3DVisualizer:
 
     def add_trajectory(
         self,
-        trajectory: List[np.ndarray],
-        color: Tuple[float, float, float],
+        trajectory: list[np.ndarray],
+        color: tuple[float, float, float],
         radius: float = 0.05,
     ):
         for i in range(len(trajectory) - 1):
