@@ -1,7 +1,9 @@
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional, Any
-from bucketed_scene_flow_eval.datastructures import PointCloud, SE3
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
+
+from bucketed_scene_flow_eval.datastructures import SE3, PointCloud
 from bucketed_scene_flow_eval.utils import load_pickle
 
 CATEGORY_MAP = {
@@ -17,9 +19,7 @@ class WaymoSupervisedSceneFlowSequence:
     def __init__(self, sequence_folder: Path, verbose: bool = False):
         self.sequence_folder = Path(sequence_folder)
         self.sequence_files = sorted(self.sequence_folder.glob("*.pkl"))
-        assert (
-            len(self.sequence_files) > 0
-        ), f"no frames found in {self.sequence_folder}"
+        assert len(self.sequence_files) > 0, f"no frames found in {self.sequence_folder}"
 
     def __repr__(self) -> str:
         return f"WaymoRawSequence with {len(self)} frames"

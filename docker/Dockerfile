@@ -1,6 +1,6 @@
 FROM nvidia/cudagl:11.3.0-devel-ubuntu20.04
 SHELL ["/bin/bash", "-c"]
-# Set the timezone info because otherwise tzinfo blocks install 
+# Set the timezone info because otherwise tzinfo blocks install
 # flow and ignores the non-interactive frontend command 🤬🤬🤬
 RUN ln -snf /usr/share/zoneinfo/America/New_York /etc/localtime && echo "/usr/share/zoneinfo/America/New_York" > /etc/timezone
 
@@ -22,6 +22,7 @@ ENV FORCE_CUDA="1"
 RUN conda update -y conda
 RUN conda install numpy python=3.10 pytorch==1.12.1 torchvision torchaudio cudatoolkit=11.3 -c pytorch -y
 RUN pip install iopath fvcore pandas opencv-python pyquaternion open3d pyarrow
+RUN pip install black isort
 RUN pip install av2
 RUN apt install unzip -y
 RUN pip install pytest

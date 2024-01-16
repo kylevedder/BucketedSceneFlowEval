@@ -1,7 +1,7 @@
-from .argoverse_raw_data import ArgoverseRawSequenceLoader, ArgoverseRawSequence
+from .argoverse_raw_data import ArgoverseRawSequence, ArgoverseRawSequenceLoader
 from .argoverse_scene_flow import (
-    ArgoverseSceneFlowSequenceLoader,
     ArgoverseSceneFlowSequence,
+    ArgoverseSceneFlowSequenceLoader,
 )
 from .dataset import Argoverse2SceneFlow
 

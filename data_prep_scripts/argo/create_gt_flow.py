@@ -1,26 +1,25 @@
 import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
-import av2
-from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
-from av2.structures.sweep import Sweep
-from av2.structures.cuboid import CuboidList, Cuboid
-from av2.utils.io import read_feather
-
-import os
 import multiprocessing
+import os
 from argparse import ArgumentParser
-from pathlib import Path
 from multiprocessing import Pool, current_process
-from typing import Optional, Tuple, Dict, List
-from tqdm import tqdm
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import av2
 import numpy as np
 import pandas as pd
+from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
+from av2.structures.cuboid import Cuboid, CuboidList
+from av2.structures.sweep import Sweep
+from av2.utils.io import read_feather
+from tqdm import tqdm
+
 from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_scene_flow import (
     CATEGORY_MAP_INV,
 )
-
-
 from bucketed_scene_flow_eval.utils.loaders import save_feather
 
 
@@ -83,13 +82,13 @@ def compute_sceneflow(
         flow_0_1 = np.zeros_like(sweeps[0].xyz, dtype=np.float32)
 
         valid_0 = np.ones(len(sweeps[0].xyz), dtype=bool)
-        classes_0 = (
-            np.ones(len(sweeps[0].xyz), dtype=np.int8) * CATEGORY_MAP_INV["BACKGROUND"]
-        )
+        classes_0 = np.ones(len(sweeps[0].xyz), dtype=np.int8) * CATEGORY_MAP_INV["BACKGROUND"]
 
         for id in cuboids[0]:
             c0 = cuboids[0][id]
-            c0.length_m += 0.2  # the bounding boxes are a little too tight and some points are missed
+            c0.length_m += (
+                0.2  # the bounding boxes are a little too tight and some points are missed
+            )
             c0.width_m += 0.2
             obj_pts, obj_mask = c0.compute_interior_points(sweeps[0].xyz)
             classes_0[obj_mask] = CATEGORY_MAP_INV[c0.category]
@@ -105,9 +104,7 @@ def compute_sceneflow(
                 valid_0[obj_mask] = 0
         return flow_0_1, classes_0, valid_0, ego1_SE3_ego0
 
-    sweeps = [
-        Sweep.from_feather(dataset.get_lidar_fpath(log_id, ts)) for ts in timestamps
-    ]
+    sweeps = [Sweep.from_feather(dataset.get_lidar_fpath(log_id, ts)) for ts in timestamps]
     cuboids = get_ids_and_cuboids_at_lidar_timestamps(dataset, log_id, timestamps)
     poses = [dataset.get_city_SE3_ego(log_id, ts) for ts in timestamps]
 
@@ -187,9 +184,7 @@ def process_logs(data_dir: Path, output_dir: Path, nproc: int):
             process_log_wrapper(x, ignore_current_process=True)
     else:
         with Pool(processes=nproc) as p:
-            res = list(
-                tqdm(p.imap_unordered(process_log_wrapper, args), total=len(logs))
-            )
+            res = list(tqdm(p.imap_unordered(process_log_wrapper, args), total=len(logs)))
 
 
 if __name__ == "__main__":

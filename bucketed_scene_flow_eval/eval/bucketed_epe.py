@@ -1,26 +1,18 @@
-from bucketed_scene_flow_eval.datastructures import (
-    EstimatedPointFlow,
-    GroundTruthPointFlow,
-    Timestamp,
-    ParticleClassId,
-)
-import pandas as pd
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Dict, List, Set, Any, Union, Optional
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
-import pickle
-import json
-import enum
-from .eval import Evaluator
+
+from bucketed_scene_flow_eval.utils import save_json, save_txt
+
 from .base_per_frame_sceneflow_eval import (
-    PerFrameSceneFlowEvaluator,
     BaseEvalFrameResult,
     BaseSplitKey,
     BaseSplitValue,
+    PerFrameSceneFlowEvaluator,
 )
-import warnings
-from bucketed_scene_flow_eval.utils import save_txt, save_json
 
 
 class BucketedEvalFrameResult(BaseEvalFrameResult):
@@ -45,9 +37,7 @@ class OverallError:
 
     def __repr__(self) -> str:
         static_epe_val_str = (
-            f"{self.static_epe:0.2f}"
-            if np.isfinite(self.static_epe)
-            else f"{self.static_epe}"
+            f"{self.static_epe:0.2f}" if np.isfinite(self.static_epe) else f"{self.static_epe}"
         )
         dynamic_error_val_str = (
             f"{self.dynamic_error:0.2f}"
@@ -61,9 +51,7 @@ class OverallError:
 
 
 class BucketResultMatrix:
-    def __init__(
-        self, class_names: List[str], speed_buckets: List[Tuple[float, float]]
-    ):
+    def __init__(self, class_names: List[str], speed_buckets: List[Tuple[float, float]]):
         self.class_names = class_names
         self.speed_buckets = speed_buckets
 
@@ -75,12 +63,8 @@ class BucketResultMatrix:
         ), f"speed_buckets must have at least one entry, got {len(self.speed_buckets)}"
 
         # By default, NaNs are not counted in np.nanmean
-        self.epe_storage_matrix = (
-            np.zeros((len(class_names), len(self.speed_buckets))) * np.NaN
-        )
-        self.speed_storage_matrix = (
-            np.zeros((len(class_names), len(self.speed_buckets))) * np.NaN
-        )
+        self.epe_storage_matrix = np.zeros((len(class_names), len(self.speed_buckets))) * np.NaN
+        self.speed_storage_matrix = np.zeros((len(class_names), len(self.speed_buckets))) * np.NaN
         self.count_storage_matrix = np.zeros(
             (len(class_names), len(self.speed_buckets)), dtype=np.int64
         )
@@ -97,12 +81,8 @@ class BucketResultMatrix:
         count: int,
     ):
         assert count > 0, f"count must be greater than 0, got {count}"
-        assert np.isfinite(
-            average_epe
-        ), f"average_epe must be finite, got {average_epe}"
-        assert np.isfinite(
-            average_speed
-        ), f"average_speed must be finite, got {average_speed}"
+        assert np.isfinite(average_epe), f"average_epe must be finite, got {average_epe}"
+        assert np.isfinite(average_speed), f"average_speed must be finite, got {average_speed}"
 
         class_idx = self.class_names.index(class_name)
         speed_bucket_idx = self.speed_buckets.index(speed_bucket)
@@ -148,9 +128,7 @@ class BucketResultMatrix:
             )
         }
 
-    def get_class_entries(
-        self, class_name: str
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_class_entries(self, class_name: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         class_idx = self.class_names.index(class_name)
 
         epe = self.epe_storage_matrix[class_idx, :]
@@ -158,12 +136,8 @@ class BucketResultMatrix:
         count = self.count_storage_matrix[class_idx, :]
         return epe, speed, count
 
-    def merge_matrix_classes(
-        self, meta_class_lookup: Dict[str, List[str]]
-    ) -> "BucketResultMatrix":
-        assert (
-            meta_class_lookup is not None
-        ), f"meta_class_lookup must be set to merge classes"
+    def merge_matrix_classes(self, meta_class_lookup: Dict[str, List[str]]) -> "BucketResultMatrix":
+        assert meta_class_lookup is not None, f"meta_class_lookup must be set to merge classes"
         assert (
             len(meta_class_lookup) > 0
         ), f"meta_class_lookup must have at least one entry, got {len(meta_class_lookup)}"
@@ -184,9 +158,7 @@ class BucketResultMatrix:
                 ):
                     if np.isnan(epe):
                         continue
-                    merged_matrix.accumulate_value(
-                        meta_class, speed_bucket, epe, speed, count
-                    )
+                    merged_matrix.accumulate_value(meta_class, speed_bucket, epe, speed, count)
 
         return merged_matrix
 
@@ -194,9 +166,7 @@ class BucketResultMatrix:
         overall_errors = self.get_overall_class_errors()
 
         average_static_epe = np.nanmean([v.static_epe for v in overall_errors.values()])
-        average_dynamic_error = np.nanmean(
-            [v.dynamic_error for v in overall_errors.values()]
-        )
+        average_dynamic_error = np.nanmean([v.dynamic_error for v in overall_errors.values()])
 
         return OverallError(average_static_epe, average_dynamic_error)
 
@@ -212,12 +182,8 @@ class BucketResultMatrix:
         header_row = "Class Name & \\textbf{Overall Error}"  # Add 'Average' column header in bold
         for low, high in self.speed_buckets:
             # Multiply by 10 and format with two decimal places, then rotate the text vertically
-            header_row += (
-                " & \\rotatebox{90}{" + f"[{low * 10:.2f}-{high * 10:.2f}]" + "}"
-            )
-        header_row += (
-            " \\\\\n"  # End the header row with newline and line break for LaTeX
-        )
+            header_row += " & \\rotatebox{90}{" + f"[{low * 10:.2f}-{high * 10:.2f}]" + "}"
+        header_row += " \\\\\n"  # End the header row with newline and line break for LaTeX
 
         latex_string = "\\begin{tabular}{" + column_format + "}\n\\hline\n"
         latex_string += header_row  # Add the header row
@@ -255,9 +221,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
     ):
         # Bucket the speeds into num_buckets buckets. Add one extra bucket at the end to capture all
         # the speeds above bucket_max_speed_meters_per_second.
-        bucket_edges = np.concatenate(
-            [np.linspace(0, bucket_max_speed, num_buckets), [np.inf]]
-        )
+        bucket_edges = np.concatenate([np.linspace(0, bucket_max_speed, num_buckets), [np.inf]])
         self.speed_thresholds = list(zip(bucket_edges, bucket_edges[1:]))
         self.meta_class_lookup = meta_class_lookup
         super().__init__(output_path=output_path)
@@ -285,9 +249,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
         distance_threshold: float,
     ):
         full_table_save_path = self.output_path / f"full_table_{distance_threshold}.tex"
-        per_class_save_path = (
-            self.output_path / f"per_class_results_{distance_threshold}.json"
-        )
+        per_class_save_path = self.output_path / f"per_class_results_{distance_threshold}.json"
         mean_average_save_path = (
             self.output_path / f"mean_average_results_{distance_threshold}.json"
         )
@@ -298,9 +260,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
 
         for category_name in unique_category_names:
             for speed_threshold_tuple in self.speed_thresholds:
-                key = BaseSplitKey(
-                    category_name, distance_threshold, speed_threshold_tuple
-                )
+                key = BaseSplitKey(category_name, distance_threshold, speed_threshold_tuple)
                 if key not in average_stats:
                     continue
                 avg_epe = average_stats[key].avg_epe

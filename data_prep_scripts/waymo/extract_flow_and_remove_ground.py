@@ -1,32 +1,27 @@
-from sklearn.neighbors import NearestNeighbors
 import os
 
+from sklearn.neighbors import NearestNeighbors
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import tensorflow as tf
 import argparse
 import multiprocessing
 from pathlib import Path
-from joblib import Parallel, delayed
+from typing import Dict, List, Tuple
+
 import numpy as np
-from typing import Tuple, List, Dict
-from pointclouds import PointCloud, SE3, SE2
-from loader_utils import load_json, save_pickle
-
-from waymo_open_dataset import dataset_pb2
-from waymo_open_dataset.utils import frame_utils
-from waymo_open_dataset.utils import plot_maps
-
 import open3d as o3d
+import tensorflow as tf
+from joblib import Parallel, delayed
+from loader_utils import load_json, save_pickle
+from pointclouds import SE2, SE3, PointCloud
+from waymo_open_dataset import dataset_pb2
+from waymo_open_dataset.utils import frame_utils, plot_maps
 
 GROUND_HEIGHT_THRESHOLD = 0.4  # 40 centimeters
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "flow_directory", type=Path, help="Path to Waymo flow data directory."
-)
-parser.add_argument(
-    "heightmap_directory", type=Path, help="Path to rasterized heightmap."
-)
+parser.add_argument("flow_directory", type=Path, help="Path to Waymo flow data directory.")
+parser.add_argument("heightmap_directory", type=Path, help="Path to rasterized heightmap.")
 parser.add_argument("save_directory", type=Path, help="Path to save directory.")
 parser.add_argument(
     "--cpus",
@@ -165,15 +160,11 @@ def convert_range_image_to_point_cloud(
         range_image_mask = range_image_tensor[..., 0] > 0
 
         range_image_cartesian = cartesian_range_images[c.name]
-        points_tensor = tf.gather_nd(
-            range_image_cartesian, tf.compat.v1.where(range_image_mask)
-        )
+        points_tensor = tf.gather_nd(range_image_cartesian, tf.compat.v1.where(range_image_mask))
 
         flow = point_flows[c.name][ri_index]
         flow_tensor = tf.reshape(tf.convert_to_tensor(value=flow.data), flow.shape.dims)
-        flow_points_tensor = tf.gather_nd(
-            flow_tensor, tf.compat.v1.where(range_image_mask)
-        )
+        flow_points_tensor = tf.gather_nd(flow_tensor, tf.compat.v1.where(range_image_mask))
 
         cp = camera_projections[c.name][ri_index]
         cp_tensor = tf.reshape(tf.convert_to_tensor(value=cp.data), cp.shape.dims)
@@ -209,9 +200,9 @@ def get_pc(frame: dataset_pb2.Frame) -> np.ndarray:
     # Transform the points from the vehicle frame to the world frame.
     world_frame_pc = np.concatenate([car_frame_pc, np.ones([num_points, 1])], axis=-1)
     car_to_global_transform = np.reshape(np.array(frame.pose.transform), [4, 4])
-    world_frame_pc = np.transpose(
-        np.matmul(car_to_global_transform, np.transpose(world_frame_pc))
-    )[:, 0:3]
+    world_frame_pc = np.transpose(np.matmul(car_to_global_transform, np.transpose(world_frame_pc)))[
+        :, 0:3
+    ]
 
     # Transform the points from the world frame to the map frame.
     offset = frame.map_pose_offset
@@ -250,9 +241,9 @@ def get_car_pc_global_pc_flow_transform(
     # Transform the points from the vehicle frame to the world frame.
     world_frame_pc = np.concatenate([car_frame_pc, np.ones([num_points, 1])], axis=-1)
     car_to_global_transform = np.reshape(np.array(frame.pose.transform), [4, 4])
-    world_frame_pc = np.transpose(
-        np.matmul(car_to_global_transform, np.transpose(world_frame_pc))
-    )[:, 0:3]
+    world_frame_pc = np.transpose(np.matmul(car_to_global_transform, np.transpose(world_frame_pc)))[
+        :, 0:3
+    ]
 
     # Transform the points from the world frame to the map frame.
     offset = frame.map_pose_offset
@@ -268,9 +259,7 @@ def get_car_pc_global_pc_flow_transform(
 
 
 def flow_path_to_height_map_path(flow_path: Path):
-    heightmap_dir = (
-        args.heightmap_directory / flow_path.parent.name / (flow_path.stem + "_map")
-    )
+    heightmap_dir = args.heightmap_directory / flow_path.parent.name / (flow_path.stem + "_map")
     assert heightmap_dir.is_dir(), f"{heightmap_dir} is not a directory"
     return heightmap_dir
 
@@ -313,8 +302,7 @@ def get_ground_heights(
     global_points_xy = global_point_cloud.points[:, :2]
 
     raster_points_xy = (
-        global_to_raster_se2.transform_point_cloud(global_points_xy)
-        * global_to_raster_scale
+        global_to_raster_se2.transform_point_cloud(global_points_xy) * global_to_raster_scale
     )
 
     raster_points_xy = np.round(raster_points_xy).astype(np.int64)
@@ -359,8 +347,7 @@ def is_ground_points(
         global_point_cloud,
     )
     is_ground_boolean_arr = (
-        np.absolute(global_point_cloud[:, 2] - ground_height_values)
-        <= GROUND_HEIGHT_THRESHOLD
+        np.absolute(global_point_cloud[:, 2] - ground_height_values) <= GROUND_HEIGHT_THRESHOLD
     ) | (np.array(global_point_cloud[:, 2] - ground_height_values) < 0)
     return is_ground_boolean_arr
 
@@ -380,9 +367,7 @@ def visualize_point_cloud_flow(point_cloud: PointCloud, flow: np.ndarray):
 
     # Add line set
     line_set = o3d.geometry.LineSet()
-    line_set_points = np.concatenate(
-        [point_cloud.points, flowed_point_cloud.points], axis=0
-    )
+    line_set_points = np.concatenate([point_cloud.points, flowed_point_cloud.points], axis=0)
 
     lines = np.array([[i, i + len(point_cloud)] for i in range(len(point_cloud))])
     line_set.points = o3d.utility.Vector3dVector(line_set_points)
@@ -414,9 +399,7 @@ def process_record(file_path: Path):
     print("Processing", file_path)
     height_map_path = flow_path_to_height_map_path(file_path)
     save_folder = flow_path_to_save_folder(file_path)
-    raster_heightmap, transform_se2, transform_scale = load_ground_height_raster(
-        height_map_path
-    )
+    raster_heightmap, transform_se2, transform_scale = load_ground_height_raster(height_map_path)
 
     print("LOADING FILEPATH", file_path)
 

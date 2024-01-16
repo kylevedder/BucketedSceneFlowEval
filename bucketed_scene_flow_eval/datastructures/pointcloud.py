@@ -1,6 +1,6 @@
 import numpy as np
 import open3d as o3d
-from typing import Optional
+
 from bucketed_scene_flow_eval.datastructures import SE3
 
 
@@ -85,9 +85,7 @@ class PointCloud:
         return self.points[idx]
 
     @staticmethod
-    def from_depth_image(
-        depth: np.ndarray, camera_projection: "CameraProjection"
-    ) -> "PointCloud":
+    def from_depth_image(depth: np.ndarray, camera_projection: "CameraProjection") -> "PointCloud":
         assert depth.ndim == 2, f"depth must be a 2D array, got {depth.ndim}"
         image_coordinates = make_image_pixel_coordinate_grid(depth.shape)
         image_coordinate_depths = depth.reshape(-1, 1)
@@ -102,14 +100,10 @@ class PointCloud:
         image_coordinate_depths: np.ndarray,
         camera_projection: "CameraProjection",
     ) -> "PointCloud":
-        return PointCloud(
-            camera_projection.to_camera(image_coordinates, image_coordinate_depths)
-        )
+        return PointCloud(camera_projection.to_camera(image_coordinates, image_coordinate_depths))
 
     def transform(self, se3: SE3) -> "PointCloud":
-        assert isinstance(
-            se3, SE3
-        ), f"se3 must be an SE3, got {type(se3)}, expected {SE3}"
+        assert isinstance(se3, SE3), f"se3 must be an SE3, got {type(se3)}, expected {SE3}"
         return PointCloud(se3.transform_points(self.points))
 
     def transform_masked(self, se3: SE3, mask: np.ndarray) -> "PointCloud":
@@ -179,9 +173,7 @@ class PointCloud:
 
         return PointCloud(self.points[mask])
 
-    def within_region_mask(
-        self, x_min, x_max, y_min, y_max, z_min, z_max
-    ) -> np.ndarray:
+    def within_region_mask(self, x_min, x_max, y_min, y_max, z_min, z_max) -> np.ndarray:
         mask = np.logical_and(self.points[:, 0] < x_max, self.points[:, 0] > x_min)
         mask = np.logical_and(mask, self.points[:, 1] < y_max)
         mask = np.logical_and(mask, self.points[:, 1] > y_min)

@@ -1,8 +1,10 @@
 from enum import Enum
-import numpy as np
 from typing import Tuple
-from .rgb_image import RGBImage
+
+import numpy as np
+
 from .pointcloud import PointCloud
+from .rgb_image import RGBImage
 
 
 class CameraModel(Enum):
@@ -19,9 +21,7 @@ class CameraProjection:
     - Camera Space (Right Hand Rule, positive X forward, positive Y left, positive Z up)
     """
 
-    def __init__(
-        self, fx: float, fy: float, cx: float, cy: float, camera_model: CameraModel
-    ):
+    def __init__(self, fx: float, fy: float, cx: float, cy: float, camera_model: CameraModel):
         self.fx = fx
         self.fy = fy
         self.cx = cx
@@ -152,17 +152,11 @@ class CameraProjection:
         X is forward, Y is left, Z is up
         """
         if self.camera_model == CameraModel.PINHOLE:
-            return self._points_and_depth_to_3d_pinhole(
-                pixel_coordinates, pixel_coordinate_depths
-            )
+            return self._points_and_depth_to_3d_pinhole(pixel_coordinates, pixel_coordinate_depths)
         elif self.camera_model == CameraModel.FIELD_OF_VIEW:
-            return self._points_and_depth_to_3d_fov(
-                pixel_coordinates, pixel_coordinate_depths
-            )
+            return self._points_and_depth_to_3d_fov(pixel_coordinates, pixel_coordinate_depths)
         else:
-            raise NotImplementedError(
-                f"Camera model {self.camera_model} not implemented"
-            )
+            raise NotImplementedError(f"Camera model {self.camera_model} not implemented")
 
     def _points_and_depth_to_3d_pinhole(
         self, pixel_coordinates: np.ndarray, pixel_coordinate_depths: np.ndarray
@@ -277,6 +271,4 @@ class CameraProjection:
         # Convert from pixels to raster space with the + 0.5, then to NDC space
         ndc_coordinates = (image_coordinates + 0.5) / np.array(image_shape)[None, :]
 
-        return self._points_and_depth_to_3d_ndc_fov(
-            ndc_coordinates, depths, ndc_fx, ndc_fy
-        )
+        return self._points_and_depth_to_3d_ndc_fov(ndc_coordinates, depths, ndc_fx, ndc_fy)

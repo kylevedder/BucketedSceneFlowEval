@@ -1,7 +1,8 @@
-from pathlib import Path
 import json
 import pickle
 import subprocess
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -127,10 +128,7 @@ def save_json(filename: Path, contents, indent=None, verbose: bool = True):
 def load_csv(filename: Path, dtype=str, verbose: bool = True):
     print(f"Loading {filename} of size {_compute_size_metric(filename)}")
     with open(filename) as f:
-        return [
-            [dtype(e.strip()) for e in line.strip().split(",")]
-            for line in f.readlines()
-        ]
+        return [[dtype(e.strip()) for e in line.strip().split(",")] for line in f.readlines()]
 
 
 def save_csv(filename: Path, contents: list, verbose: bool = True):
@@ -232,8 +230,6 @@ def run_cmd(cmd: str, return_stdout: bool = False):
             print(lines[0].strip())
             print("...")
             print(lines[-1].strip())
-    assert (
-        res.returncode == 0
-    ), f"Command {cmd} failed with return code {res.returncode}"
+    assert res.returncode == 0, f"Command {cmd} failed with return code {res.returncode}"
     if return_stdout:
         return res.stdout

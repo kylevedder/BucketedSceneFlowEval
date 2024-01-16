@@ -1,19 +1,20 @@
-from bucketed_scene_flow_eval.datastructures import *
-from pathlib import Path
-from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
-
-from typing import Tuple, Dict, List
-import time
-import numpy as np
 import enum
+import time
+from pathlib import Path
+from typing import Dict, List, Tuple
 
-from .waymo_supervised_flow import WaymoSupervisedSceneFlowSequenceLoader, CATEGORY_MAP
+import numpy as np
+
+from bucketed_scene_flow_eval.datastructures import *
 from bucketed_scene_flow_eval.eval import (
+    BucketedEPEEvaluator,
     Evaluator,
     PerClassRawEPEEvaluator,
     PerClassThreewayEPEEvaluator,
-    BucketedEPEEvaluator,
 )
+from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
+
+from .waymo_supervised_flow import CATEGORY_MAP, WaymoSupervisedSceneFlowSequenceLoader
 
 
 class EvalType(enum.Enum):
@@ -49,9 +50,7 @@ class WaymoOpenSceneFlow:
         self.relative_pc_flowed_key = "relative_flowed_pc"
         self.pc_classes_key = "pc_classes"
 
-        self.dataset_to_sequence_subsequence_idx = (
-            self._load_dataset_to_sequence_subsequence_idx()
-        )
+        self.dataset_to_sequence_subsequence_idx = self._load_dataset_to_sequence_subsequence_idx()
 
         self.eval_type = EvalType[eval_type.strip().upper()]
         self.eval_args = eval_args
@@ -71,12 +70,8 @@ class WaymoOpenSceneFlow:
         # Build map from dataset index to sequence and subsequence index.
         dataset_to_sequence_subsequence_idx = []
         for sequence_idx, sequence in enumerate(self.sequence_loader):
-            for subsequence_start_idx in range(
-                len(sequence) - self.subsequence_length + 1
-            ):
-                dataset_to_sequence_subsequence_idx.append(
-                    (sequence_idx, subsequence_start_idx)
-                )
+            for subsequence_start_idx in range(len(sequence) - self.subsequence_length + 1):
+                dataset_to_sequence_subsequence_idx.append((sequence_idx, subsequence_start_idx))
 
         print(
             f"Loaded {len(dataset_to_sequence_subsequence_idx)} subsequence pairs. Saving it to {cache_file}"
@@ -87,9 +82,7 @@ class WaymoOpenSceneFlow:
     def __len__(self):
         return len(self.dataset_to_sequence_subsequence_idx)
 
-    def _make_scene_sequence(
-        self, subsequence_frames: List[Dict], seq_id: str
-    ) -> RawSceneSequence:
+    def _make_scene_sequence(self, subsequence_frames: List[Dict], seq_id: str) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
         percept_lookup: Dict[Timestamp, RawSceneItem] = {}
@@ -98,12 +91,8 @@ class WaymoOpenSceneFlow:
             lidar_to_ego = SE3.identity()
             ego_to_world: SE3 = entry["relative_pose"]
             mask = ~entry["pc_is_ground"]
-            point_cloud_frame = PointCloudFrame(
-                pc, PoseInfo(lidar_to_ego, ego_to_world), mask
-            )
-            percept_lookup[dataset_idx] = RawSceneItem(
-                pc_frame=point_cloud_frame, rgb_frame=None
-            )
+            point_cloud_frame = PointCloudFrame(pc, PoseInfo(lidar_to_ego, ego_to_world), mask)
+            percept_lookup[dataset_idx] = RawSceneItem(pc_frame=point_cloud_frame, rgb_frame=None)
 
         return RawSceneSequence(percept_lookup, seq_id)
 
@@ -174,9 +163,7 @@ class WaymoOpenSceneFlow:
         if verbose:
             print(f"Waymo Open Scene Flow dataset __getitem__({dataset_idx}) start")
 
-        sequence_idx, subsequence_start_idx = self.dataset_to_sequence_subsequence_idx[
-            dataset_idx
-        ]
+        sequence_idx, subsequence_start_idx = self.dataset_to_sequence_subsequence_idx[dataset_idx]
 
         # Load sequence
         sequence = self.sequence_loader[sequence_idx]

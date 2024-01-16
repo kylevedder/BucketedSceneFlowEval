@@ -9,12 +9,8 @@ class RGBImage:
     """
 
     def __init__(self, image: np.array):
-        assert (
-            len(image.shape) == 3
-        ), f"image must have shape (H, W, 3), got {image.shape}"
-        assert (
-            image.shape[2] == 3
-        ), f"image must have shape (H, W, 3), got {image.shape}"
+        assert len(image.shape) == 3, f"image must have shape (H, W, 3), got {image.shape}"
+        assert image.shape[2] == 3, f"image must have shape (H, W, 3), got {image.shape}"
 
         assert (
             image.dtype == np.float32
