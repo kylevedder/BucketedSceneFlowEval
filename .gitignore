@@ -19,3 +19,4 @@ dist/
 **.png
 **.zip
 launch.sh
+eval_results/
