@@ -165,8 +165,14 @@ def _validate_dataloader_elements(
 def _validate_dataloader(dataloader, pc_size: Optional[int], expected_len: int = 1):
     assert len(dataloader) == expected_len, f"Expected {expected_len} scene, got {len(dataloader)}"
 
+    # Failure of the following line indicates that the __getitem__ method is broken.
+    _, _ = dataloader[0]
+
     num_iteration_entries = 0
-    for query, gt in tqdm.tqdm(dataloader):
+    for entry in dataloader:
+        assert isinstance(entry, tuple), f"Expected tuple, got {type(entry)}"
+        assert len(entry) == 2, f"Expected tuple of length 2, got {len(entry)}"
+        query, gt = entry
         _validate_dataloader_elements(query, gt, pc_size)
         num_iteration_entries += 1
 

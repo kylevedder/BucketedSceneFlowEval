@@ -31,7 +31,7 @@ class SE3:
         return SE3(rotation_matrix=np.eye(3), translation=np.zeros(3))
 
     @staticmethod
-    def from_rot_w_x_y_z_translation_x_y_z(rw, rx, ry, rz, tx, ty, tz) -> None:
+    def from_rot_w_x_y_z_translation_x_y_z(rw, rx, ry, rz, tx, ty, tz) -> "SE3":
         rotation_matrix = Quaternion(w=rw, x=rx, y=ry, z=rz).rotation_matrix
         translation = np.array([tx, ty, tz])
         return SE3(rotation_matrix, translation)

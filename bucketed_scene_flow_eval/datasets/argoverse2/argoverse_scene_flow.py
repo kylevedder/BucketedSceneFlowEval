@@ -1,12 +1,19 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional, Union
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datastructures import PointCloud
+from bucketed_scene_flow_eval.datastructures import (
+    SE3,
+    CameraProjection,
+    PointCloud,
+    RGBImage,
+    Timestamp,
+)
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
-from . import ArgoverseRawSequence
+from . import ArgoverseRawItem, ArgoverseRawSequence
 
 CATEGORY_MAP = {
     -1: "BACKGROUND",
@@ -45,6 +52,16 @@ CATEGORY_MAP = {
 CATEGORY_MAP_INV = {v: k for k, v in CATEGORY_MAP.items()}
 
 
+@dataclass(kw_only=True)
+class ArgoverseSceneFlowItem(ArgoverseRawItem):
+    ego_flowed_pc: PointCloud
+    ego_flowed_pc_with_ground: PointCloud
+    relative_flowed_pc: PointCloud
+    relative_flowed_pc_with_ground: PointCloud
+    pc_classes: np.ndarray
+    pc_classes_with_ground: np.ndarray
+
+
 class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
     def __init__(
         self,
@@ -76,7 +93,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
 
     def _load_flow(
         self, idx, ego_pc_with_ground: PointCloud
-    ) -> tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+    ) -> tuple[Optional[np.ndarray], Optional[np.ndarray], np.ndarray]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         # There is no flow information for the last pointcloud in the sequence.
 
@@ -101,7 +118,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
 
         return flow_0_1, is_valid_arr, classes_0
 
-    def load(self, idx: int, relative_to_idx: int) -> dict[str, Any]:
+    def load(self, idx: int, relative_to_idx: int) -> ArgoverseSceneFlowItem:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc_with_ground = self._load_pc(idx)
@@ -148,28 +165,28 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
 
         classes_0_no_ground = classes_0_with_ground[~is_ground_points]
 
-        return {
-            "ego_pc": ego_pc_no_ground,
-            "ego_pc_with_ground": ego_pc_with_ground,
-            "ego_flowed_pc": ego_flowed_pc_no_ground,
-            "ego_flowed_pc_with_ground": ego_flowed_pc_with_ground,
-            "relative_pc": relative_global_frame_pc_no_ground,
-            "relative_pc_with_ground": relative_global_frame_pc_with_ground,
-            "is_ground_points": is_ground_points,
-            "in_range_mask": in_range_mask_no_ground,
-            "in_range_mask_with_ground": in_range_mask_with_ground,
-            "rgb": img,
-            "rgb_camera_projection": self.rgb_camera_projection,
-            "rgb_camera_ego_pose": self.rgb_camera_ego_pose,
-            "relative_pose": relative_pose,
-            "relative_flowed_pc": relative_global_frame_no_ground_flowed_pc,
-            "relative_flowed_pc_with_ground": relative_global_frame_with_ground_flowed_pc,
-            "pc_classes": classes_0_no_ground,
-            "pc_classes_with_ground": classes_0_with_ground,
-            "log_id": self.log_id,
-            "log_idx": idx,
-            "log_timestamp": timestamp,
-        }
+        return ArgoverseSceneFlowItem(
+            ego_pc=ego_pc_no_ground,
+            ego_pc_with_ground=ego_pc_with_ground,
+            ego_flowed_pc=ego_flowed_pc_no_ground,
+            ego_flowed_pc_with_ground=ego_flowed_pc_with_ground,
+            relative_pc=relative_global_frame_pc_no_ground,
+            relative_pc_with_ground=relative_global_frame_pc_with_ground,
+            is_ground_points=is_ground_points,
+            in_range_mask=in_range_mask_no_ground,
+            in_range_mask_with_ground=in_range_mask_with_ground,
+            rgb=img,
+            rgb_camera_projection=self.rgb_camera_projection,
+            rgb_camera_ego_pose=self.rgb_camera_ego_pose,
+            relative_pose=relative_pose,
+            relative_flowed_pc=relative_global_frame_no_ground_flowed_pc,
+            relative_flowed_pc_with_ground=relative_global_frame_with_ground_flowed_pc,
+            pc_classes=classes_0_no_ground,
+            pc_classes_with_ground=classes_0_with_ground,
+            log_id=self.log_id,
+            log_idx=idx,
+            log_timestamp=timestamp,
+        )
 
     @staticmethod
     def category_ids() -> list[int]:
@@ -280,9 +297,9 @@ class ArgoverseSceneFlowSequenceLoader:
             with_classes=self.use_gt_flow,
         )
 
-    def load_sequence(self, sequence_id: str) -> Optional[ArgoverseSceneFlowSequence]:
+    def load_sequence(self, sequence_id: str) -> ArgoverseSceneFlowSequence:
         # Basic caching mechanism for repeated loads of the same sequence
-        if self.last_loaded_sequence_id != sequence_id:
+        if self.last_loaded_sequence_id is None or self.last_loaded_sequence_id != sequence_id:
             self.last_loaded_sequence = self._load_sequence_uncached(sequence_id)
             self.last_loaded_sequence_id = sequence_id
         return self.last_loaded_sequence

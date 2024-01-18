@@ -1,4 +1,5 @@
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
@@ -14,10 +15,29 @@ from bucketed_scene_flow_eval.datastructures import (
     CameraProjection,
     PointCloud,
     RGBImage,
+    Timestamp,
 )
 from bucketed_scene_flow_eval.utils import load_json
 
 GROUND_HEIGHT_THRESHOLD = 0.4  # 40 centimeters
+
+
+@dataclass(kw_only=True)
+class ArgoverseRawItem:
+    ego_pc: PointCloud
+    ego_pc_with_ground: PointCloud
+    relative_pc: PointCloud
+    relative_pc_with_ground: PointCloud
+    is_ground_points: np.ndarray
+    in_range_mask: np.ndarray
+    in_range_mask_with_ground: np.ndarray
+    rgb: Optional[RGBImage]
+    rgb_camera_projection: Optional[CameraProjection]
+    rgb_camera_ego_pose: Optional[SE3]
+    relative_pose: SE3
+    log_id: str
+    log_idx: int
+    log_timestamp: Timestamp
 
 
 class ArgoverseRawSequence:
@@ -304,7 +324,7 @@ class ArgoverseRawSequence:
         )
         return se3
 
-    def load(self, idx: int, relative_to_idx: int) -> dict[str, Any]:
+    def load(self, idx: int, relative_to_idx: int) -> ArgoverseRawItem:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc = self._load_pc(idx)
@@ -325,25 +345,40 @@ class ArgoverseRawSequence:
 
         in_range_mask_with_ground = self.is_in_range(relative_global_frame_pc_with_ground)
         in_range_mask_no_ground = self.is_in_range(relative_global_frame_pc_no_ground)
+        return ArgoverseRawItem(
+            ego_pc=ego_pc_no_ground,
+            ego_pc_with_ground=ego_pc,
+            relative_pc=relative_global_frame_pc_no_ground,
+            relative_pc_with_ground=relative_global_frame_pc_with_ground,
+            is_ground_points=is_ground_points,
+            in_range_mask=in_range_mask_no_ground,
+            in_range_mask_with_ground=in_range_mask_with_ground,
+            rgb=img,
+            rgb_camera_projection=self.rgb_camera_projection,
+            rgb_camera_ego_pose=self.rgb_camera_ego_pose,
+            relative_pose=relative_pose,
+            log_id=self.log_id,
+            log_idx=idx,
+            log_timestamp=timestamp,
+        )
+        # return {
+        #     "ego_pc": ego_pc_no_ground,
+        #     "ego_pc_with_ground": ego_pc,
+        #     "relative_pc": relative_global_frame_pc_no_ground,
+        #     "relative_pc_with_ground": relative_global_frame_pc_with_ground,
+        #     "relative_pose": relative_pose,
+        #     "is_ground_points": is_ground_points,
+        #     "in_range_mask": in_range_mask_with_ground,
+        #     "in_range_mask_no_ground": in_range_mask_no_ground,
+        #     "rgb": img,
+        #     "rgb_camera_projection": self.rgb_camera_projection,
+        #     "rgb_camera_ego_pose": self.rgb_camera_ego_pose,
+        #     "log_id": self.log_id,
+        #     "log_idx": idx,
+        #     "log_timestamp": timestamp,
+        # }
 
-        return {
-            "ego_pc": ego_pc_no_ground,
-            "ego_pc_with_ground": ego_pc,
-            "relative_pc": relative_global_frame_pc_no_ground,
-            "relative_pc_with_ground": relative_global_frame_pc_with_ground,
-            "relative_pose": relative_pose,
-            "is_ground_points": is_ground_points,
-            "in_range_mask": in_range_mask_with_ground,
-            "in_range_mask_no_ground": in_range_mask_no_ground,
-            "rgb": img,
-            "rgb_camera_projection": self.rgb_camera_projection,
-            "rgb_camera_ego_pose": self.rgb_camera_ego_pose,
-            "log_id": self.log_id,
-            "log_idx": idx,
-            "log_timestamp": timestamp,
-        }
-
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[dict[str, Any]]:
+    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[ArgoverseRawItem]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))
