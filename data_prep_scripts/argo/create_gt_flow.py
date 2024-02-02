@@ -1,6 +1,7 @@
 import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
+
 import multiprocessing
 import os
 from argparse import ArgumentParser
@@ -11,7 +12,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
-from av2.structures.cuboid import Cuboid, Cuboidlist
+from av2.structures.cuboid import Cuboid, CuboidList
 from av2.structures.sweep import Sweep
 from av2.utils.io import read_feather
 from tqdm import tqdm
@@ -37,7 +38,7 @@ def get_ids_and_cuboids_at_lidar_timestamps(
     # Load annotations from disk.
     # NOTE: This file contains annotations for the ENTIRE sequence.
     # The sweep annotations are selected below.
-    cuboid_list = Cuboidlist.from_feather(annotations_feather_path)
+    cuboid_list = CuboidList.from_feather(annotations_feather_path)
 
     raw_data = read_feather(annotations_feather_path)
     ids = raw_data.track_uuid.to_numpy()
@@ -187,6 +188,7 @@ def process_logs(data_dir: Path, output_dir: Path, nproc: int):
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn")
     parser = ArgumentParser(
         prog="create",
         description="Create a LiDAR sceneflow dataset from Argoveser 2.0 Sensor",

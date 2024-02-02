@@ -7,7 +7,6 @@ import argparse
 import multiprocessing
 from pathlib import Path
 
-import torch  # For some reason is required to prevent the multiprocessor from hanging.
 import tqdm
 
 from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow
@@ -66,6 +65,7 @@ def _work_wrapper(
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn")
     parser = argparse.ArgumentParser(
         description="Iterate over .feather files in a result zip file."
     )
