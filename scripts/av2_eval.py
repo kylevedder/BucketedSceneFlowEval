@@ -72,12 +72,14 @@ if __name__ == "__main__":
     parser.add_argument("data_dir", type=Path, help="Path to the data_dir directory of the dataset")
     parser.add_argument("gt_flow_dir", type=Path, help="Path gt flow directory")
     parser.add_argument("est_flow_dir", type=Path, help="Path to the estimated flow directory")
+    parser.add_argument("output_path", type=Path, help="Path to save the results")
     parser.add_argument(
         "--cpu_count",
         type=int,
         default=multiprocessing.cpu_count(),
         help="Number of CPUs to use",
     )
+
     args = parser.parse_args()
 
     assert args.data_dir.exists(), f"Data directory {args.data_dir} does not exist."
@@ -86,13 +88,17 @@ if __name__ == "__main__":
         args.est_flow_dir.exists()
     ), f"Estimated flow directory {args.est_flow_dir} does not exist."
 
+    # Make the output directory if it doesn't exist
+    args.output_path.mkdir(parents=True, exist_ok=True)
+
+
     gt_dataset = Argoverse2SceneFlow(
         root_dir=args.data_dir,
         flow_data_path=args.gt_flow_dir,
         with_ground=False,
         with_rgb=False,
         use_gt_flow=True,
-        eval_args=dict(output_path="eval_results/bucketed_epe/nsfp_distillation_1x/"),
+        eval_args=dict(output_path=args.output_path),
     )
 
     est_dataset = Argoverse2SceneFlow(
