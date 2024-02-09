@@ -76,6 +76,66 @@ def _work_wrapper(
     return _work(*args)
 
 
+def run_eval(
+    data_dir: Path,
+    gt_flow_dir: Path,
+    est_flow_dir: Path,
+    output_path: Path,
+    cpu_count: int,
+    every_kth: int,
+) -> None:
+    assert data_dir.exists(), f"Data directory {data_dir} does not exist."
+    assert gt_flow_dir.exists(), f"GT flow directory {gt_flow_dir} does not exist."
+    assert est_flow_dir.exists(), f"Estimated flow directory {est_flow_dir} does not exist."
+
+    # Make the output directory if it doesn't exist
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    gt_dataset = Argoverse2SceneFlow(
+        root_dir=data_dir,
+        flow_data_path=gt_flow_dir,
+        with_ground=False,
+        with_rgb=False,
+        use_gt_flow=True,
+        eval_args=dict(output_path=output_path),
+    )
+
+    est_dataset = Argoverse2SceneFlow(
+        root_dir=data_dir,
+        flow_data_path=est_flow_dir,
+        with_ground=False,
+        with_rgb=False,
+        use_gt_flow=False,
+    )
+
+    dataset_evaluator = gt_dataset.evaluator()
+
+    assert len(gt_dataset) == len(
+        est_dataset
+    ), f"GT and estimated datasets must be the same length, but are {len(gt_dataset)} and {len(est_dataset)} respectively."
+
+    # Shard the dataset into pieces for each CPU
+    shard_lists = _make_index_shards(gt_dataset, cpu_count, every_kth)
+    args_list = [
+        (shard_idx, shard_list, gt_dataset, est_dataset, dataset_evaluator)
+        for shard_idx, shard_list in enumerate(shard_lists)
+    ]
+
+    if cpu_count > 1:
+        print(f"Running evaluation on {len(gt_dataset)} scenes using {cpu_count} CPUs.")
+        # Run the evaluation in parallel
+        with multiprocessing.Pool(cpu_count) as pool:
+            sharded_evaluators = pool.map(_work_wrapper, args_list)
+    else:
+        print(f"Running evaluation on {len(gt_dataset)} scenes using 1 CPU.")
+        # Run the evaluation serially
+        sharded_evaluators = [_work_wrapper(args) for args in args_list]
+
+    # Combine the sharded evaluators
+    gathered_evaluator: Evaluator = sum(sharded_evaluators)
+    gathered_evaluator.compute_results()
+
+
 if __name__ == "__main__":
     multiprocessing.set_start_method("spawn")
     parser = argparse.ArgumentParser(
@@ -97,55 +157,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    assert args.data_dir.exists(), f"Data directory {args.data_dir} does not exist."
-    assert args.gt_flow_dir.exists(), f"GT flow directory {args.gt_flow_dir} does not exist."
-    assert (
-        args.est_flow_dir.exists()
-    ), f"Estimated flow directory {args.est_flow_dir} does not exist."
-
-    # Make the output directory if it doesn't exist
-    args.output_path.mkdir(parents=True, exist_ok=True)
-
-    gt_dataset = Argoverse2SceneFlow(
-        root_dir=args.data_dir,
-        flow_data_path=args.gt_flow_dir,
-        with_ground=False,
-        with_rgb=False,
-        use_gt_flow=True,
-        eval_args=dict(output_path=args.output_path),
+    run_eval(
+        data_dir=args.data_dir,
+        gt_flow_dir=args.gt_flow_dir,
+        est_flow_dir=args.est_flow_dir,
+        output_path=args.output_path,
+        cpu_count=args.cpu_count,
+        every_kth=args.every_kth,
     )
-
-    est_dataset = Argoverse2SceneFlow(
-        root_dir=args.data_dir,
-        flow_data_path=args.est_flow_dir,
-        with_ground=False,
-        with_rgb=False,
-        use_gt_flow=False,
-    )
-
-    dataset_evaluator = gt_dataset.evaluator()
-
-    assert len(gt_dataset) == len(
-        est_dataset
-    ), f"GT and estimated datasets must be the same length, but are {len(gt_dataset)} and {len(est_dataset)} respectively."
-
-    # Shard the dataset into pieces for each CPU
-    shard_lists = _make_index_shards(gt_dataset, args.cpu_count, args.every_kth)
-    args_list = [
-        (shard_idx, shard_list, gt_dataset, est_dataset, dataset_evaluator)
-        for shard_idx, shard_list in enumerate(shard_lists)
-    ]
-
-    if args.cpu_count > 1:
-        print(f"Running evaluation on {len(gt_dataset)} scenes using {args.cpu_count} CPUs.")
-        # Run the evaluation in parallel
-        with multiprocessing.Pool(args.cpu_count) as pool:
-            sharded_evaluators = pool.map(_work_wrapper, args_list)
-    else:
-        print(f"Running evaluation on {len(gt_dataset)} scenes using 1 CPU.")
-        # Run the evaluation serially
-        sharded_evaluators = [_work_wrapper(args) for args in args_list]
-
-    # Combine the sharded evaluators
-    gathered_evaluator: Evaluator = sum(sharded_evaluators)
-    gathered_evaluator.compute_results()

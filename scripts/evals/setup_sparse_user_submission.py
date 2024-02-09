@@ -69,15 +69,32 @@ def _validate_sequence_folder_and_create_dummy_entries(
     ), f"User sequence folder {user_sequence_folder} has {len(user_sequence_files)} files, expected {len(gt_sequence_files)} files."
 
 
-def setup_sparse_user_submission(
-    working_dir: Path, user_submission_zip: Path, ground_truth_root_folder: Path
+def run_setup_sparse_user_submission(
+    working_dir: Path,
+    user_submission_zip: Path,
+    ground_truth_root_folder: Path,
+    every_kth_entry: int = 5,
 ):
+    working_dir = Path(working_dir)
+    user_submission_zip = Path(user_submission_zip)
+    ground_truth_root_folder = Path(ground_truth_root_folder)
+
+    working_dir.mkdir(parents=True, exist_ok=True)
+    assert (
+        user_submission_zip.exists()
+    ), f"User submission zip {user_submission_zip} does not exist."
+    assert (
+        ground_truth_root_folder.exists()
+    ), f"Ground truth root folder {ground_truth_root_folder} does not exist."
+
     unziped_submission_dir = _unzip_submission(working_dir, user_submission_zip)
 
     # Iterate over the sequence folders and validate and create dummy entries
     for gt_sequence_folder in tqdm.tqdm(sorted(ground_truth_root_folder.glob("*"))):
         user_sequence_folder = unziped_submission_dir / gt_sequence_folder.name
-        _validate_sequence_folder_and_create_dummy_entries(user_sequence_folder, gt_sequence_folder)
+        _validate_sequence_folder_and_create_dummy_entries(
+            user_sequence_folder, gt_sequence_folder, divisor=every_kth_entry
+        )
 
 
 if __name__ == "__main__":
@@ -102,19 +119,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # Make working dir
-    args.working_dir.mkdir(parents=True, exist_ok=True)
-
-    # Validate the user submission zip exists
-    assert (
-        args.user_submission_zip.exists()
-    ), f"User submission zip {args.user_submission_zip} does not exist."
-
-    # Validate the ground truth root folder exists
-    assert (
-        args.ground_truth_root_folder.exists()
-    ), f"Ground truth root folder {args.ground_truth_root_folder} does not exist."
-
-    setup_sparse_user_submission(
+    run_setup_sparse_user_submission(
         args.working_dir, args.user_submission_zip, args.ground_truth_root_folder
     )
