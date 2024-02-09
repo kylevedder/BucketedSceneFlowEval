@@ -40,6 +40,7 @@ class Argoverse2SceneFlow:
         eval_args=dict(),
         use_cache=True,
     ) -> None:
+        self.use_cache = use_cache
         self.with_ground = with_ground
         self.use_gt_flow = use_gt_flow
         self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
@@ -58,7 +59,6 @@ class Argoverse2SceneFlow:
 
         self.eval_type = EvalType[eval_type.strip().upper()]
         self.eval_args = eval_args
-        self.use_cache = use_cache
 
     def _cache_path(self, cache_root: Path, root_dir: Union[Path, list[Path]]) -> Path:
         if isinstance(root_dir, list):
