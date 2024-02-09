@@ -123,7 +123,8 @@ def _process_gt(result: GroundTruthPointFlow):
 def _validate_dataloader_elements(
     query: QuerySceneSequence,
     gt: GroundTruthPointFlow,
-    expected_pc_size: Optional[int],
+    expected_pc_size: int,
+    expected_is_valid_entries: int,
 ):
     assert isinstance(query, QuerySceneSequence), f"Expected QuerySceneSequence, got {type(query)}"
     assert isinstance(
@@ -133,10 +134,13 @@ def _validate_dataloader_elements(
     t1, t2 = query.scene_sequence.get_percept_timesteps()
     pc_frame = query.scene_sequence[t1].pc_frame
 
-    if expected_pc_size is not None:
-        assert (
-            len(pc_frame.global_pc) == expected_pc_size
-        ), f"Expected {expected_pc_size} points, got {len(pc_frame.global_pc)}"
+    assert (
+        len(pc_frame.global_pc) == expected_pc_size
+    ), f"Expected {expected_pc_size} points, got {len(pc_frame.global_pc)}"
+
+    assert (
+        gt.is_valid_flow.sum() == expected_is_valid_entries
+    ), f"Expected {expected_is_valid_entries} valid entries, got {gt.is_valid_flow.sum()}"
 
     (
         (source_pc, target_pc),
@@ -162,7 +166,12 @@ def _validate_dataloader_elements(
     )
 
 
-def _validate_dataloader(dataloader, pc_size: Optional[int], expected_len: int = 1):
+def _validate_dataloader(
+    dataloader,
+    pc_size: int,
+    is_valid_entries: int,
+    expected_len: int = 1,
+):
     assert len(dataloader) == expected_len, f"Expected {expected_len} scene, got {len(dataloader)}"
 
     # Failure of the following line indicates that the __getitem__ method is broken.
@@ -173,7 +182,7 @@ def _validate_dataloader(dataloader, pc_size: Optional[int], expected_len: int =
         assert isinstance(entry, tuple), f"Expected tuple, got {type(entry)}"
         assert len(entry) == 2, f"Expected tuple of length 2, got {len(entry)}"
         query, gt = entry
-        _validate_dataloader_elements(query, gt, pc_size)
+        _validate_dataloader_elements(query, gt, pc_size, is_valid_entries)
         num_iteration_entries += 1
 
     # Check that we actually iterated over the dataset.
@@ -183,20 +192,20 @@ def _validate_dataloader(dataloader, pc_size: Optional[int], expected_len: int =
 
 
 def test_waymo_dataset(waymo_dataset_gt):
-    _validate_dataloader(waymo_dataset_gt, 124364)
+    _validate_dataloader(waymo_dataset_gt, 124364, 124364)
 
 
 def test_argo_dataset_gt_with_ground(argo_dataset_gt_with_ground):
-    _validate_dataloader(argo_dataset_gt_with_ground, 90430)
+    _validate_dataloader(argo_dataset_gt_with_ground, 90430, 74218)
 
 
 def test_argo_dataset_pseudo_with_ground(argo_dataset_pseudo_with_ground):
-    _validate_dataloader(argo_dataset_pseudo_with_ground, 90430)
+    _validate_dataloader(argo_dataset_pseudo_with_ground, 90430, 74218)
 
 
 def test_argo_dataset_gt_no_ground(argo_dataset_gt_no_ground):
-    _validate_dataloader(argo_dataset_gt_no_ground, 80927)
+    _validate_dataloader(argo_dataset_gt_no_ground, 80927, 65225)
 
 
 def test_argo_dataset_pseudo_no_ground(argo_dataset_pseudo_no_ground):
-    _validate_dataloader(argo_dataset_pseudo_no_ground, 80927)
+    _validate_dataloader(argo_dataset_pseudo_no_ground, 80927, 65225)
