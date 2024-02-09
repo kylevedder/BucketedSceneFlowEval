@@ -74,7 +74,7 @@ def run_setup_sparse_user_submission(
     user_submission_zip: Path,
     ground_truth_root_folder: Path,
     every_kth_entry: int = 5,
-):
+) -> Path:
     working_dir = Path(working_dir)
     user_submission_zip = Path(user_submission_zip)
     ground_truth_root_folder = Path(ground_truth_root_folder)
@@ -95,6 +95,8 @@ def run_setup_sparse_user_submission(
         _validate_sequence_folder_and_create_dummy_entries(
             user_sequence_folder, gt_sequence_folder, divisor=every_kth_entry
         )
+
+    return unziped_submission_dir
 
 
 if __name__ == "__main__":

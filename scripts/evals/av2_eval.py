@@ -82,7 +82,7 @@ def run_eval(
     est_flow_dir: Path,
     output_path: Path,
     cpu_count: int,
-    every_kth: int,
+    every_kth: int = 5,
 ) -> None:
     assert data_dir.exists(), f"Data directory {data_dir} does not exist."
     assert gt_flow_dir.exists(), f"GT flow directory {gt_flow_dir} does not exist."
