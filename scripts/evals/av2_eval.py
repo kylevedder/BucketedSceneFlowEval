@@ -106,6 +106,7 @@ def run_eval(
         with_ground=False,
         with_rgb=False,
         use_gt_flow=False,
+        use_cache=False,
     )
 
     dataset_evaluator = gt_dataset.evaluator()

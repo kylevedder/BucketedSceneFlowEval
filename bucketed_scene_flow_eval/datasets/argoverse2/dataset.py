@@ -38,6 +38,7 @@ class Argoverse2SceneFlow:
         flow_data_path: Optional[Union[Path, list[Path]]] = None,
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
+        use_cache=True,
     ) -> None:
         self.with_ground = with_ground
         self.use_gt_flow = use_gt_flow
@@ -57,6 +58,7 @@ class Argoverse2SceneFlow:
 
         self.eval_type = EvalType[eval_type.strip().upper()]
         self.eval_args = eval_args
+        self.use_cache = use_cache
 
     def _cache_path(self, cache_root: Path, root_dir: Union[Path, list[Path]]) -> Path:
         if isinstance(root_dir, list):
@@ -81,7 +83,7 @@ class Argoverse2SceneFlow:
             self.cache_path
             / f"dataset_to_sequence_subsequence_idx_cache_len_{self.subsequence_length}_use_gt_{self.use_gt_flow}_with_rgb_{self.with_rgb}_with_ground_{self.with_ground}_flow_data_path_name_{flow_data_path_name}.pkl"
         )
-        if cache_file.exists():
+        if cache_file.exists() and self.use_cache:
             cache_pkl = load_pickle(cache_file)
             # Sanity check that the cache is the right length by ensuring that it
             # has the same length as the sequence loader.
