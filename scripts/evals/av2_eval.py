@@ -13,7 +13,7 @@ from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow
 from bucketed_scene_flow_eval.eval import Evaluator
 
 
-def _make_shards(total_len: int, num_shards: int) -> list[tuple[int, int]]:
+def _make_range_shards(total_len: int, num_shards: int) -> list[tuple[int, int]]:
     """
     Return a list of tuples of (start, end) indices for each shard.
 
@@ -35,19 +35,31 @@ def _make_shards(total_len: int, num_shards: int) -> list[tuple[int, int]]:
     return shards
 
 
+def _make_index_shards(
+    dataset: Argoverse2SceneFlow, num_shards: int, every_kth_in_sequence: int
+) -> list[list[int]]:
+    dataset_valid_indices: list[int] = [
+        dataset_idx
+        for (
+            _,
+            subsequence_idx,
+        ), dataset_idx in dataset.sequence_subsequence_idx_to_dataset_idx.items()
+        if (subsequence_idx % every_kth_in_sequence) == 0
+    ]
+
+    tuple_shards = _make_range_shards(len(dataset_valid_indices), num_shards)
+    return [dataset_valid_indices[start:end] for start, end in tuple_shards]
+
+
 def _work(
     shard_idx: int,
-    shard: tuple[int, int],
+    shard_list: list[int],
     gt_dataset: Argoverse2SceneFlow,
     est_dataset: Argoverse2SceneFlow,
     evaluator: Evaluator,
 ) -> Evaluator:
-    start_idx, end_idx = shard
-
     # Set tqdm bar on the row of the terminal corresponding to the shard index
-    for idx in tqdm.tqdm(
-        range(start_idx, end_idx), position=shard_idx + 1, desc=f"Shard {shard_idx}"
-    ):
+    for idx in tqdm.tqdm(shard_list, position=shard_idx + 1, desc=f"Shard {shard_idx}"):
         (gt_query, gt_flow), (_, est_flow) = gt_dataset[idx], est_dataset[idx]
         evaluator.eval(
             predictions=est_flow,
@@ -59,7 +71,7 @@ def _work(
 
 
 def _work_wrapper(
-    args: tuple[int, tuple[int, int], Argoverse2SceneFlow, Argoverse2SceneFlow, Evaluator]
+    args: tuple[int, list[int], Argoverse2SceneFlow, Argoverse2SceneFlow, Evaluator]
 ) -> Evaluator:
     return _work(*args)
 
@@ -79,6 +91,9 @@ if __name__ == "__main__":
         default=multiprocessing.cpu_count(),
         help="Number of CPUs to use",
     )
+    parser.add_argument(
+        "--every_kth", type=int, default=5, help="Only evaluate every kth scene in a sequence"
+    )
 
     args = parser.parse_args()
 
@@ -90,7 +105,6 @@ if __name__ == "__main__":
 
     # Make the output directory if it doesn't exist
     args.output_path.mkdir(parents=True, exist_ok=True)
-
 
     gt_dataset = Argoverse2SceneFlow(
         root_dir=args.data_dir,
@@ -116,10 +130,10 @@ if __name__ == "__main__":
     ), f"GT and estimated datasets must be the same length, but are {len(gt_dataset)} and {len(est_dataset)} respectively."
 
     # Shard the dataset into pieces for each CPU
-    shards = _make_shards(len(gt_dataset), args.cpu_count)
+    shard_lists = _make_index_shards(gt_dataset, args.cpu_count, args.every_kth)
     args_list = [
-        (shard_idx, shard, gt_dataset, est_dataset, dataset_evaluator)
-        for shard_idx, shard in enumerate(shards)
+        (shard_idx, shard_list, gt_dataset, est_dataset, dataset_evaluator)
+        for shard_idx, shard_list in enumerate(shard_lists)
     ]
 
     if args.cpu_count > 1:

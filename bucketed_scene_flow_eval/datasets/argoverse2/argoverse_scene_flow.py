@@ -91,15 +91,15 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
             return None
         return CATEGORY_MAP[class_id]
 
+    def _make_default_classes(self, pc: PointCloud) -> np.ndarray:
+        return np.ones(len(pc.points), dtype=np.int32) * CATEGORY_MAP_INV["BACKGROUND"]
+
     def _load_flow(
-        self, idx, ego_pc_with_ground: PointCloud
+        self, idx, classes_0: np.ndarray
     ) -> tuple[Optional[np.ndarray], Optional[np.ndarray], np.ndarray]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         # There is no flow information for the last pointcloud in the sequence.
 
-        classes_0 = (
-            np.ones(len(ego_pc_with_ground.points), dtype=np.int32) * CATEGORY_MAP_INV["BACKGROUND"]
-        )
         if idx == len(self) - 1 or idx == -1:
             return None, None, classes_0
         flow_data_file = self.flow_data_files[idx]
@@ -118,7 +118,9 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
 
         return flow_0_1, is_valid_arr, classes_0
 
-    def load(self, idx: int, relative_to_idx: int) -> ArgoverseSceneFlowItem:
+    def load(
+        self, idx: int, relative_to_idx: int, with_flow: bool = True
+    ) -> ArgoverseSceneFlowItem:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc_with_ground = self._load_pc(idx)
@@ -129,11 +131,15 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         start_pose = self._load_pose(relative_to_idx)
         idx_pose = self._load_pose(idx)
         relative_pose = start_pose.inverse().compose(idx_pose)
-        (
-            relative_global_frame_flow_0_1_with_ground,
-            is_valid_flow_with_ground_arr,
-            classes_0_with_ground,
-        ) = self._load_flow(idx, ego_pc_with_ground)
+
+        relative_global_frame_flow_0_1_with_ground, is_valid_flow_with_ground_arr = None, None
+        classes_0_with_ground = self._make_default_classes(ego_pc_with_ground)
+        if with_flow:
+            (
+                relative_global_frame_flow_0_1_with_ground,
+                is_valid_flow_with_ground_arr,
+                classes_0_with_ground,
+            ) = self._load_flow(idx, classes_0_with_ground)
 
         # fmt: off
         # Global frame PC is needed to compute the ground point mask.

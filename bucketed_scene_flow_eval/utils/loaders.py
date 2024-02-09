@@ -150,7 +150,11 @@ def load_feather(filename: Path, verbose: bool = True):
     assert filename.exists(), f"{filename} does not exist"
     if verbose:
         print(f"Loading {filename} of size {_compute_size_metric(filename)}")
-    return pd.read_feather(filename)
+    try:
+        return pd.read_feather(filename)
+    except Exception as e:
+        print(f"Error loading {filename}: {e}")
+        raise e
 
 
 def save_feather(filename: Path, df, verbose: bool = True):

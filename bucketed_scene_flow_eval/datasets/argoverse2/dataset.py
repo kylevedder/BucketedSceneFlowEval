@@ -248,6 +248,7 @@ class Argoverse2SceneFlow:
             sequence.load(
                 subsequence_start_idx + i,
                 subsequence_start_idx + in_subsequence_tgt_index,
+                with_flow=(i != self.subsequence_length - 1),
             )
             for i in range(self.subsequence_length)
         ]
