@@ -4,22 +4,14 @@ from pathlib import Path
 import numpy as np
 
 from bucketed_scene_flow_eval.datastructures import *
-from bucketed_scene_flow_eval.eval import (
-    BucketedEPEEvaluator,
-    Evaluator,
-    PerClassRawEPEEvaluator,
-    PerClassThreewayEPEEvaluator,
-)
+from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator, Evaluator
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
 from .waymo_supervised_flow import CATEGORY_MAP, WaymoSupervisedSceneFlowSequenceLoader
 
 
 class EvalType(enum.Enum):
-    RAW_EPE = 0
-    SCALED_EPE = 1
-    CLASS_THREEWAY_EPE = 2
-    BUCKETED_EPE = 3
+    BUCKETED_EPE = 0
 
 
 class WaymoOpenSceneFlow:
@@ -201,11 +193,7 @@ class WaymoOpenSceneFlow:
 
     def evaluator(self) -> Evaluator:
         # Builds the evaluator object for this dataset.
-        if self.eval_type == EvalType.RAW_EPE:
-            return PerClassRawEPEEvaluator(**self.eval_args)
-        elif self.eval_type == EvalType.CLASS_THREEWAY_EPE:
-            return PerClassThreewayEPEEvaluator(**self.eval_args)
-        elif self.eval_type == EvalType.BUCKETED_EPE:
+        if self.eval_type == EvalType.BUCKETED_EPE:
             return BucketedEPEEvaluator(**self.eval_args)
         else:
             raise ValueError(f"Unknown eval type {self.eval_type}")
