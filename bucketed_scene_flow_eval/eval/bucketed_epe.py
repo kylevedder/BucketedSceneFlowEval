@@ -37,10 +37,10 @@ class OverallError:
 
     def __repr__(self) -> str:
         static_epe_val_str = (
-            f"{self.static_epe:0.2f}" if np.isfinite(self.static_epe) else f"{self.static_epe}"
+            f"{self.static_epe:0.6f}" if np.isfinite(self.static_epe) else f"{self.static_epe}"
         )
         dynamic_error_val_str = (
-            f"{self.dynamic_error:0.2f}"
+            f"{self.dynamic_error:0.6f}"
             if np.isfinite(self.dynamic_error)
             else f"{self.dynamic_error}"
         )
@@ -199,7 +199,7 @@ class BucketResultMatrix:
             # Format the data values with two decimal places or a hyphen if NaN
             row_data = " & ".join(
                 [
-                    f"{value:.2f}" if not np.isnan(value) else "-"
+                    f"{value:.6f}" if not np.isnan(value) else "-"
                     for value in error_matrix[self.class_names.index(class_name)]
                 ]
             )
