@@ -4,7 +4,7 @@ A standardized dataloader plus eval protocol for scene flow datasets.
 
 Currently supported datasets:
 
- - Argoverse 2
+ - Argoverse 2 (Human Labeled and NSFP Pseudolabeled)
  - Waymo Open
 
 ## Installation
