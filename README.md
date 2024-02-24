@@ -1,11 +1,17 @@
 # Bucketed Scene Flow Evaluation
 
-A standardized dataloader plus eval protocol for scene flow datasets.
+This repo provides:
+ - A speed and class aware evaluation protocol called _Bucketed Scene Flow Evaluation_
+ - A standardized interface for working with Scene Flow datasets.
 
 Currently supported datasets:
 
  - Argoverse 2 (Human Labeled and NSFP Pseudolabeled)
  - Waymo Open
+
+## The _Bucketed Scene Flow Evaluation_ protocol
+
+The _Bucketed Scene Flow Evaluation_ protocol is designed to quantitatively measure the failure of state-of-the-art scene flow methods to properly capture motion on smaller objects. In the Autononous Vehicle domain, SotA methods almost universially fail on important objects like Pedestrians and Bicyclists. As part of organizing the community around addressing these issues, the [Argoverse 2 2024 Scene Flow Challenge](https://www.argoverse.org/sceneflow) uses this protocol to evaluate submissions. More details about the protocol can be found [in the challenge blogpost](https://www.argoverse.org/sceneflow).
 
 ## Installation
 
