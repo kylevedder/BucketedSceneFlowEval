@@ -21,6 +21,21 @@ argoverse2/val_sceneflow_feather
 
 To generate these supervision labels, use the generation script in `data_prep_scripts/argo/create_gt_flow.py`. We have uploaded [a prebuilt DockerHub image](https://hub.docker.com/repository/docker/kylevedder/zeroflow_av2/general) for running the generation script; it can be run using `./launch.sh`.
 
+### Argoverse 2 NSFP Pseudolabels (New!)
+
+We provide the Argoverse 2 NSFP Pseudolabels for the _Sensor_ split in the S3 bucket 
+
+```
+s3://argoverse/assets/av2/scene_flow/sensor/
+```
+
+and for our subsets of the _Lidar_ split
+
+```
+s3://argoverse/assets/av2/scene_flow/lidar/subsample/
+```
+
+
 ### Argoverse 2 Tiny Demo Dataset
 
 To get started, we provide a directly downloadable [tiny demo dataset](https://github.com/kylevedder/BucketedSceneFlowEval/files/13881746/argoverse2_tiny.zip) (5.5MB).
