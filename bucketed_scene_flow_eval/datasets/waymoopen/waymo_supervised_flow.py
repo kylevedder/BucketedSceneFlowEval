@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 import numpy as np
 
+from bucketed_scene_flow_eval.datasets.shared_dataclasses import RawItem, SceneFlowItem
 from bucketed_scene_flow_eval.datastructures import SE3, PointCloud
 from bucketed_scene_flow_eval.utils import load_pickle
 
@@ -46,7 +47,7 @@ class WaymoSupervisedSceneFlowSequence:
         flow[flow_speed > 30] = 0
         return flow
 
-    def load(self, idx: int, relative_to_idx: int) -> dict[str, Any]:
+    def load(self, idx: int, relative_to_idx: int) -> SceneFlowItem:
         assert idx < len(
             self
         ), f"idx {idx} out of range, len {len(self)} for {self.sequence_folder}"
@@ -80,21 +81,44 @@ class WaymoSupervisedSceneFlowSequence:
         cleaned_idx_labels = idx_labels.astype(np.int32)
         cleaned_idx_labels[cleaned_idx_labels == -1] = 0
 
-        return {
-            "ego_pc": ego_pc,
-            "ego_pc_with_ground": ego_pc,
-            "relative_pc": relative_global_frame_pc,
-            "relative_pc_with_ground": relative_global_frame_pc,
-            "is_ground_points": np.zeros(len(relative_global_frame_pc), dtype=bool),
-            "relative_pose": relative_pose,
-            "relative_flowed_pc": relative_global_frame_flowed_pc,
-            "pc_classes": cleaned_idx_labels,
-            "pc_is_ground": (idx_labels == -1),
-            "log_id": self.sequence_folder.name,
-            "log_idx": idx,
-        }
+        # return {
+        #     "ego_pc": ego_pc,
+        #     "ego_pc_with_ground": ego_pc,
+        #     "relative_pc": relative_global_frame_pc,
+        #     "relative_pc_with_ground": relative_global_frame_pc,
+        #     "is_ground_points": np.zeros(len(relative_global_frame_pc), dtype=bool),
+        #     "relative_pose": relative_pose,
+        #     "relative_flowed_pc": relative_global_frame_flowed_pc,
+        #     "pc_classes": cleaned_idx_labels,
+        #     "pc_is_ground": (idx_labels == -1),
+        #     "log_id": self.sequence_folder.name,
+        #     "log_idx": idx,
+        # }
 
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[dict[str, Any]]:
+        return SceneFlowItem(
+            ego_pc=ego_pc,
+            ego_pc_with_ground=ego_pc,
+            relative_pc=relative_global_frame_pc,
+            relative_pc_with_ground=relative_global_frame_pc,
+            is_ground_points=np.zeros(len(relative_global_frame_pc), dtype=bool),
+            relative_pose=relative_pose,
+            relative_flowed_pc=relative_global_frame_flowed_pc,
+            relative_flowed_pc_with_ground=relative_global_frame_flowed_pc,
+            pc_classes=cleaned_idx_labels,
+            pc_classes_with_ground=cleaned_idx_labels,
+            log_id=self.sequence_folder.name,
+            log_idx=idx,
+            log_timestamp=idx,
+            rgb=None,
+            rgb_camera_projection=None,
+            rgb_camera_ego_pose=None,
+            ego_flowed_pc=car_frame_flowed_pc,
+            ego_flowed_pc_with_ground=car_frame_flowed_pc,
+            in_range_mask=np.ones(len(ego_pc), dtype=bool),
+            in_range_mask_with_ground=np.ones(len(ego_pc), dtype=bool),
+        )
+
+    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[SceneFlowItem]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))

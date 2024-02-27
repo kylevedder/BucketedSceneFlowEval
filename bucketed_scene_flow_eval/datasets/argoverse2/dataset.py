@@ -4,15 +4,12 @@ from typing import Optional, Union
 
 import numpy as np
 
+from bucketed_scene_flow_eval.datasets.shared_dataclasses import RawItem, SceneFlowItem
 from bucketed_scene_flow_eval.datastructures import *
 from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator, Evaluator
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
-from .argoverse_scene_flow import (
-    CATEGORY_MAP,
-    ArgoverseSceneFlowItem,
-    ArgoverseSceneFlowSequenceLoader,
-)
+from .argoverse_scene_flow import CATEGORY_MAP, ArgoverseSceneFlowSequenceLoader
 from .av2_metacategories import METACATAGORIES
 
 
@@ -113,7 +110,7 @@ class Argoverse2SceneFlow:
         return self.sequence_subsequence_idx_to_dataset_idx[(sequence_loader_idx, sequence_idx)]
 
     def _make_scene_sequence(
-        self, subsequence_frames: list[ArgoverseSceneFlowItem], log_id: str
+        self, subsequence_frames: list[SceneFlowItem], log_id: str
     ) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
@@ -154,7 +151,7 @@ class Argoverse2SceneFlow:
     def _make_query_scene_sequence(
         self,
         scene_sequence: RawSceneSequence,
-        subsequence_frames: list[ArgoverseSceneFlowItem],
+        subsequence_frames: list[SceneFlowItem],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> QuerySceneSequence:
@@ -178,7 +175,7 @@ class Argoverse2SceneFlow:
     def _make_results_scene_sequence(
         self,
         query: QuerySceneSequence,
-        subsequence_frames: list[ArgoverseSceneFlowItem],
+        subsequence_frames: list[SceneFlowItem],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> GroundTruthPointFlow:

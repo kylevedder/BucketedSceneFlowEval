@@ -1,19 +1,15 @@
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datastructures import (
-    SE3,
-    CameraProjection,
-    PointCloud,
-    RGBImage,
-    Timestamp,
+from bucketed_scene_flow_eval.datasets.shared_dataclasses.scene_representations import (
+    SceneFlowItem,
 )
+from bucketed_scene_flow_eval.datastructures import PointCloud
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
-from . import ArgoverseRawItem, ArgoverseRawSequence
+from . import ArgoverseRawSequence
 
 CATEGORY_MAP = {
     -1: "BACKGROUND",
@@ -50,16 +46,6 @@ CATEGORY_MAP = {
 }
 
 CATEGORY_MAP_INV = {v: k for k, v in CATEGORY_MAP.items()}
-
-
-@dataclass(kw_only=True)
-class ArgoverseSceneFlowItem(ArgoverseRawItem):
-    ego_flowed_pc: PointCloud
-    ego_flowed_pc_with_ground: PointCloud
-    relative_flowed_pc: PointCloud
-    relative_flowed_pc_with_ground: PointCloud
-    pc_classes: np.ndarray
-    pc_classes_with_ground: np.ndarray
 
 
 class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
@@ -118,9 +104,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
 
         return flow_0_1, is_valid_arr, classes_0
 
-    def load(
-        self, idx: int, relative_to_idx: int, with_flow: bool = True
-    ) -> ArgoverseSceneFlowItem:
+    def load(self, idx: int, relative_to_idx: int, with_flow: bool = True) -> SceneFlowItem:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc_with_ground = self._load_pc(idx)
@@ -171,7 +155,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
 
         classes_0_no_ground = classes_0_with_ground[~is_ground_points]
 
-        return ArgoverseSceneFlowItem(
+        return SceneFlowItem(
             ego_pc=ego_pc_no_ground,
             ego_pc_with_ground=ego_pc_with_ground,
             ego_flowed_pc=ego_flowed_pc_no_ground,
