@@ -26,6 +26,7 @@ RUN pip install black isort
 RUN pip install av2
 RUN apt install unzip -y
 RUN pip install pytest
+RUN pip install nuscenes-devkit
 
 ENV PYTHONPATH=/bucketed_scene_flow_eval:${PYTHONPATH}
 COPY bashrc /root/.bashrc

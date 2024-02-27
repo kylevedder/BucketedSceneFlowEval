@@ -23,6 +23,7 @@
         "source=/bigdata,target=/bigdata,type=bind,consistency=default",
         "source=/efs,target=/efs,type=bind,consistency=default",
         "source=/efs,target=/Datasets,type=bind,consistency=default",
+        "source=/efs2,target=/efs2,type=bind,consistency=default",
         "source=${localWorkspaceFolder}/docker_history.txt,target=/root/.bash_history,type=bind,consistency=default"
     ],
     "runArgs": [
