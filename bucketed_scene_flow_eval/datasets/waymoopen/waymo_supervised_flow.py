@@ -4,6 +4,9 @@ from typing import Any, Optional
 import numpy as np
 
 from bucketed_scene_flow_eval.datasets.shared_datastructures import (
+    AbstractSequence,
+    AbstractSequenceLoader,
+    CachedSequenceLoader,
     RawItem,
     SceneFlowItem,
 )
@@ -19,7 +22,7 @@ CATEGORY_MAP = {
 }
 
 
-class WaymoSupervisedSceneFlowSequence:
+class WaymoSupervisedSceneFlowSequence(AbstractSequence):
     def __init__(self, sequence_folder: Path, verbose: bool = False):
         self.sequence_folder = Path(sequence_folder)
         self.sequence_files = sorted(self.sequence_folder.glob("*.pkl"))
@@ -144,13 +147,14 @@ class WaymoSupervisedSceneFlowSequence:
         return WaymoSupervisedSceneFlowSequenceLoader.category_name_to_id(category_name)
 
 
-class WaymoSupervisedSceneFlowSequenceLoader:
+class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
     def __init__(
         self,
         sequence_dir: Path,
         log_subset: Optional[list[str]] = None,
         verbose: bool = False,
     ):
+        super().__init__()
         self.dataset_dir = Path(sequence_dir)
         self.verbose = verbose
         assert self.dataset_dir.is_dir(), f"dataset_dir {sequence_dir} does not exist"
@@ -177,7 +181,7 @@ class WaymoSupervisedSceneFlowSequenceLoader:
     def get_sequence_ids(self):
         return self.log_lookup_keys
 
-    def load_sequence(self, log_id: str) -> WaymoSupervisedSceneFlowSequence:
+    def _load_sequence_uncached(self, log_id: str) -> WaymoSupervisedSceneFlowSequence:
         sequence_folder = self.log_lookup[log_id]
         return WaymoSupervisedSceneFlowSequence(sequence_folder, verbose=self.verbose)
 

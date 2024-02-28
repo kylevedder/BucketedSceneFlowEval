@@ -21,3 +21,6 @@ class RGBImage:
         ), f"image must have values in range [0, 1], got min {np.min(image)} and max {np.max(image)}"
 
         self.image = image.astype(np.float32)
+
+    def __repr__(self) -> str:
+        return f"RGBImage with shape {self.image.shape} and dtype {self.image.dtype}"

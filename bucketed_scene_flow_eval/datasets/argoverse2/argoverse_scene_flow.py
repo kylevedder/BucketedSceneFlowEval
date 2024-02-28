@@ -6,6 +6,7 @@ import numpy as np
 from bucketed_scene_flow_eval.datasets.shared_datastructures import (
     AbstractSequence,
     AbstractSequenceLoader,
+    CachedSequenceLoader,
     RawItem,
     SceneFlowItem,
 )
@@ -226,7 +227,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         return ArgoverseSceneFlowSequenceLoader.category_name_to_id(category_name)
 
 
-class ArgoverseSceneFlowSequenceLoader(AbstractSequenceLoader):
+class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
     def __init__(
         self,
         raw_data_path: Union[Path, list[Path]],
@@ -245,11 +246,10 @@ class ArgoverseSceneFlowSequenceLoader(AbstractSequenceLoader):
         use_gt_flow: bool,
         with_rgb: bool,
     ):
+        super().__init__()
         self.use_gt_flow = use_gt_flow
         self.raw_data_path = self._sanitize_raw_data_path(raw_data_path)
         self.with_rgb = with_rgb
-        self.last_loaded_sequence: Optional[ArgoverseSceneFlowSequence] = None
-        self.last_loaded_sequence_id: Optional[str] = None
 
         # Raw data folders
         self.sequence_id_to_raw_data = self._load_sequence_data(self.raw_data_path)
@@ -344,13 +344,6 @@ class ArgoverseSceneFlowSequenceLoader(AbstractSequenceLoader):
             with_rgb=self.with_rgb,
             with_classes=self.use_gt_flow,
         )
-
-    def load_sequence(self, sequence_id: str) -> ArgoverseSceneFlowSequence:
-        # Basic caching mechanism for repeated loads of the same sequence
-        if self.last_loaded_sequence_id is None or self.last_loaded_sequence_id != sequence_id:
-            self.last_loaded_sequence = self._load_sequence_uncached(sequence_id)
-            self.last_loaded_sequence_id = sequence_id
-        return self.last_loaded_sequence
 
     @staticmethod
     def category_ids() -> list[int]:

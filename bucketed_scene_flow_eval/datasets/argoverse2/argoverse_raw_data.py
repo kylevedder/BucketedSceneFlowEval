@@ -11,6 +11,7 @@ from scipy.spatial.transform import Rotation
 from bucketed_scene_flow_eval.datasets.shared_datastructures import (
     AbstractSequence,
     AbstractSequenceLoader,
+    CachedSequenceLoader,
     RawItem,
 )
 from bucketed_scene_flow_eval.datastructures import (
@@ -355,7 +356,7 @@ class ArgoverseRawSequence(AbstractSequence):
         ]
 
 
-class ArgoverseRawSequenceLoader(AbstractSequenceLoader):
+class ArgoverseRawSequenceLoader(CachedSequenceLoader):
     def __init__(
         self,
         sequence_dir: Path,
@@ -365,6 +366,7 @@ class ArgoverseRawSequenceLoader(AbstractSequenceLoader):
         num_sequences: Optional[int] = None,
         per_sequence_sample_every: Optional[int] = None,
     ):
+        super().__init__()
         self.dataset_dir = Path(sequence_dir)
         self.verbose = verbose
         self.with_rgb = with_rgb
@@ -387,9 +389,6 @@ class ArgoverseRawSequenceLoader(AbstractSequenceLoader):
         if self.verbose:
             print(f"Loaded {len(self.log_lookup)} logs")
 
-        self.last_loaded_sequence: Optional[ArgoverseRawSequence] = None
-        self.last_loaded_sequence_id: Optional[str] = None
-
     def get_sequence_ids(self):
         return sorted(self.log_lookup.keys())
 
@@ -404,11 +403,3 @@ class ArgoverseRawSequenceLoader(AbstractSequenceLoader):
             sample_every=self.per_sequence_sample_every,
             with_rgb=self.with_rgb,
         )
-
-    def load_sequence(self, log_id: str) -> ArgoverseRawSequence:
-        # Basic caching mechanism for repeated loads of the same sequence
-        if self.last_loaded_sequence_id is None or self.last_loaded_sequence_id != log_id:
-            self.last_loaded_sequence = self._load_sequence_uncached(log_id)
-            self.last_loaded_sequence_id = log_id
-
-        return self.last_loaded_sequence
