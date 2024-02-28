@@ -16,4 +16,11 @@ rm -rf /tmp/waymo_open_processed_flow_tiny
 wget https://github.com/kylevedder/BucketedSceneFlowEval/files/13924555/waymo_open_processed_flow_tiny.zip -O /tmp/waymo_open_processed_flow_tiny.zip
 unzip -q /tmp/waymo_open_processed_flow_tiny.zip -d /tmp/
 
-pytest tests/integration_tests.py tests/eval/bucketed_epe.py tests/eval/threeway_epe.py
+
+# Prepare /tmp/nuscenes v1.0-mini
+rm -rf /tmp/nuscenes
+mkdir -p /tmp/nuscenes
+wget https://www.nuscenes.org/data/v1.0-mini.tgz -O /tmp/nuscenes/nuscenes_v1.0-mini.tgz
+tar -xzf /tmp/nuscenes/nuscenes_v1.0-mini.tgz -C /tmp/nuscenes
+
+pytest tests/integration_tests.py tests/eval/bucketed_epe.py tests/eval/threeway_epe.py tests/nuscenes/nuscenes_tests.py
