@@ -68,6 +68,32 @@ def argo_dataset_pseudo_no_ground():
     )
 
 
+@pytest.fixture
+def argo_dataset_test_no_flow_no_ground():
+    return construct_dataset(
+        "argoverse2sceneflow",
+        dict(
+            root_dir="/tmp/argoverse2_tiny/test",
+            with_rgb=False,
+            with_ground=False,
+            load_flow=False,
+        ),
+    )
+
+
+@pytest.fixture
+def argo_dataset_test_no_flow_with_ground():
+    return construct_dataset(
+        "argoverse2sceneflow",
+        dict(
+            root_dir="/tmp/argoverse2_tiny/test",
+            with_rgb=False,
+            with_ground=True,
+            load_flow=False,
+        ),
+    )
+
+
 def _process_query(
     query: QuerySceneSequence,
 ) -> tuple[tuple[np.ndarray, np.ndarray], tuple[SE3, SE3], list[np.ndarray], list[SE3]]:
@@ -203,9 +229,17 @@ def test_argo_dataset_pseudo_with_ground(argo_dataset_pseudo_with_ground):
     _validate_dataloader(argo_dataset_pseudo_with_ground, 90430, 74218)
 
 
+def test_argo_dataset_test_no_flow_with_ground(argo_dataset_test_no_flow_with_ground):
+    _validate_dataloader(argo_dataset_test_no_flow_with_ground, 90430, 74218)
+
+
 def test_argo_dataset_gt_no_ground(argo_dataset_gt_no_ground):
     _validate_dataloader(argo_dataset_gt_no_ground, 80927, 65225)
 
 
 def test_argo_dataset_pseudo_no_ground(argo_dataset_pseudo_no_ground):
     _validate_dataloader(argo_dataset_pseudo_no_ground, 80927, 65225)
+
+
+def test_argo_dataset_test_no_flow_no_ground(argo_dataset_test_no_flow_no_ground):
+    _validate_dataloader(argo_dataset_test_no_flow_no_ground, 80927, 65225)

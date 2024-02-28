@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datasets.shared_dataclasses import SceneFlowItem
+from bucketed_scene_flow_eval.datasets.shared_datastructures import SceneFlowItem
 from bucketed_scene_flow_eval.datastructures import *
 from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator, Evaluator
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle

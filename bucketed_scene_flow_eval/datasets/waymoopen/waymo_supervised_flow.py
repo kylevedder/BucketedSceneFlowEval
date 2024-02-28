@@ -3,7 +3,10 @@ from typing import Any, Optional
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datasets.shared_dataclasses import RawItem, SceneFlowItem
+from bucketed_scene_flow_eval.datasets.shared_datastructures import (
+    RawItem,
+    SceneFlowItem,
+)
 from bucketed_scene_flow_eval.datastructures import SE3, PointCloud
 from bucketed_scene_flow_eval.utils import load_pickle
 

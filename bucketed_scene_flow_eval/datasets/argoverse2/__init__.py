@@ -1,5 +1,7 @@
 from .argoverse_raw_data import ArgoverseRawSequence, ArgoverseRawSequenceLoader
 from .argoverse_scene_flow import (
+    ArgoverseNoFlowSequence,
+    ArgoverseNoFlowSequenceLoader,
     ArgoverseSceneFlowSequence,
     ArgoverseSceneFlowSequenceLoader,
 )

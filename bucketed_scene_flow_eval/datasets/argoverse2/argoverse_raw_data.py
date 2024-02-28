@@ -8,7 +8,11 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation
 
-from bucketed_scene_flow_eval.datasets.shared_dataclasses import RawItem
+from bucketed_scene_flow_eval.datasets.shared_datastructures import (
+    AbstractSequence,
+    AbstractSequenceLoader,
+    RawItem,
+)
 from bucketed_scene_flow_eval.datastructures import (
     SE2,
     SE3,
@@ -22,7 +26,7 @@ from bucketed_scene_flow_eval.utils import load_json
 GROUND_HEIGHT_THRESHOLD = 0.4  # 40 centimeters
 
 
-class ArgoverseRawSequence:
+class ArgoverseRawSequence(AbstractSequence):
     """
     Argoverse Raw Sequence.
 
@@ -351,10 +355,11 @@ class ArgoverseRawSequence:
         ]
 
 
-class ArgoverseRawSequenceLoader:
+class ArgoverseRawSequenceLoader(AbstractSequenceLoader):
     def __init__(
         self,
         sequence_dir: Path,
+        with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
         verbose: bool = False,
         num_sequences: Optional[int] = None,
@@ -362,6 +367,7 @@ class ArgoverseRawSequenceLoader:
     ):
         self.dataset_dir = Path(sequence_dir)
         self.verbose = verbose
+        self.with_rgb = with_rgb
         self.per_sequence_sample_every = per_sequence_sample_every
         assert self.dataset_dir.is_dir(), f"dataset_dir {sequence_dir} does not exist"
         self.log_lookup = {e.name: e for e in self.dataset_dir.glob("*/")}
@@ -381,8 +387,8 @@ class ArgoverseRawSequenceLoader:
         if self.verbose:
             print(f"Loaded {len(self.log_lookup)} logs")
 
-        self.last_loaded_sequence = None
-        self.last_loaded_sequence_id = None
+        self.last_loaded_sequence: Optional[ArgoverseRawSequence] = None
+        self.last_loaded_sequence_id: Optional[str] = None
 
     def get_sequence_ids(self):
         return sorted(self.log_lookup.keys())
@@ -396,11 +402,12 @@ class ArgoverseRawSequenceLoader:
             log_dir,
             verbose=self.verbose,
             sample_every=self.per_sequence_sample_every,
+            with_rgb=self.with_rgb,
         )
 
     def load_sequence(self, log_id: str) -> ArgoverseRawSequence:
         # Basic caching mechanism for repeated loads of the same sequence
-        if self.last_loaded_sequence_id != log_id:
+        if self.last_loaded_sequence_id is None or self.last_loaded_sequence_id != log_id:
             self.last_loaded_sequence = self._load_sequence_uncached(log_id)
             self.last_loaded_sequence_id = log_id
 

@@ -1,15 +1,22 @@
 import enum
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datasets.shared_dataclasses import RawItem, SceneFlowItem
+from bucketed_scene_flow_eval.datasets.shared_datastructures import (
+    RawItem,
+    SceneFlowItem,
+)
 from bucketed_scene_flow_eval.datastructures import *
 from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator, Evaluator
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
-from .argoverse_scene_flow import CATEGORY_MAP, ArgoverseSceneFlowSequenceLoader
+from .argoverse_scene_flow import (
+    CATEGORY_MAP,
+    ArgoverseNoFlowSequenceLoader,
+    ArgoverseSceneFlowSequenceLoader,
+)
 from .av2_metacategories import METACATAGORIES
 
 
@@ -36,13 +43,17 @@ class Argoverse2SceneFlow:
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
         use_cache=True,
+        load_flow: bool = True,
     ) -> None:
         self.use_cache = use_cache
         self.with_ground = with_ground
         self.use_gt_flow = use_gt_flow
-        self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
-            root_dir, with_rgb=with_rgb, use_gt_flow=use_gt_flow, flow_data_path=flow_data_path
-        )
+        if load_flow:
+            self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
+                root_dir, with_rgb=with_rgb, use_gt_flow=use_gt_flow, flow_data_path=flow_data_path
+            )
+        else:
+            self.sequence_loader = ArgoverseNoFlowSequenceLoader(root_dir, with_rgb=with_rgb)
         self.subsequence_length = subsequence_length
         self.cache_path = self._cache_path(cache_root, root_dir)
 
@@ -66,7 +77,7 @@ class Argoverse2SceneFlow:
             folder_name = Path(root_dir).name
         return cache_root / "argo" / parent_name / folder_name
 
-    def _load_dataset_to_sequence_subsequence_idx(self) -> list[tuple[int, int]]:
+    def _get_cache_file(self) -> Path:
         flow_data_path_name = "None"
         if not (self.flow_data_path is None):
             if isinstance(self.flow_data_path, list):
@@ -80,6 +91,10 @@ class Argoverse2SceneFlow:
             self.cache_path
             / f"dataset_to_sequence_subsequence_idx_cache_len_{self.subsequence_length}_use_gt_{self.use_gt_flow}_with_rgb_{self.with_rgb}_with_ground_{self.with_ground}_flow_data_path_name_{flow_data_path_name}.pkl"
         )
+        return cache_file
+
+    def _load_dataset_to_sequence_subsequence_idx(self) -> list[tuple[int, int]]:
+        cache_file = self._get_cache_file()
         if cache_file.exists() and self.use_cache:
             cache_pkl = load_pickle(cache_file)
             # Sanity check that the cache is the right length by ensuring that it
@@ -110,7 +125,7 @@ class Argoverse2SceneFlow:
         return self.sequence_subsequence_idx_to_dataset_idx[(sequence_loader_idx, sequence_idx)]
 
     def _make_scene_sequence(
-        self, subsequence_frames: list[SceneFlowItem], log_id: str
+        self, subsequence_frames: list[RawItem], log_id: str
     ) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
@@ -148,29 +163,44 @@ class Argoverse2SceneFlow:
 
         return RawSceneSequence(percept_lookup, log_id)
 
-    def _make_query_scene_sequence(
+    def _make_dummy_query_scene_sequence(
         self,
         scene_sequence: RawSceneSequence,
-        subsequence_frames: list[SceneFlowItem],
+        subsequence_frames: Sequence[RawItem],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> QuerySceneSequence:
-        # Build query scene sequence. This requires enumerating all points in the source frame.
         query_timestamps: list[Timestamp] = [
             subsequence_src_index,
             subsequence_tgt_index,
         ]
         source_entry = subsequence_frames[subsequence_src_index]
 
+        query_particles = QueryPointLookup(
+            len(source_entry.ego_pc_with_ground), subsequence_src_index
+        )
+
+        return QuerySceneSequence(scene_sequence, query_particles, query_timestamps)
+
+    def _make_query_scene_sequence(
+        self,
+        scene_sequence: RawSceneSequence,
+        subsequence_frames: Sequence[SceneFlowItem],
+        subsequence_src_index: int,
+        subsequence_tgt_index: int,
+    ) -> QuerySceneSequence:
+        query_scene_sequence = self._make_dummy_query_scene_sequence(
+            scene_sequence, subsequence_frames, subsequence_src_index, subsequence_tgt_index
+        )
+
+        source_entry = subsequence_frames[subsequence_src_index]
         pc_points_array = source_entry.relative_flowed_pc_with_ground.points
         in_range_points_array = source_entry.in_range_mask_with_ground
-
-        query_particles = QueryPointLookup(len(pc_points_array), subsequence_src_index)
         particle_ids = np.arange(len(pc_points_array))
-        query_particles[particle_ids[in_range_points_array]] = pc_points_array[
+        query_scene_sequence.query_particles[particle_ids[in_range_points_array]] = pc_points_array[
             in_range_points_array
         ]
-        return QuerySceneSequence(scene_sequence, query_particles, query_timestamps)
+        return query_scene_sequence
 
     def _make_results_scene_sequence(
         self,
