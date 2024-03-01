@@ -165,18 +165,21 @@ class BucketResultMatrix:
 
         return merged_matrix
 
-    def get_mean_average_values(self) -> OverallError:
-        overall_errors = self.get_overall_class_errors()
+    def get_mean_average_values(self, normalized: bool = True) -> OverallError:
+        overall_errors = self.get_overall_class_errors(normalized=normalized)
 
         average_static_epe = np.nanmean([v.static_epe for v in overall_errors.values()])
         average_dynamic_error = np.nanmean([v.dynamic_error for v in overall_errors.values()])
 
         return OverallError(average_static_epe, average_dynamic_error)
 
-    def to_full_latex(self) -> str:
-        error_matrix = self.get_normalized_error_matrix()
+    def to_full_latex(self, normalized: bool = True) -> str:
+        if normalized:
+            error_matrix = self.get_normalized_error_matrix()
+        else:
+            error_matrix = self.epe_storage_matrix.copy()
         # First, get the average class values
-        average_class_values = self.get_overall_class_errors()
+        average_class_values = self.get_overall_class_errors(normalized=normalized)
 
         # Define the header row with the speed buckets and the beginning of the tabular environment
         column_format = (
@@ -272,7 +275,9 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
 
         return matrix
 
-    def _save_stats_tables(self, average_stats: dict[BaseSplitKey, BaseSplitValue]):
+    def _save_stats_tables(
+        self, average_stats: dict[BaseSplitKey, BaseSplitValue], normalized: bool = True
+    ):
         super()._save_stats_tables(average_stats)
 
         # Compute averages over the speed buckets
@@ -295,19 +300,22 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
             )
 
             # Save the raw table
-            save_txt(full_table_save_path, matrix.to_full_latex())
+            save_txt(full_table_save_path, matrix.to_full_latex(normalized=normalized))
 
             # Save the per-class results
             save_json(
                 per_class_save_path,
-                {str(k): str(v) for k, v in matrix.get_overall_class_errors().items()},
+                {
+                    str(k): str(v)
+                    for k, v in matrix.get_overall_class_errors(normalized=normalized).items()
+                },
                 indent=4,
             )
 
             # Save the mean average results
             save_json(
                 mean_average_save_path,
-                matrix.get_mean_average_values().to_tuple(),
+                matrix.get_mean_average_values(normalized=normalized).to_tuple(),
                 indent=4,
             )
 

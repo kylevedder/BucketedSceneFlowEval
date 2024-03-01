@@ -21,6 +21,9 @@ class ThreeWayEPEEvaluator(BucketedEPEEvaluator):
         bucket_edges = [0.0, dynamic_threshold_meters_per_frame, np.inf]
         self.speed_thresholds = list(zip(bucket_edges, bucket_edges[1:]))
 
+    def _save_stats_tables(self, average_stats):
+        super()._save_stats_tables(average_stats, normalized=False)
+
     def compute_results(
         self, save_results: bool = True, return_distance_threshold: int = 35
     ) -> dict[str, tuple[float, float]]:

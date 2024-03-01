@@ -82,7 +82,9 @@ def run_eval(
     est_flow_dir: Path,
     output_path: Path,
     cpu_count: int,
+    cache_root: Path,
     every_kth: int = 5,
+    eval_type: str = "bucketed_epe",
 ) -> None:
     assert data_dir.exists(), f"Data directory {data_dir} does not exist."
     assert gt_flow_dir.exists(), f"GT flow directory {gt_flow_dir} does not exist."
@@ -97,7 +99,9 @@ def run_eval(
         with_ground=False,
         with_rgb=False,
         use_gt_flow=True,
+        eval_type=eval_type,
         eval_args=dict(output_path=output_path),
+        cache_root=cache_root,
     )
 
     est_dataset = Argoverse2SceneFlow(
@@ -107,6 +111,8 @@ def run_eval(
         with_rgb=False,
         use_gt_flow=False,
         use_cache=False,
+        eval_type=eval_type,
+        cache_root=cache_root,
     )
 
     dataset_evaluator = gt_dataset.evaluator()
@@ -155,6 +161,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--every_kth", type=int, default=5, help="Only evaluate every kth scene in a sequence"
     )
+    parser.add_argument("--eval_type", type=str, default="bucketed_epe", help="Type of evaluation")
+    parser.add_argument("--cache_root", type=Path, default=Path("/tmp/av2_eval_cache/"), help="Path to the cache root directory")
 
     args = parser.parse_args()
 
@@ -165,4 +173,6 @@ if __name__ == "__main__":
         output_path=args.output_path,
         cpu_count=args.cpu_count,
         every_kth=args.every_kth,
+        eval_type=args.eval_type,
+        cache_root=args.cache_root,
     )
