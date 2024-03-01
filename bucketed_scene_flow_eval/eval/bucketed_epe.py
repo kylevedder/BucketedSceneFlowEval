@@ -247,13 +247,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
         self,
         average_stats: dict[BaseSplitKey, BaseSplitValue],
         distance_threshold: float,
-    ):
-        full_table_save_path = self.output_path / f"full_table_{distance_threshold}.tex"
-        per_class_save_path = self.output_path / f"per_class_results_{distance_threshold}.json"
-        mean_average_save_path = (
-            self.output_path / f"mean_average_results_{distance_threshold}.json"
-        )
-
+    ) -> BucketResultMatrix:
         unique_category_names = sorted(set([k.name for k in average_stats.keys()]))
 
         matrix = BucketResultMatrix(unique_category_names, self.speed_thresholds)
@@ -273,22 +267,7 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
         if self.meta_class_lookup is not None:
             matrix = matrix.merge_matrix_classes(self.meta_class_lookup)
 
-        # Save the raw table
-        save_txt(full_table_save_path, matrix.to_full_latex())
-
-        # Save the per-class results
-        save_json(
-            per_class_save_path,
-            {str(k): str(v) for k, v in matrix.get_overall_class_errors().items()},
-            indent=4,
-        )
-
-        # Save the mean average results
-        save_json(
-            mean_average_save_path,
-            matrix.get_mean_average_values().to_tuple(),
-            indent=4,
-        )
+        return matrix
 
     def _save_stats_tables(self, average_stats: dict[BaseSplitKey, BaseSplitValue]):
         super()._save_stats_tables(average_stats)
@@ -304,4 +283,40 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
         )
 
         for distance_threshold in unique_distance_thresholds:
-            self._build_stat_table(average_stats, distance_threshold)
+            matrix = self._build_stat_table(average_stats, distance_threshold)
+
+            full_table_save_path = self.output_path / f"full_table_{distance_threshold}.tex"
+            per_class_save_path = self.output_path / f"per_class_results_{distance_threshold}.json"
+            mean_average_save_path = (
+                self.output_path / f"mean_average_results_{distance_threshold}.json"
+            )
+
+            # Save the raw table
+            save_txt(full_table_save_path, matrix.to_full_latex())
+
+            # Save the per-class results
+            save_json(
+                per_class_save_path,
+                {str(k): str(v) for k, v in matrix.get_overall_class_errors().items()},
+                indent=4,
+            )
+
+            # Save the mean average results
+            save_json(
+                mean_average_save_path,
+                matrix.get_mean_average_values().to_tuple(),
+                indent=4,
+            )
+
+    def compute_results(
+        self, save_results: bool = True, return_distance_threshold: int = 35
+    ) -> dict[str, tuple[float, float]]:
+        super().compute_results(save_results)
+
+        category_to_per_frame_stats = self._category_to_per_frame_stats()
+        category_to_average_stats = self._category_to_average_stats(category_to_per_frame_stats)
+        matrix = self._build_stat_table(category_to_average_stats, return_distance_threshold)
+        return {
+            str(k): (v.static_epe, v.dynamic_error)
+            for k, v in matrix.get_overall_class_errors().items()
+        }

@@ -1,7 +1,7 @@
 import copy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Set
+from typing import Any, Set, Union
 
 import numpy as np
 
@@ -403,7 +403,9 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             self._save_dict(raw_table_save_path, epe_dict)
             self._save_dict(speed_table_save_path, speed_dict)
 
-    def compute_results(self, save_results: bool = True) -> dict[BaseSplitKey, BaseSplitValue]:
+    def compute_results(
+        self, save_results: bool = True
+    ) -> Union[dict[BaseSplitKey, BaseSplitValue], dict[str, Any]]:
         assert (
             len(self.eval_frame_results) > 0
         ), "Must call eval at least once before calling compute"
