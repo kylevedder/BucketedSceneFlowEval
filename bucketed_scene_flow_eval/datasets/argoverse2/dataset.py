@@ -1,3 +1,4 @@
+import copy
 import enum
 from pathlib import Path
 from typing import Optional, Sequence, Union
@@ -9,7 +10,11 @@ from bucketed_scene_flow_eval.datasets.shared_datastructures import (
     SceneFlowItem,
 )
 from bucketed_scene_flow_eval.datastructures import *
-from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator, Evaluator
+from bucketed_scene_flow_eval.eval import (
+    BucketedEPEEvaluator,
+    Evaluator,
+    ThreeWayEPEEvaluator,
+)
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
 from .argoverse_scene_flow import (
@@ -17,11 +22,12 @@ from .argoverse_scene_flow import (
     ArgoverseNoFlowSequenceLoader,
     ArgoverseSceneFlowSequenceLoader,
 )
-from .av2_metacategories import METACATAGORIES
+from .av2_metacategories import BUCKETED_METACATAGORIES, THREEWAY_EPE_METACATAGORIES
 
 
 class EvalType(enum.Enum):
     BUCKETED_EPE = 0
+    THREEWAY_EPE = 1
 
 
 class Argoverse2SceneFlow:
@@ -297,10 +303,15 @@ class Argoverse2SceneFlow:
         return query_scene_sequence, results_scene_sequence
 
     def evaluator(self) -> Evaluator:
+        eval_args_copy = copy.deepcopy(self.eval_args)
         # Builds the evaluator object for this dataset.
         if self.eval_type == EvalType.BUCKETED_EPE:
-            if "meta_class_lookup" not in self.eval_args:
-                self.eval_args["meta_class_lookup"] = METACATAGORIES
-            return BucketedEPEEvaluator(**self.eval_args)
+            if "meta_class_lookup" not in eval_args_copy:
+                eval_args_copy["meta_class_lookup"] = BUCKETED_METACATAGORIES
+            return BucketedEPEEvaluator(**eval_args_copy)
+        elif self.eval_type == EvalType.THREEWAY_EPE:
+            if "meta_class_lookup" not in eval_args_copy:
+                eval_args_copy["meta_class_lookup"] = THREEWAY_EPE_METACATAGORIES
+            return ThreeWayEPEEvaluator(**eval_args_copy)
         else:
             raise ValueError(f"Unknown eval type {self.eval_type}")

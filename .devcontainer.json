@@ -1,5 +1,5 @@
 {
-    "name": "argoverse2_sf",
+    "name": "bucketed_scene_flow_eval",
     "initializeCommand": "touch ${localWorkspaceFolder}/docker_history.txt",
 	"build": { "dockerfile": "docker/Dockerfile" },
     "privileged": true,

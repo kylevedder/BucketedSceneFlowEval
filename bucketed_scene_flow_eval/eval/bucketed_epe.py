@@ -106,14 +106,17 @@ class BucketResultMatrix:
         )
         self.count_storage_matrix[class_idx, speed_bucket_idx] += count
 
-    def get_error_matrix(self) -> np.ndarray:
+    def get_normalized_error_matrix(self) -> np.ndarray:
         error_matrix = self.epe_storage_matrix.copy()
         # For the 1: columns, normalize EPE entries by the speed
         error_matrix[:, 1:] = error_matrix[:, 1:] / self.speed_storage_matrix[:, 1:]
         return error_matrix
 
-    def get_overall_class_errors(self) -> dict[str, OverallError]:
-        error_matrix = self.get_error_matrix()
+    def get_overall_class_errors(self, normalized: bool = True) -> dict[str, OverallError]:
+        if normalized:
+            error_matrix = self.get_normalized_error_matrix()
+        else:
+            error_matrix = self.epe_storage_matrix.copy()
         static_epes = error_matrix[:, 0]
         # Hide the warning about mean of empty slice
         # I expect to see RuntimeWarnings in this block
@@ -171,7 +174,7 @@ class BucketResultMatrix:
         return OverallError(average_static_epe, average_dynamic_error)
 
     def to_full_latex(self) -> str:
-        error_matrix = self.get_error_matrix()
+        error_matrix = self.get_normalized_error_matrix()
         # First, get the average class values
         average_class_values = self.get_overall_class_errors()
 
