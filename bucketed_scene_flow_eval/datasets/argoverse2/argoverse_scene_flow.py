@@ -203,6 +203,16 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         else:
             return self._load_no_flow(raw_item)
 
+    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[RawItem]:
+        return [
+            self.load(
+                idx=idx,
+                relative_to_idx=(relative_to_idx if relative_to_idx is not None else idx),
+                with_flow=(idx != len(self) - 1),
+            )
+            for idx in range(len(self))
+        ]
+
     @staticmethod
     def category_ids() -> list[int]:
         return ArgoverseSceneFlowSequenceLoader.category_ids()
