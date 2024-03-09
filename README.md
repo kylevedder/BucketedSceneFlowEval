@@ -1,17 +1,30 @@
 # Bucketed Scene Flow Evaluation
 
+This repo provides the official implementation of _Bucket Normalized EPE_, as described in our paper [_I Can't Believe It's Not Scene Flow!_](https://vedder.io/trackflow.html)
+
 This repo provides:
- - A speed and class aware evaluation protocol called _Bucketed Scene Flow Evaluation_
+ - A speed and class aware evaluation protocol called _Bucket Normalized EPE_. See our [paper](https://vedder.io/trackflow.html) for more details.
  - A standardized interface for working with Scene Flow datasets.
+ - Evaulation infrastructure for the [Argoverse 2 2024 Scene Flow Challenge](https://eval.ai/web/challenges/challenge-page/2210/overview).
 
 Currently supported datasets:
 
- - Argoverse 2 (Human Labeled and NSFP Pseudolabeled)
+ - Argoverse 2 (Human Labeled and [NSFP Pseudolabeled](https://github.com/kylevedder/BucketedSceneFlowEval/blob/master/docs/GETTING_STARTED.md#argoverse-2-nsfp-pseudolabels-new))
  - Waymo Open
 
-## The _Bucketed Scene Flow Evaluation_ protocol
 
-The _Bucketed Scene Flow Evaluation_ protocol is designed to quantitatively measure the failure of state-of-the-art scene flow methods to properly capture motion on smaller objects. In the Autononous Vehicle domain, SotA methods almost universially fail on important objects like Pedestrians and Bicyclists. As part of organizing the community around addressing these issues, the [Argoverse 2 2024 Scene Flow Challenge](https://www.argoverse.org/sceneflow) uses this protocol to evaluate submissions. More details about the protocol can be found [in the challenge blogpost](https://www.argoverse.org/sceneflow).
+If you use this repository as part of a publication, please cite:
+
+```
+@misc{khatri2024trackflow,
+    author = {Khatri, Ishan and Vedder, Kyle and Peri, Neehar and Ramanan, Deva and Hays, James},
+    title = {I Can't Believe It's Not Scene Flow!},
+    journal = {arXiv},
+    eprint = {2403.04739},
+    year = {2024},
+    pdf = {https://arxiv.org/abs/2403.04739}
+}
+```
 
 ## Installation
 
