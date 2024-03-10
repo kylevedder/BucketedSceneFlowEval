@@ -32,6 +32,7 @@ dependencies = [
   "open3d",
   "pyarrow",
   "pytest",
+  "nuscenes-devkit"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
