@@ -46,6 +46,11 @@ To run with Argoverse 2:
 python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/
 ```
 
+<!-- Image of docs/imgs/av2_multicam.png -->
+
+![Argoverse 2 MultiCam](docs/imgs/av2_multicam.png)
+
+
 To run with Waymo Open:
 
 ```

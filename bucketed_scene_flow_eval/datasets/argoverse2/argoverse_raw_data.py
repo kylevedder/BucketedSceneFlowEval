@@ -30,6 +30,41 @@ from bucketed_scene_flow_eval.utils import load_json
 GROUND_HEIGHT_THRESHOLD = 0.4  # 40 centimeters
 
 
+@dataclass(kw_only=True)
+class CameraInfo:
+    rgb_frame_paths: list[Path]
+    rgb_timestamp_to_rgb_file_map: dict[int, Path]
+    timestamp_to_rgb_timestamp_map: dict[int, int]
+    rgb_camera_projection: CameraProjection
+    rgb_camera_ego_pose: SE3
+
+    def timestamp_to_rgb_path(self, timestamp: int) -> Path:
+        assert timestamp in self.timestamp_to_rgb_timestamp_map, f"timestamp {timestamp} not found"
+        rgb_timestamp = self.timestamp_to_rgb_timestamp_map[timestamp]
+        assert (
+            rgb_timestamp in self.rgb_timestamp_to_rgb_file_map
+        ), f"rgb_timestamp {rgb_timestamp} not found"
+        return self.rgb_timestamp_to_rgb_file_map[rgb_timestamp]
+
+    def load_rgb(self, timestamp: int) -> RGBImage:
+        rgb_path = self.timestamp_to_rgb_path(timestamp)
+        # Read the image, keep the same color space
+        raw_img = cv2.imread(str(rgb_path), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
+        # Convert from CV2 standard BGR to RGB
+        raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
+        return RGBImage(raw_img)
+
+    def load_rgb_frame(self, timestamp: int, global_pose: SE3) -> RGBFrame:
+        rgb = self.load_rgb(timestamp)
+        return RGBFrame(
+            rgb=rgb,
+            pose=PoseInfo(
+                sensor_to_ego=self.rgb_camera_ego_pose.inverse(), ego_to_global=global_pose
+            ),
+            camera_projection=self.rgb_camera_projection,
+        )
+
+
 class ArgoverseRawSequence(AbstractSequence):
     """
     Argoverse Raw Sequence.
@@ -47,6 +82,13 @@ class ArgoverseRawSequence(AbstractSequence):
         with_rgb: bool = False,
         POINT_CLOUD_RANGE=(-48, -48, -2.5, 48, 48, 2.5),
         sample_every: Optional[int] = None,
+        camera_names=[
+            "ring_front_center",
+            "ring_front_right",
+            "ring_front_left",
+            "ring_side_right",
+            "ring_side_left",
+        ],
     ):
         self.log_id = log_id
         self.POINT_CLOUD_RANGE = POINT_CLOUD_RANGE
@@ -65,40 +107,19 @@ class ArgoverseRawSequence(AbstractSequence):
         (
             self.lidar_frame_paths,
             self.timestamp_to_lidar_file_map,
-            lidar_file_timestamps,
+            self.lidar_file_timestamps,
         ) = self._load_lidar_info()
 
         self.with_rgb = with_rgb
 
-        if with_rgb:
-            # Load the RGB frame information.
-            camera_name = "ring_front_center"
-            (
-                self.rgb_frame_paths,
-                self.rgb_timestamp_to_rgb_file_map,
-            ) = self._load_rgb_info(camera_name)
+        if not with_rgb:
+            camera_names = []
 
-            # Load the RGB intrinsics.
-            self.rgb_camera_projection = self._load_camera_projection(camera_name)
-            self.rgb_camera_ego_pose = self._load_camera_ego_pose(camera_name)
+        self.camera_info_lookup: dict[str, CameraInfo] = {
+            camera_name: self._prep_camera_info(camera_name) for camera_name in camera_names
+        }
 
-            # Find the nearest RGB percept to each lidar frame.
-            # This is N^2. TODO: Figure out if this is a bottleneck.
-            self.timestamp_to_rgb_timestamp_map = {
-                lidar_timestamp: min(
-                    self.rgb_timestamp_to_rgb_file_map.keys(),
-                    key=lambda rgb_timestamp: abs(rgb_timestamp - lidar_timestamp),
-                )
-                for lidar_timestamp in lidar_file_timestamps
-            }
-        else:
-            self.rgb_frame_paths = None
-            self.rgb_timestamp_to_rgb_file_map = {}
-            self.timestamp_to_rgb_timestamp_map = {}
-            self.rgb_camera_projection = None
-            self.rgb_camera_ego_pose = None
-
-        self.timestamp_list = sorted(lidar_file_timestamps.intersection(info_timestamps))
+        self.timestamp_list = sorted(self.lidar_file_timestamps.intersection(info_timestamps))
         assert len(self.timestamp_list) > 0, f"no timestamps found in {self.dataset_dir}"
 
         if sample_every is not None:
@@ -114,6 +135,31 @@ class ArgoverseRawSequence(AbstractSequence):
             print(
                 f"Loaded {len(self.timestamp_list)} frames from {self.dataset_dir} at timestamp {time.time():.3f}"
             )
+
+    def _prep_camera_info(self, camera_name: str) -> CameraInfo:
+        (
+            rgb_frame_paths,
+            rgb_timestamp_to_rgb_file_map,
+        ) = self._load_rgb_info(camera_name)
+
+        rgb_camera_projection = self._load_camera_projection(camera_name)
+        rgb_camera_ego_pose = self._load_camera_ego_pose(camera_name)
+
+        timestamp_to_rgb_timestamp_map = {
+            lidar_timestamp: min(
+                rgb_timestamp_to_rgb_file_map.keys(),
+                key=lambda rgb_timestamp: abs(rgb_timestamp - lidar_timestamp),
+            )
+            for lidar_timestamp in self.lidar_file_timestamps
+        }
+
+        return CameraInfo(
+            rgb_frame_paths=rgb_frame_paths,
+            rgb_timestamp_to_rgb_file_map=rgb_timestamp_to_rgb_file_map,
+            timestamp_to_rgb_timestamp_map=timestamp_to_rgb_timestamp_map,
+            rgb_camera_projection=rgb_camera_projection,
+            rgb_camera_ego_pose=rgb_camera_ego_pose,
+        )
 
     def _load_lidar_info(self):
         # Load the lidar frame information.
@@ -176,9 +222,13 @@ class ArgoverseRawSequence(AbstractSequence):
         rotation = self._quat_to_mat(qw, qx, qy, qz)
         translation = np.array([tx, ty, tz])
 
+        # fmt: off
         coordinate_transform_matrix = np.array(
-            [[0, -1, 0], [0, 0, -1], [1, 0, 0]]
-        )  # noqa  # noqa  # noqa
+            [[0, -1, 0],
+             [0, 0, -1],
+             [1, 0, 0]],
+        )
+        # fmt: on
 
         rotation = rotation @ coordinate_transform_matrix
 
@@ -287,17 +337,6 @@ class ArgoverseRawSequence(AbstractSequence):
         points = np.stack([xs, ys, zs], axis=1)
         return PointCloud(points)
 
-    def _load_rgb(self, idx) -> RGBImage:
-        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
-        timestamp = self.timestamp_list[idx]
-        rgb_timestamp = self.timestamp_to_rgb_timestamp_map[timestamp]
-        rgb_path = self.rgb_timestamp_to_rgb_file_map[rgb_timestamp]
-        # Read the image, keep the same color space
-        raw_img = cv2.imread(str(rgb_path), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
-        # Convert from CV2 standard BGR to RGB
-        raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
-        return RGBImage(raw_img)
-
     def _load_pose(self, idx) -> SE3:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
@@ -318,23 +357,15 @@ class ArgoverseRawSequence(AbstractSequence):
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc = self._load_pc(idx)
-        if self.with_rgb:
-            img = self._load_rgb(idx)
-        else:
-            img = None
+
         start_pose = self._load_pose(relative_to_idx)
         idx_pose = self._load_pose(idx)
         relative_pose = start_pose.inverse().compose(idx_pose)
         absolute_global_frame_pc = ego_pc.transform(idx_pose)
         is_ground_points = self.is_ground_points(absolute_global_frame_pc)
         relative_global_frame_pc_with_ground = ego_pc.transform(relative_pose)
-        relative_global_frame_pc_no_ground = relative_global_frame_pc_with_ground.mask_points(
-            ~is_ground_points
-        )
-        ego_pc_no_ground = ego_pc.mask_points(~is_ground_points)
 
         in_range_mask_with_ground = self.is_in_range(relative_global_frame_pc_with_ground)
-        in_range_mask_no_ground = self.is_in_range(relative_global_frame_pc_no_ground)
 
         pc_frame = PointCloudFrame(
             full_pc=ego_pc,
@@ -343,11 +374,8 @@ class ArgoverseRawSequence(AbstractSequence):
         )
 
         rgb_frames = [
-            RGBFrame(
-                rgb=img,
-                pose=PoseInfo(sensor_to_ego=self.rgb_camera_ego_pose, ego_to_global=relative_pose),
-                camera_projection=self.rgb_camera_projection,
-            )
+            camera.load_rgb_frame(timestamp, relative_pose)
+            for _, camera in sorted(self.camera_info_lookup.items())
         ]
 
         return RawItem(

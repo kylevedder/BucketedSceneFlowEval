@@ -35,46 +35,57 @@ def process_lidar_only(o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame):
 def process_lidar_rgb(
     o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame, rgb_frames: list[RGBFrame]
 ):
-    rgb_frame = rgb_frames[0]
-    image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
-        rgb_frame.rgb, depth=10
-    )
+    # Plot the pointcloud
 
-    pc_into_cam_frame_se3 = pc_frame.pose.sensor_to_ego.compose(
-        rgb_frame.pose.sensor_to_ego.inverse()
-    )
-    cam_frame_pc = pc_frame.full_pc.transform(pc_into_cam_frame_se3)
-
-    # To prevent points behind the camera from being projected into the image, we had to remove them from the pointcloud.
-    # These points have a negative X value in the camera frame.
-
-    cam_frame_pc = PointCloud(cam_frame_pc.points[cam_frame_pc.points[:, 0] >= 0])
-
-    o3d_vis.add_pointcloud(cam_frame_pc)
-    o3d_vis.add_pointcloud(image_plane_pc, color=colors)
+    o3d_vis.add_pointcloud(pc_frame.global_pc)
+    for rgb_frame in rgb_frames:
+        image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
+            rgb_frame.rgb, depth=20
+        )
+        image_plane_pc = image_plane_pc.transform(rgb_frame.pose.sensor_to_ego.inverse())
+        o3d_vis.add_pointcloud(image_plane_pc, color=colors)
     o3d_vis.run()
 
-    projected_points = rgb_frame.camera_projection.camera_frame_to_pixels(cam_frame_pc.points)
-    projected_points = projected_points.astype(np.int32)
+    # rgb_frame = rgb_frames[0]
+    # image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
+    #     rgb_frame.rgb, depth=10
+    # )
 
-    # Use distance to color points, normalized to [0, 1]. Let points more than 10m away be black.
-    colors = color_threshold_distance(cam_frame_pc.points[:, 0], max_distance=10)
+    # pc_into_cam_frame_se3 = pc_frame.pose.sensor_to_ego.compose(
+    #     rgb_frame.pose.sensor_to_ego.inverse()
+    # )
+    # cam_frame_pc = pc_frame.full_pc.transform(pc_into_cam_frame_se3)
 
-    # Mask out points that are out of bounds
+    # # To prevent points behind the camera from being projected into the image, we had to remove them from the pointcloud.
+    # # These points have a negative X value in the camera frame.
 
-    valid_points_mask = (
-        (projected_points[:, 0] >= 0)
-        & (projected_points[:, 0] < rgb_frame.rgb.image.shape[1])
-        & (projected_points[:, 1] >= 0)
-        & (projected_points[:, 1] < rgb_frame.rgb.image.shape[0])
-    )
-    projected_points = projected_points[valid_points_mask]
-    colors = colors[valid_points_mask]
+    # cam_frame_pc = PointCloud(cam_frame_pc.points[cam_frame_pc.points[:, 0] >= 0])
 
-    projected_rgb_image = rgb_frame.rgb.image
-    projected_rgb_image[projected_points[:, 1], projected_points[:, 0], :] = colors
-    plt.imshow(projected_rgb_image)
-    plt.show()
+    # o3d_vis.add_pointcloud(cam_frame_pc)
+    # o3d_vis.add_pointcloud(image_plane_pc, color=colors)
+    # o3d_vis.run()
+
+    # projected_points = rgb_frame.camera_projection.camera_frame_to_pixels(cam_frame_pc.points)
+    # projected_points = projected_points.astype(np.int32)
+
+    # # Use distance to color points, normalized to [0, 1]. Let points more than 10m away be black.
+    # colors = color_threshold_distance(cam_frame_pc.points[:, 0], max_distance=10)
+
+    # # Mask out points that are out of bounds
+
+    # valid_points_mask = (
+    #     (projected_points[:, 0] >= 0)
+    #     & (projected_points[:, 0] < rgb_frame.rgb.image.shape[1])
+    #     & (projected_points[:, 1] >= 0)
+    #     & (projected_points[:, 1] < rgb_frame.rgb.image.shape[0])
+    # )
+    # projected_points = projected_points[valid_points_mask]
+    # colors = colors[valid_points_mask]
+
+    # projected_rgb_image = rgb_frame.rgb.image
+    # projected_rgb_image[projected_points[:, 1], projected_points[:, 0], :] = colors
+    # plt.imshow(projected_rgb_image)
+    # plt.show()
 
 
 def process_entry(query: QuerySceneSequence, gt: GroundTruthPointFlow):

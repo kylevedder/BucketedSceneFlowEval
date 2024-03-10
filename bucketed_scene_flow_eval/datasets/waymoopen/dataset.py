@@ -28,6 +28,7 @@ class WaymoOpenSceneFlow:
         subsequence_length: int = 2,
         cache_path: Path = Path("/tmp/"),
         eval_type: str = "bucketed_epe",
+        with_rgb: bool = False,
         eval_args=dict(),
     ) -> None:
         self.root_dir = Path(root_dir)

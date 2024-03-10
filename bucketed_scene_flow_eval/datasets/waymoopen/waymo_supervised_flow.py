@@ -158,6 +158,7 @@ class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
         sequence_dir: Path,
         log_subset: Optional[list[str]] = None,
         verbose: bool = False,
+        with_rgb: bool = False,
     ):
         super().__init__()
         self.dataset_dir = Path(sequence_dir)
