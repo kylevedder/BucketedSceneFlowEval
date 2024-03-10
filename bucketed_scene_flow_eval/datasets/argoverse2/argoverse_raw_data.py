@@ -20,6 +20,9 @@ from bucketed_scene_flow_eval.datastructures import (
     CameraModel,
     CameraProjection,
     PointCloud,
+    PointCloudFrame,
+    PoseInfo,
+    RGBFrame,
     RGBImage,
 )
 from bucketed_scene_flow_eval.utils import load_json
@@ -332,18 +335,26 @@ class ArgoverseRawSequence(AbstractSequence):
 
         in_range_mask_with_ground = self.is_in_range(relative_global_frame_pc_with_ground)
         in_range_mask_no_ground = self.is_in_range(relative_global_frame_pc_no_ground)
+
+        pc_frame = PointCloudFrame(
+            full_pc=ego_pc,
+            pose=PoseInfo(sensor_to_ego=SE3.identity(), ego_to_global=relative_pose),
+            mask=np.ones(len(ego_pc), dtype=bool),
+        )
+
+        rgb_frames = [
+            RGBFrame(
+                rgb=img,
+                pose=PoseInfo(sensor_to_ego=self.rgb_camera_ego_pose, ego_to_global=relative_pose),
+                camera_projection=self.rgb_camera_projection,
+            )
+        ]
+
         return RawItem(
-            ego_pc=ego_pc_no_ground,
-            ego_pc_with_ground=ego_pc,
-            relative_pc=relative_global_frame_pc_no_ground,
-            relative_pc_with_ground=relative_global_frame_pc_with_ground,
+            pc=pc_frame,
+            rgbs=rgb_frames,
             is_ground_points=is_ground_points,
-            in_range_mask=in_range_mask_no_ground,
-            in_range_mask_with_ground=in_range_mask_with_ground,
-            rgb=img,
-            rgb_camera_projection=self.rgb_camera_projection,
-            rgb_camera_ego_pose=self.rgb_camera_ego_pose,
-            relative_pose=relative_pose,
+            in_range_mask=in_range_mask_with_ground,
             log_id=self.log_id,
             log_idx=idx,
             log_timestamp=timestamp,

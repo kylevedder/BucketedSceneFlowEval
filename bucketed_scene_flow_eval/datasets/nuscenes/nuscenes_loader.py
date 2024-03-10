@@ -236,7 +236,15 @@ class NuScenesSequence(AbstractSequence):
         pc_frame = synced_sample.lidar_to_pc_frame(self.nusc)
         rgb_frame = synced_sample.camera_to_rgb_frame(self.nusc)
 
-        return None
+        return RawItem(
+            pc=pc_frame,
+            is_ground_points=np.zeros(len(pc_frame.pc), dtype=bool),
+            in_range_mask=np.ones(len(pc_frame.pc), dtype=bool),
+            rgbs=[rgb_frame],
+            log_id=self.log_id,
+            log_idx=idx,
+            log_timestamp=idx,
+        )
 
     def __len__(self):
         return len(self.synced_sensors)

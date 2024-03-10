@@ -7,10 +7,15 @@ from bucketed_scene_flow_eval.datasets.shared_datastructures import (
     AbstractSequence,
     AbstractSequenceLoader,
     CachedSequenceLoader,
-    RawItem,
     SceneFlowItem,
 )
-from bucketed_scene_flow_eval.datastructures import SE3, PointCloud
+from bucketed_scene_flow_eval.datastructures import (
+    SE3,
+    PointCloud,
+    PointCloudFrame,
+    PoseInfo,
+    RGBFrame,
+)
 from bucketed_scene_flow_eval.utils import load_pickle
 
 CATEGORY_MAP = {
@@ -67,7 +72,6 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
         relative_pose = start_pose.inverse().compose(idx_pose)
         relative_global_frame_pc = ego_pc.transform(relative_pose)
         car_frame_flowed_pc = ego_pc.flow(ego_flow)
-        relative_global_frame_flowed_pc = car_frame_flowed_pc.transform(relative_pose)
 
         # From the Waymo Open dataset.proto:
         # // If the point is not annotated with scene flow information, class is set
@@ -101,27 +105,28 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
         #     "log_idx": idx,
         # }
 
+        pc_frame = PointCloudFrame(
+            full_pc=ego_pc,
+            pose=PoseInfo(sensor_to_ego=SE3.identity(), ego_to_global=relative_pose),
+            mask=np.ones(len(relative_global_frame_pc), dtype=bool),
+        )
+
+        flowed_pc_frame = PointCloudFrame(
+            full_pc=car_frame_flowed_pc,
+            pose=PoseInfo(sensor_to_ego=SE3.identity(), ego_to_global=relative_pose),
+            mask=np.ones(len(relative_global_frame_pc), dtype=bool),
+        )
+
         return SceneFlowItem(
-            ego_pc=ego_pc,
-            ego_pc_with_ground=ego_pc,
-            relative_pc=relative_global_frame_pc,
-            relative_pc_with_ground=relative_global_frame_pc,
-            is_ground_points=np.zeros(len(relative_global_frame_pc), dtype=bool),
-            relative_pose=relative_pose,
-            relative_flowed_pc=relative_global_frame_flowed_pc,
-            relative_flowed_pc_with_ground=relative_global_frame_flowed_pc,
+            pc=pc_frame,
+            is_ground_points=np.zeros(len(ego_pc), dtype=bool),
+            in_range_mask=np.ones(len(ego_pc), dtype=bool),
+            rgbs=[],
             pc_classes=cleaned_idx_labels,
-            pc_classes_with_ground=cleaned_idx_labels,
+            flowed_pc=flowed_pc_frame,
             log_id=self.sequence_folder.name,
             log_idx=idx,
             log_timestamp=idx,
-            rgb=None,
-            rgb_camera_projection=None,
-            rgb_camera_ego_pose=None,
-            ego_flowed_pc=car_frame_flowed_pc,
-            ego_flowed_pc_with_ground=car_frame_flowed_pc,
-            in_range_mask=np.ones(len(ego_pc), dtype=bool),
-            in_range_mask_with_ground=np.ones(len(ego_pc), dtype=bool),
         )
 
     def load_frame_list(self, relative_to_idx: Optional[int]) -> list[SceneFlowItem]:

@@ -6,6 +6,7 @@ docker run --gpus=all --rm -it \
  -v `pwd`:/bucketed_scene_flow_eval \
  -v /efs:/efs \
  -v /efs2:/efs2 \
+ -v /bigdata:/bigdata \
  -v /tmp/.X11-unix:/tmp/.X11-unix \
  -v /tmp:/tmp \
  -v `pwd`/docker_history.txt:/root/.bash_history \

@@ -74,12 +74,7 @@ class WaymoOpenSceneFlow:
         # global frame being zero'd at the target frame.
         percept_lookup: dict[Timestamp, RawSceneItem] = {}
         for dataset_idx, entry in enumerate(subsequence_frames):
-            pc: PointCloud = entry.ego_pc
-            lidar_to_ego = SE3.identity()
-            ego_to_world: SE3 = entry.relative_pose
-            mask = ~entry.is_ground_points
-            point_cloud_frame = PointCloudFrame(pc, PoseInfo(lidar_to_ego, ego_to_world), mask)
-            percept_lookup[dataset_idx] = RawSceneItem(pc_frame=point_cloud_frame, rgb_frame=None)
+            percept_lookup[dataset_idx] = RawSceneItem(pc_frame=entry.pc, rgb_frames=entry.rgbs)
 
         return RawSceneSequence(percept_lookup, seq_id)
 
@@ -97,7 +92,7 @@ class WaymoOpenSceneFlow:
         ]
         source_entry = subsequence_frames[subsequence_src_index]
 
-        pc_points_array = source_entry.relative_pc.points
+        pc_points_array = source_entry.pc.global_pc.points
 
         query_particles = QueryPointLookup(len(pc_points_array), subsequence_src_index)
         return QuerySceneSequence(scene_sequence, query_particles, query_timestamps)
@@ -113,8 +108,8 @@ class WaymoOpenSceneFlow:
         # the source frame and the associated flowed points.
 
         source_entry = subsequence_frames[subsequence_src_index]
-        source_pc = source_entry.relative_pc.points
-        target_pc = source_entry.relative_flowed_pc.points
+        source_pc = source_entry.pc.global_pc.points
+        target_pc = source_entry.flowed_pc.global_pc.points
         pc_class_ids = source_entry.pc_classes
         assert len(source_pc) == len(
             target_pc

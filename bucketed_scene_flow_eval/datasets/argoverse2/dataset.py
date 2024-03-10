@@ -19,6 +19,7 @@ from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
 from .argoverse_scene_flow import (
     CATEGORY_MAP,
+    ArgoverseNoFlowSequence,
     ArgoverseNoFlowSequenceLoader,
     ArgoverseSceneFlowSequenceLoader,
 )
@@ -131,41 +132,21 @@ class Argoverse2SceneFlow:
         return self.sequence_subsequence_idx_to_dataset_idx[(sequence_loader_idx, sequence_idx)]
 
     def _make_scene_sequence(
-        self, subsequence_frames: list[RawItem], log_id: str
+        self, subsequence_frames: list[SceneFlowItem], log_id: str
     ) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
         percept_lookup: dict[Timestamp, RawSceneItem] = {}
         for dataset_idx, entry in enumerate(subsequence_frames):
-            pc: PointCloud = entry.ego_pc_with_ground
-            lidar_to_ego = SE3.identity()
-            ego_to_world: SE3 = entry.relative_pose
+            if not self.with_ground:
+                entry.pc.mask = ~entry.is_ground_points
+                entry.flowed_pc.mask = ~entry.is_ground_points
 
-            mask = ~entry.is_ground_points
-            if self.with_ground:
-                mask = np.ones_like(mask, dtype=bool)
-
-            point_cloud_frame = PointCloudFrame(pc, PoseInfo(lidar_to_ego, ego_to_world), mask)
-
+            rgb_frames: list[RGBFrame] = []
             if self.with_rgb:
-                rgb: Optional[RGBImage] = entry.rgb
-                rgb_to_ego: Optional[SE3] = entry.rgb_camera_ego_pose
-                rgb_camera_projection: Optional[CameraProjection] = entry.rgb_camera_projection
+                rgb_frames.extend(entry.rgbs)
 
-                assert rgb is not None, "RGB image must be provided."
-                assert rgb_to_ego is not None, "RGB to ego pose must be provided."
-                assert rgb_camera_projection is not None, "RGB camera projection must be provided."
-
-                rgb_frame = RGBFrame(
-                    rgb,
-                    PoseInfo(rgb_to_ego, ego_to_world),
-                    rgb_camera_projection,
-                )
-            else:
-                rgb_frame = None
-            percept_lookup[dataset_idx] = RawSceneItem(
-                pc_frame=point_cloud_frame, rgb_frame=rgb_frame
-            )
+            percept_lookup[dataset_idx] = RawSceneItem(pc_frame=entry.pc, rgb_frames=rgb_frames)
 
         return RawSceneSequence(percept_lookup, log_id)
 
@@ -182,9 +163,7 @@ class Argoverse2SceneFlow:
         ]
         source_entry = subsequence_frames[subsequence_src_index]
 
-        query_particles = QueryPointLookup(
-            len(source_entry.ego_pc_with_ground), subsequence_src_index
-        )
+        query_particles = QueryPointLookup(len(source_entry.pc.full_pc), subsequence_src_index)
 
         return QuerySceneSequence(scene_sequence, query_particles, query_timestamps)
 
@@ -200,11 +179,17 @@ class Argoverse2SceneFlow:
         )
 
         source_entry = subsequence_frames[subsequence_src_index]
-        pc_points_array = source_entry.relative_flowed_pc_with_ground.points
-        in_range_points_array = source_entry.in_range_mask_with_ground
-        particle_ids = np.arange(len(pc_points_array))
-        query_scene_sequence.query_particles[particle_ids[in_range_points_array]] = pc_points_array[
-            in_range_points_array
+        pc_points_array = source_entry.pc.full_global_pc.points
+        is_valid_points_array = source_entry.in_range_mask & source_entry.pc.mask
+
+        # Check that the in_range_points_array is the same size as the first dimension of pc_points_array
+        assert len(is_valid_points_array) == len(
+            pc_points_array
+        ), f"Is valid points and pc points have different lengths. Is valid: {len(is_valid_points_array)}, pc points: {len(pc_points_array)}"
+
+        particle_ids = np.arange(len(is_valid_points_array))
+        query_scene_sequence.query_particles[particle_ids[is_valid_points_array]] = pc_points_array[
+            is_valid_points_array
         ]
         return query_scene_sequence
 
@@ -219,10 +204,16 @@ class Argoverse2SceneFlow:
         # the source frame and the associated flowed points.
 
         source_entry = subsequence_frames[subsequence_src_index]
-        source_pc = source_entry.relative_pc_with_ground.points
-        target_pc = source_entry.relative_flowed_pc_with_ground.points
-        in_range_points_array = source_entry.in_range_mask_with_ground
-        pc_class_ids = source_entry.pc_classes_with_ground
+
+        assert (
+            source_entry.pc.mask == source_entry.flowed_pc.mask
+        ).all(), f"Mask and flowed mask are different."
+
+        source_pc = source_entry.pc.full_global_pc.points
+        target_pc = source_entry.flowed_pc.full_global_pc.points
+
+        is_valid_points_array = source_entry.in_range_mask & source_entry.pc.mask
+        pc_class_ids = source_entry.pc_classes
         assert len(source_pc) == len(
             target_pc
         ), "Source and target point clouds must be the same size."
@@ -249,10 +240,10 @@ class Argoverse2SceneFlow:
             points
         ), f"Is valids and points have different lengths. Is valids: {len(is_valids)}, points: {len(points)}"
 
-        particle_trajectories[particle_ids[in_range_points_array]] = (
-            points[in_range_points_array],
-            pc_class_ids[in_range_points_array],
-            is_valids[in_range_points_array],
+        particle_trajectories[particle_ids[is_valid_points_array]] = (
+            points[is_valid_points_array],
+            pc_class_ids[is_valid_points_array],
+            is_valids[is_valid_points_array],
         )
 
         return particle_trajectories

@@ -9,18 +9,11 @@ from .se3 import SE3
 
 class O3DVisualizer:
     def __init__(self, point_size: float = 0.1):
-        # Create o3d visualizer
-        vis = o3d.visualization.Visualizer()
-        vis.create_window(window_name="Benchmark Visualizer")
-        # Draw world coordinate frame
-        world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1)
-        # center_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
-        vis.add_geometry(world_frame)
-        # vis.add_geometry(center_sphere)
-        # Set point size
-        vis.get_render_option().point_size = point_size
+        self.point_size = point_size
+        self.geometry_list = []
 
-        self.vis = vis
+        world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1)
+        self.add_geometry(world_frame)
 
     def add_geometry(self, geometry):
         if isinstance(geometry, list):
@@ -29,7 +22,7 @@ class O3DVisualizer:
                     g = g.to_o3d()
                 self.add_geometry(g)
         else:
-            self.vis.add_geometry(geometry)
+            self.geometry_list.append(geometry)
 
     def add_pc_frame(
         self,
@@ -144,11 +137,22 @@ class O3DVisualizer:
         self.add_geometry(line_set)
 
     def run(self):
-        ctr = self.vis.get_view_control()
-        # Set forward direction to be -X
-        ctr.set_front([-1, 0, 0])
-        # Set up direction to be +Z
-        ctr.set_up([0, 0, 1])
-        # Set lookat to be origin
-        ctr.set_lookat([0, 0, 0])
-        self.vis.run()
+        print("Running visualizer on geometry list of length", len(self.geometry_list))
+        vis = o3d.visualization.Visualizer()
+        vis.create_window(window_name="Benchmark Visualizer")
+        vis.get_render_option().point_size = self.point_size
+
+        for geometry in self.geometry_list:
+            vis.add_geometry(geometry)
+
+        vis.run()
+
+        #
+        # o3d.visualization.draw_geometries(self.geometry_list)
+        # ctr = self.vis.get_view_control()
+        # # Set forward direction to be -X
+        # ctr.set_front([-1, 0, 0])
+        # # Set up direction to be +Z
+        # ctr.set_up([0, 0, 1])
+        # # Set lookat to be origin
+        # ctr.set_lookat([0, 0, 0])

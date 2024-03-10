@@ -60,7 +60,7 @@ class RGBFrame:
 @dataclass
 class RawSceneItem:
     pc_frame: PointCloudFrame
-    rgb_frame: Optional[RGBFrame]
+    rgb_frames: list[RGBFrame]
 
 
 def _particle_id_to_color(particle_id: ParticleID) -> NDArray:

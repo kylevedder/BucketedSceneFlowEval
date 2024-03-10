@@ -32,7 +32,10 @@ def process_lidar_only(o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame):
     o3d_vis.run()
 
 
-def process_lidar_rgb(o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame, rgb_frame: RGBFrame):
+def process_lidar_rgb(
+    o3d_vis: O3DVisualizer, pc_frame: PointCloudFrame, rgb_frames: list[RGBFrame]
+):
+    rgb_frame = rgb_frames[0]
     image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
         rgb_frame.rgb, depth=10
     )
@@ -92,18 +95,18 @@ def process_entry(query: QuerySceneSequence, gt: GroundTruthPointFlow):
     # These are stored as "frames" with pose and intrinsics information.
     # This enables the raw percepts to be projected into desired coordinate frames across time.
     for scene_timestamp in scene_timestamps:
-        rgb_frame = query.scene_sequence[scene_timestamp].rgb_frame
+        rgb_frames = query.scene_sequence[scene_timestamp].rgb_frames
         pc_frame = query.scene_sequence[scene_timestamp].pc_frame
 
         o3d_vis = O3DVisualizer(point_size=0.5)
         gt.visualize(o3d_vis)
 
-        if rgb_frame is None:
+        if len(rgb_frames) == 0:
             print(f"No RGB frame for timestamp {scene_timestamp}, using lidar only")
             process_lidar_only(o3d_vis, pc_frame)
         else:
             print(f"RGB frame for timestamp {scene_timestamp}, using lidar and rgb")
-            process_lidar_rgb(o3d_vis, pc_frame, rgb_frame)
+            process_lidar_rgb(o3d_vis, pc_frame, rgb_frames)
 
         del o3d_vis
 
@@ -113,9 +116,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="Argoverse2SceneFlow")
     parser.add_argument("--root_dir", type=str, default="/efs/argoverse2/val")
+    parser.add_argument("--skip_rgb", action="store_true")
     args = parser.parse_args()
 
-    dataset = construct_dataset(args.dataset, dict(root_dir=args.root_dir))
+    dataset = construct_dataset(
+        args.dataset, dict(root_dir=args.root_dir, with_rgb=not args.skip_rgb)
+    )
 
     print("Dataset contains", len(dataset), "samples")
 

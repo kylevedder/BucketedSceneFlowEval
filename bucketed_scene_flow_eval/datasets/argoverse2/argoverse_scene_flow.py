@@ -1,3 +1,5 @@
+import copy
+import dataclasses
 from pathlib import Path
 from typing import Optional, Union
 
@@ -10,7 +12,7 @@ from bucketed_scene_flow_eval.datasets.shared_datastructures import (
     RawItem,
     SceneFlowItem,
 )
-from bucketed_scene_flow_eval.datastructures import PointCloud
+from bucketed_scene_flow_eval.datastructures import PointCloud, PointCloudFrame
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
 from . import ArgoverseRawSequence
@@ -112,30 +114,10 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         return flow_0_1, is_valid_arr, classes_0
 
     def _load_no_flow(self, raw_item: RawItem) -> SceneFlowItem:
-        classes_0_with_ground = self._make_default_classes(raw_item.ego_pc_with_ground)
-        classes_0_no_ground = classes_0_with_ground[~raw_item.is_ground_points]
+        classes_0 = self._make_default_classes(raw_item.pc.pc)
+
         return SceneFlowItem(
-            ego_pc=raw_item.ego_pc,
-            ego_pc_with_ground=raw_item.ego_pc_with_ground,
-            relative_pc=raw_item.relative_pc,
-            relative_pc_with_ground=raw_item.relative_pc_with_ground,
-            is_ground_points=raw_item.is_ground_points,
-            in_range_mask=raw_item.in_range_mask,
-            in_range_mask_with_ground=raw_item.in_range_mask_with_ground,
-            rgb=raw_item.rgb,
-            rgb_camera_projection=raw_item.rgb_camera_projection,
-            rgb_camera_ego_pose=raw_item.rgb_camera_ego_pose,
-            relative_pose=raw_item.relative_pose,
-            log_id=raw_item.log_id,
-            log_idx=raw_item.log_idx,
-            log_timestamp=raw_item.log_timestamp,
-            # Flow specific data
-            relative_flowed_pc=raw_item.relative_pc.copy(),
-            relative_flowed_pc_with_ground=raw_item.relative_pc_with_ground.copy(),
-            ego_flowed_pc=raw_item.ego_pc.copy(),
-            ego_flowed_pc_with_ground=raw_item.ego_pc_with_ground.copy(),
-            pc_classes=classes_0_no_ground,
-            pc_classes_with_ground=classes_0_with_ground,
+            **vars(raw_item), pc_classes=classes_0, flowed_pc=copy.deepcopy(raw_item.pc)
         )
 
     def _load_with_flow(self, raw_item: RawItem, idx: int, relative_to_idx: int) -> SceneFlowItem:
@@ -143,8 +125,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         idx_pose = self._load_pose(idx)
         relative_pose = start_pose.inverse().compose(idx_pose)
 
-        classes_0_with_ground = self._make_default_classes(raw_item.ego_pc_with_ground)
-        classes_0_no_ground = classes_0_with_ground[~raw_item.is_ground_points]
+        classes_0_with_ground = self._make_default_classes(raw_item.pc.pc)
         (
             relative_global_frame_flow_0_1_with_ground,
             is_valid_flow_with_ground_arr,
@@ -155,44 +136,21 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
             relative_global_frame_flow_0_1_with_ground is not None
         ), f"Flow data missing for {idx}"
 
-        relative_global_frame_no_ground_flowed_pc = raw_item.relative_pc.copy()
-        relative_global_frame_with_ground_flowed_pc = raw_item.relative_pc_with_ground.copy()
+        relative_global_frame_with_ground_flowed_pc = raw_item.pc.global_pc.copy()
         relative_global_frame_with_ground_flowed_pc.points[
             is_valid_flow_with_ground_arr
         ] += relative_global_frame_flow_0_1_with_ground[is_valid_flow_with_ground_arr]
-        relative_global_frame_no_ground_flowed_pc.points = (
-            relative_global_frame_with_ground_flowed_pc[~raw_item.is_ground_points].copy()
-        )
 
-        ego_flowed_pc_no_ground = relative_global_frame_no_ground_flowed_pc.transform(
-            relative_pose.inverse()
-        )
         ego_flowed_pc_with_ground = relative_global_frame_with_ground_flowed_pc.transform(
             relative_pose.inverse()
         )
 
         return SceneFlowItem(
-            ego_pc=raw_item.ego_pc,
-            ego_pc_with_ground=raw_item.ego_pc_with_ground,
-            relative_pc=raw_item.relative_pc,
-            relative_pc_with_ground=raw_item.relative_pc_with_ground,
-            is_ground_points=raw_item.is_ground_points,
-            in_range_mask=raw_item.in_range_mask,
-            in_range_mask_with_ground=raw_item.in_range_mask_with_ground,
-            rgb=raw_item.rgb,
-            rgb_camera_projection=raw_item.rgb_camera_projection,
-            rgb_camera_ego_pose=raw_item.rgb_camera_ego_pose,
-            relative_pose=raw_item.relative_pose,
-            log_id=raw_item.log_id,
-            log_idx=raw_item.log_idx,
-            log_timestamp=raw_item.log_timestamp,
-            # Flow specific data
-            relative_flowed_pc=relative_global_frame_no_ground_flowed_pc,
-            relative_flowed_pc_with_ground=relative_global_frame_with_ground_flowed_pc,
-            pc_classes=classes_0_no_ground,
-            pc_classes_with_ground=classes_0_with_ground,
-            ego_flowed_pc=ego_flowed_pc_no_ground,
-            ego_flowed_pc_with_ground=ego_flowed_pc_with_ground,
+            **vars(raw_item),
+            pc_classes=classes_0_with_ground,
+            flowed_pc=PointCloudFrame(
+                full_pc=ego_flowed_pc_with_ground, pose=raw_item.pc.pose, mask=raw_item.pc.mask
+            ),
         )
 
     def load(self, idx: int, relative_to_idx: int, with_flow: bool = True) -> SceneFlowItem:
@@ -323,6 +281,9 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
 
     def __len__(self):
         return len(self.sequence_id_lst)
+
+    def load_sequence(self, sequence_id: str) -> ArgoverseSceneFlowSequence:
+        return super().load_sequence(sequence_id)
 
     def __getitem__(self, idx):
         return self.load_sequence(self.sequence_id_lst[idx])
