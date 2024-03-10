@@ -8,13 +8,13 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Install OpenGL
       run: sudo apt-get update && sudo apt-get install -y freeglut3-dev # This is required for Open3D to not blow up on startup
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
