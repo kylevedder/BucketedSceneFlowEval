@@ -27,6 +27,7 @@ RUN pip install av2
 RUN apt install unzip -y
 RUN pip install pytest
 RUN pip install nuscenes-devkit
+RUN pip install pyviz3d meshio[all]
 
 ENV PYTHONPATH=/bucketed_scene_flow_eval:${PYTHONPATH}
 COPY bashrc /root/.bashrc

@@ -16,6 +16,6 @@ scene_trajectory_benchmark/
 docker_history.txt
 dist/
 **.pkl
-**.png
 **.zip
 eval_results/
+pyvis/

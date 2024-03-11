@@ -30,5 +30,6 @@
         "--gpus=all",
         "-h=bucketedflow",
         "--shm-size=16gb"
-    ]
+    ],
+    "forwardPorts": [6008]
 }

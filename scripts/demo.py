@@ -9,6 +9,7 @@ from bucketed_scene_flow_eval.datastructures import (
     O3DVisualizer,
     PointCloud,
     PointCloudFrame,
+    PyVisVisualizer,
     QuerySceneSequence,
     RGBFrame,
 )
@@ -109,7 +110,7 @@ def process_entry(query: QuerySceneSequence, gt: GroundTruthPointFlow):
         rgb_frames = query.scene_sequence[scene_timestamp].rgb_frames
         pc_frame = query.scene_sequence[scene_timestamp].pc_frame
 
-        o3d_vis = O3DVisualizer(point_size=0.5)
+        o3d_vis = PyVisVisualizer(point_size=0.5)
         gt.visualize(o3d_vis)
 
         if len(rgb_frames) == 0:

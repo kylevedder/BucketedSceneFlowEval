@@ -13,4 +13,5 @@ docker run --gpus=all --rm -it \
  -e DISPLAY=$DISPLAY \
  -h $HOSTNAME \
  --privileged \
+ -p 6008:6008 \
  bucketed_scene_flow_eval:latest

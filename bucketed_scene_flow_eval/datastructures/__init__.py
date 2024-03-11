@@ -1,6 +1,7 @@
 from .camera_projection import CameraModel, CameraProjection
 from .o3d_visualizer import O3DVisualizer
 from .pointcloud import PointCloud, from_fixed_array, to_fixed_array
+from .pyvis_visualizer import PyVisVisualizer
 from .rgb_image import RGBImage
 from .scene_sequence import (
     EstimatedPointFlow,
@@ -36,6 +37,7 @@ __all__ = [
     "PoseInfo",
     "QuerySceneSequence",
     "O3DVisualizer",
+    "PyVisVisualizer",
     "ParticleID",
     "ParticleClassId",
     "Timestamp",
