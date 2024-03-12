@@ -58,9 +58,31 @@ class RGBFrame:
 
 
 @dataclass
+class RGBFrameLookup:
+    lookup: dict[str, RGBFrame]
+    entries: list[str]
+
+    @staticmethod
+    def empty() -> "RGBFrameLookup":
+        return RGBFrameLookup({}, [])
+
+    def items(self) -> list[tuple[str, RGBFrame]]:
+        return [(key, self.lookup[key]) for key in self.entries]
+
+    def values(self) -> list[RGBFrame]:
+        return [self.lookup[key] for key in self.entries]
+
+    def __getitem__(self, key: str) -> RGBFrame:
+        return self.lookup[key]
+
+    def __len__(self) -> int:
+        return len(self.lookup)
+
+
+@dataclass
 class RawSceneItem:
     pc_frame: PointCloudFrame
-    rgb_frames: list[RGBFrame]
+    rgb_frames: RGBFrameLookup
 
 
 def _particle_id_to_color(particle_id: ParticleID) -> NDArray:

@@ -121,7 +121,7 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
             pc=pc_frame,
             is_ground_points=np.zeros(len(ego_pc), dtype=bool),
             in_range_mask=np.ones(len(ego_pc), dtype=bool),
-            rgbs=[],
+            rgbs={},
             pc_classes=cleaned_idx_labels,
             flowed_pc=flowed_pc_frame,
             log_id=self.sequence_folder.name,

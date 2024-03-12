@@ -1,3 +1,6 @@
+import math
+
+import cv2
 import numpy as np
 
 
@@ -8,7 +11,7 @@ class RGBImage:
     Each pixel is assumed to be in the range [0, 1] as a float32.
     """
 
-    def __init__(self, image: np.array):
+    def __init__(self, image: np.ndarray):
         assert len(image.shape) == 3, f"image must have shape (H, W, 3), got {image.shape}"
         assert image.shape[2] == 3, f"image must have shape (H, W, 3), got {image.shape}"
 
@@ -24,3 +27,13 @@ class RGBImage:
 
     def __repr__(self) -> str:
         return f"RGBImage with shape {self.image.shape} and dtype {self.image.dtype}"
+
+    def copy(self) -> "RGBImage":
+        return RGBImage(self.image.copy())
+
+    def rescale(self, reduction_factor: int) -> "RGBImage":
+        new_shape = (
+            int(math.ceil(self.image.shape[1] / reduction_factor)),
+            int(math.ceil(self.image.shape[0] / reduction_factor)),
+        )
+        return RGBImage(cv2.resize(self.image, new_shape))

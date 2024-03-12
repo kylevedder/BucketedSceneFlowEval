@@ -142,9 +142,9 @@ class Argoverse2SceneFlow:
                 entry.pc.mask = ~entry.is_ground_points
                 entry.flowed_pc.mask = ~entry.is_ground_points
 
-            rgb_frames: list[RGBFrame] = []
+            rgb_frames = RGBFrameLookup.empty()
             if self.with_rgb:
-                rgb_frames.extend(entry.rgbs)
+                rgb_frames = entry.rgbs
 
             percept_lookup[dataset_idx] = RawSceneItem(pc_frame=entry.pc, rgb_frames=rgb_frames)
 

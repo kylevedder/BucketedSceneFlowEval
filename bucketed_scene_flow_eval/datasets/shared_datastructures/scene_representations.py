@@ -9,6 +9,7 @@ from bucketed_scene_flow_eval.datastructures import (
     PointCloud,
     PointCloudFrame,
     RGBFrame,
+    RGBFrameLookup,
     RGBImage,
     Timestamp,
 )
@@ -19,7 +20,7 @@ class RawItem:
     pc: PointCloudFrame
     is_ground_points: np.ndarray
     in_range_mask: np.ndarray
-    rgbs: list[RGBFrame]
+    rgbs: RGBFrameLookup
     log_id: str
     log_idx: int
     log_timestamp: Timestamp

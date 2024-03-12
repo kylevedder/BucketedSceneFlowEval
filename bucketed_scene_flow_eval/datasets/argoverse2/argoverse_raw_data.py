@@ -23,6 +23,7 @@ from bucketed_scene_flow_eval.datastructures import (
     PointCloudFrame,
     PoseInfo,
     RGBFrame,
+    RGBFrameLookup,
     RGBImage,
 )
 from bucketed_scene_flow_eval.utils import load_json
@@ -83,11 +84,11 @@ class ArgoverseRawSequence(AbstractSequence):
         POINT_CLOUD_RANGE=(-48, -48, -2.5, 48, 48, 2.5),
         sample_every: Optional[int] = None,
         camera_names=[
+            "ring_side_left",
+            "ring_front_left",
             "ring_front_center",
             "ring_front_right",
-            "ring_front_left",
             "ring_side_right",
-            "ring_side_left",
         ],
     ):
         self.log_id = log_id
@@ -130,6 +131,8 @@ class ArgoverseRawSequence(AbstractSequence):
             self.global_to_raster_se2,
             self.global_to_raster_scale,
         ) = self._load_ground_height_raster()
+
+        self.camera_names = camera_names
 
         if verbose:
             print(
@@ -373,10 +376,13 @@ class ArgoverseRawSequence(AbstractSequence):
             mask=np.ones(len(ego_pc), dtype=bool),
         )
 
-        rgb_frames = [
-            camera.load_rgb_frame(timestamp, relative_pose)
-            for _, camera in sorted(self.camera_info_lookup.items())
-        ]
+        rgb_frames = RGBFrameLookup(
+            {
+                name: self.camera_info_lookup[name].load_rgb_frame(timestamp, relative_pose)
+                for name in self.camera_names
+            },
+            self.camera_names,
+        )
 
         return RawItem(
             pc=pc_frame,

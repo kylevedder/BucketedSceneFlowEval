@@ -14,6 +14,7 @@ from .scene_sequence import (
     RawSceneItem,
     RawSceneSequence,
     RGBFrame,
+    RGBFrameLookup,
     Timestamp,
     WorldParticle,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "RawSceneSequence",
     "PointCloudFrame",
     "RGBFrame",
+    "RGBFrameLookup",
     "PoseInfo",
     "QuerySceneSequence",
     "O3DVisualizer",
