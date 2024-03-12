@@ -105,7 +105,7 @@ class SE3:
         )
 
     def __repr__(self) -> str:
-        return "SE3 transform"
+        return f"SE3(rotation_matrix={self.rotation_matrix}, translation={self.translation})"
 
     def to_o3d(self, simple: bool = True):
         import open3d as o3d

@@ -6,7 +6,7 @@
 # Prepare /tmp/argoverse2_tiny/val
 rm -rf /tmp/argoverse2_tiny
 echo "Downloading argoverse2_tiny"
-wget -q https://github.com/kylevedder/BucketedSceneFlowEval/files/13881746/argoverse2_tiny.zip -O /tmp/argoverse2_tiny.zip
+wget -q https://github.com/kylevedder/BucketedSceneFlowEval/files/14576619/argoverse2_tiny.zip -O /tmp/argoverse2_tiny.zip
 unzip -q /tmp/argoverse2_tiny.zip -d /tmp/
 
 # For testing the raw data loader only (no flow) mode of the argoverse2 dataset, we symlink a "test" split to the val split
@@ -27,4 +27,4 @@ wget -q https://www.nuscenes.org/data/v1.0-mini.tgz -O /tmp/nuscenes/nuscenes_v1
 tar -xzf /tmp/nuscenes/nuscenes_v1.0-mini.tgz -C /tmp/nuscenes
 
 echo "Running integration tests"
-pytest tests/integration_tests.py tests/eval/bucketed_epe.py tests/eval/threeway_epe.py tests/nuscenes/nuscenes_tests.py
+pytest tests/integration_tests.py tests/eval/bucketed_epe.py tests/eval/threeway_epe.py tests/nuscenes/nuscenes_tests.py tests/argoverse2/av2_tests.py

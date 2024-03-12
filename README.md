@@ -40,7 +40,9 @@ Follow our [Getting Started](docs/GETTING_STARTED.md) for setup instructions.
 
 We provide a demo script which shows off the various features of the API.
 
-To run with Argoverse 2:
+### Argoverse 2:
+
+To render the lidar and multiple camera views of an Argoverse 2 sequence in 3D, run:
 
 ```
 python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/
@@ -48,9 +50,15 @@ python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/
 
 ![Argoverse 2 MultiCam](docs/imgs/av2_multicam.png)
 
-![Argoverse 2 MultiCam Video](docs/imgs/av2_multicam_video.mp4)
+To render RGB frames with lidar imposed on top, run:
 
-To run with Waymo Open:
+```
+python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/ --mode rgb --save_dir path/to/save_dir
+```
+
+![Argoverse 2 MultiCam Video](docs/imgs/av2_multicam_video.gif)
+
+### Waymo Open:
 
 ```
 python scripts/demo.py --dataset WaymoOpenSceneFlow --root_dir /efs/waymo_open_processed_flow/validation/

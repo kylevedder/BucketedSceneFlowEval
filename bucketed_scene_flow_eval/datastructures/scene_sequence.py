@@ -24,6 +24,9 @@ class PoseInfo:
     sensor_to_ego: SE3
     ego_to_global: SE3
 
+    def __repr__(self) -> str:
+        return f"PoseInfo(sensor_to_ego={self.sensor_to_ego}, ego_to_global={self.ego_to_global})"
+
 
 @dataclass
 class PointCloudFrame:
@@ -56,6 +59,9 @@ class RGBFrame:
     pose: PoseInfo
     camera_projection: CameraProjection
 
+    def __repr__(self) -> str:
+        return f"RGBFrame(rgb={self.rgb},\npose={self.pose},\ncamera_projection={self.camera_projection})"
+
 
 @dataclass
 class RGBFrameLookup:
@@ -65,6 +71,9 @@ class RGBFrameLookup:
     @staticmethod
     def empty() -> "RGBFrameLookup":
         return RGBFrameLookup({}, [])
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.lookup
 
     def items(self) -> list[tuple[str, RGBFrame]]:
         return [(key, self.lookup[key]) for key in self.entries]

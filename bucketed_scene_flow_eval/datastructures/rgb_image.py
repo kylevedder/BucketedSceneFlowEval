@@ -26,7 +26,7 @@ class RGBImage:
         self.image = image.astype(np.float32)
 
     def __repr__(self) -> str:
-        return f"RGBImage with shape {self.image.shape} and dtype {self.image.dtype}"
+        return f"RGBImage(shape={self.image.shape}, dtype={self.image.dtype})"
 
     def copy(self) -> "RGBImage":
         return RGBImage(self.image.copy())
@@ -37,3 +37,7 @@ class RGBImage:
             int(math.ceil(self.image.shape[0] / reduction_factor)),
         )
         return RGBImage(cv2.resize(self.image, new_shape))
+
+    @property
+    def shape(self):
+        return self.image.shape
