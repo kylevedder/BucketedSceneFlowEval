@@ -133,7 +133,7 @@ class PointCloud:
         # check that flow has the same number of entries as the boolean mask.
         assert (
             flow.shape[0] == mask.sum()
-        ), f"flow must have same number of entries as the number of True values in the mask, got {flow.shape[0]} and {mask.sum()}"
+        ), f"flow must have same number of entries as the number of True values in the mask, got flow shape of {flow.shape[0]} and mask sum of {mask.sum()}"
         flow = flow.astype(np.float32)
         updated_points = self.points.copy()
         updated_points[mask] = self.points[mask] + flow

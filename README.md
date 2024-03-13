@@ -53,10 +53,18 @@ python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/
 To render RGB frames with lidar imposed on top, run:
 
 ```
-python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/ --mode rgb --save_dir path/to/save_dir
+python scripts/demo_rgb.py --dataset Argoverse2SceneFlow --mode project_lidar --save_dir /efs/av2_camera_render/ --reduction_factor 16 --root_dir /efs/argoverse2/val
 ```
 
-![Argoverse 2 MultiCam Video](docs/imgs/av2_multicam_video.gif)
+![Argoverse 2 LiDAR](docs/imgs/av2_lidar.gif)
+
+To render the flow field of an Argoverse 2 sequence, run:
+
+```
+python scripts/demo_rgb.py --dataset Argoverse2SceneFlow --mode project_flow --save_dir /efs/av2_camera_render/ --reduction_factor 16 --root_dir /efs/argoverse2/val --flow_dir <path to method flow output>
+```
+
+![Argoverse 2 Flow](docs/imgs/av2_gt_flow.gif)
 
 ### Waymo Open:
 

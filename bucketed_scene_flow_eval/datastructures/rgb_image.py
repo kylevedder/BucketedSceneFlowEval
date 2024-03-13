@@ -25,6 +25,24 @@ class RGBImage:
 
         self.image = image.astype(np.float32)
 
+    @staticmethod
+    def white_image(shape: tuple[int, int]) -> "RGBImage":
+        assert len(shape) == 2, f"shape must be a 2-tuple, got {shape}"
+        return RGBImage(np.ones(shape + (3,), dtype=np.float32))
+
+    @staticmethod
+    def white_image_like(image: "RGBImage") -> "RGBImage":
+        return RGBImage.white_image(image.shape[:2])
+
+    @staticmethod
+    def black_image(shape: tuple[int, int]) -> "RGBImage":
+        assert len(shape) == 2, f"shape must be a 2-tuple, got {shape}"
+        return RGBImage(np.zeros(shape + (3,), dtype=np.float32))
+
+    @staticmethod
+    def black_image_like(image: "RGBImage") -> "RGBImage":
+        return RGBImage.black_image(image.shape[:2])
+
     def __repr__(self) -> str:
         return f"RGBImage(shape={self.image.shape}, dtype={self.image.dtype})"
 

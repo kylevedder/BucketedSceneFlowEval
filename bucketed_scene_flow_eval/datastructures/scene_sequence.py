@@ -24,6 +24,14 @@ class PoseInfo:
     sensor_to_ego: SE3
     ego_to_global: SE3
 
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, PoseInfo):
+            return False
+        return (
+            self.sensor_to_ego == __value.sensor_to_ego
+            and self.ego_to_global == __value.ego_to_global
+        )
+
     def __repr__(self) -> str:
         return f"PoseInfo(sensor_to_ego={self.sensor_to_ego}, ego_to_global={self.ego_to_global})"
 
@@ -51,6 +59,42 @@ class PointCloudFrame:
     @property
     def global_pose(self) -> SE3:
         return self.pose.ego_to_global @ self.pose.sensor_to_ego
+
+    def add_global_flow(self, flow: NDArray, valid_flow_mask: NDArray) -> "PointCloudFrame":
+        assert flow.ndim == 2, f"flow must be a 2D array, got {flow.ndim}"
+        assert (
+            valid_flow_mask.ndim == 1
+        ), f"valid_flow_mask must be a 1D array, got {valid_flow_mask.ndim}"
+        assert (
+            valid_flow_mask.dtype == bool
+        ), f"valid_flow_mask must be boolean, got {valid_flow_mask.dtype}"
+
+        assert len(flow) == len(valid_flow_mask), (
+            f"flow and valid_flow_mask must have the same length, got {len(flow)} and "
+            f"{len(valid_flow_mask)}"
+        )
+
+        assert len(flow) == len(
+            self.full_pc
+        ), f"flow shape {flow.shape} must match point cloud shape {len(self.full_pc)}"
+
+        assert self.mask.shape == valid_flow_mask.shape, (
+            f"mask and valid_flow_mask must have the same length, got {len(self.mask)} and "
+            f"{len(valid_flow_mask)}"
+        )
+
+        # Convert to global pc, add flow, then convert back to ego frame
+        flowed_ego_pc = self.full_global_pc.flow_masked(
+            flow[valid_flow_mask], valid_flow_mask
+        ).transform(self.global_pose.inverse())
+        # Only include points that are valid and in the mask
+        joined_mask = self.mask & valid_flow_mask
+
+        return PointCloudFrame(
+            full_pc=flowed_ego_pc,
+            pose=self.pose,
+            mask=joined_mask,
+        )
 
 
 @dataclass
@@ -297,6 +341,16 @@ class EstimatedPointFlow:
 
     def valid_particle_ids(self) -> NDArray:
         return np.arange(self.num_entries)[self.is_valid_flow]
+
+    def get_flow(
+        self, src_timestamp: Timestamp, target_timestamp: Timestamp
+    ) -> tuple[NDArray, NDArray]:
+        src_idx = np.where(self.trajectory_timestamps == src_timestamp)[0][0]
+        target_idx = np.where(self.trajectory_timestamps == target_timestamp)[0][0]
+        return (
+            self.world_points[:, target_idx] - self.world_points[:, src_idx],
+            self.is_valid_flow,
+        )
 
     def __len__(self) -> int:
         return self.is_valid_flow.sum()

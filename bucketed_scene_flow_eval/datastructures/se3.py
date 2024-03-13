@@ -36,6 +36,13 @@ class SE3:
         translation = np.array([tx, ty, tz])
         return SE3(rotation_matrix, translation)
 
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, SE3):
+            return False
+        return np.allclose(self.rotation_matrix, __value.rotation_matrix) and np.allclose(
+            self.translation, __value.translation
+        )
+
     def translate(self, translation: np.ndarray) -> "SE3":
         """Return a new SE3 instance with the given translation applied."""
         if isinstance(translation, list):
