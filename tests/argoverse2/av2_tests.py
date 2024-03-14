@@ -6,8 +6,12 @@ import pytest
 from bucketed_scene_flow_eval.datasets.argoverse2 import (
     ArgoverseSceneFlowSequenceLoader,
 )
-from bucketed_scene_flow_eval.datasets.shared_datastructures import RawItem
-from bucketed_scene_flow_eval.datastructures import SE3, PoseInfo
+from bucketed_scene_flow_eval.datastructures import (
+    SE3,
+    PoseInfo,
+    TimeSyncedAVLidarData,
+    TimeSyncedSceneFlowItem,
+)
 
 
 @pytest.fixture
@@ -32,7 +36,9 @@ def _are_poseinfos_close(pose1: PoseInfo, pose2: PoseInfo, tol: float = 1e-6) ->
     )
 
 
-def _load_reference_sequence(av2_loader: ArgoverseSceneFlowSequenceLoader) -> RawItem:
+def _load_reference_sequence(
+    av2_loader: ArgoverseSceneFlowSequenceLoader,
+) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
     sequence_id = "02678d04-cc9f-3148-9f95-1ba66347dff9"
     assert sequence_id in av2_loader.get_sequence_ids(), f"sequence_id {sequence_id} not found"
     sequence = av2_loader.load_sequence(sequence_id)
@@ -41,7 +47,7 @@ def _load_reference_sequence(av2_loader: ArgoverseSceneFlowSequenceLoader) -> Ra
 
 
 def test_rgb_sizes(av2_loader: ArgoverseSceneFlowSequenceLoader):
-    first_frame = _load_reference_sequence(av2_loader)
+    first_frame, _ = _load_reference_sequence(av2_loader)
     assert len(first_frame.rgbs) == 5, f"expected 5 cameras, got {len(first_frame.rgbs)}"
 
     # Expect the shapes
@@ -65,7 +71,7 @@ def test_rgb_sizes(av2_loader: ArgoverseSceneFlowSequenceLoader):
 
 
 def test_rgb_poses(av2_loader: ArgoverseSceneFlowSequenceLoader):
-    first_frame = _load_reference_sequence(av2_loader)
+    first_frame, _ = _load_reference_sequence(av2_loader)
     assert len(first_frame.rgbs) == 5, f"expected 5 cameras, got {len(first_frame.rgbs)}"
     # fmt: off
     expected_poses = {

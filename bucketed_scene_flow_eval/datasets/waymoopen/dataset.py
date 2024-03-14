@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datasets.shared_datastructures import SceneFlowItem
+from bucketed_scene_flow_eval.datasets.interfaces import SceneFlowItem
 from bucketed_scene_flow_eval.datastructures import *
 from bucketed_scene_flow_eval.eval import BucketedEPEEvaluator, Evaluator
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
@@ -69,20 +69,22 @@ class WaymoOpenSceneFlow:
         return len(self.dataset_to_sequence_subsequence_idx)
 
     def _make_scene_sequence(
-        self, subsequence_frames: list[SceneFlowItem], seq_id: str
+        self, subsequence_frames: list[TimeSyncedSceneFlowItem], seq_id: str
     ) -> RawSceneSequence:
         # Build percept lookup. This stores the percepts for the entire sequence, with the
         # global frame being zero'd at the target frame.
-        percept_lookup: dict[Timestamp, RawSceneItem] = {}
+        percept_lookup: dict[Timestamp, TimeSyncedRawSceneFrame] = {}
         for dataset_idx, entry in enumerate(subsequence_frames):
-            percept_lookup[dataset_idx] = RawSceneItem(pc_frame=entry.pc, rgb_frames=entry.rgbs)
+            percept_lookup[dataset_idx] = TimeSyncedRawSceneFrame(
+                pc_frame=entry.pc, rgb_frames=entry.rgbs
+            )
 
         return RawSceneSequence(percept_lookup, seq_id)
 
     def _make_query_scene_sequence(
         self,
         scene_sequence: RawSceneSequence,
-        subsequence_frames: list[SceneFlowItem],
+        subsequence_frames: list[TimeSyncedSceneFlowItem],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> QuerySceneSequence:
@@ -101,7 +103,7 @@ class WaymoOpenSceneFlow:
     def _make_results_scene_sequence(
         self,
         query: QuerySceneSequence,
-        subsequence_frames: list[SceneFlowItem],
+        subsequence_frames: list[TimeSyncedSceneFlowItem],
         subsequence_src_index: int,
         subsequence_tgt_index: int,
     ) -> GroundTruthPointFlow:
@@ -110,8 +112,8 @@ class WaymoOpenSceneFlow:
 
         source_entry = subsequence_frames[subsequence_src_index]
         source_pc = source_entry.pc.global_pc.points
-        target_pc = source_entry.flowed_pc.global_pc.points
-        pc_class_ids = source_entry.pc_classes
+        target_pc = source_entry.flow.global_pc.points
+        pc_class_ids = source_entry.full_pc_classes
         assert len(source_pc) == len(
             target_pc
         ), "Source and target point clouds must be the same size."

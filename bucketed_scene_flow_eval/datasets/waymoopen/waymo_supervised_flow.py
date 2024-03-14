@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datasets.shared_datastructures import (
+from bucketed_scene_flow_eval.datasets.interfaces import (
     AbstractSequence,
     AbstractSequenceLoader,
     CachedSequenceLoader,

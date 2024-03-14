@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 
+from bucketed_scene_flow_eval.datastructures import SemanticClassId
 from bucketed_scene_flow_eval.utils import save_json, save_txt
 
 from .base_per_frame_sceneflow_eval import (
@@ -220,6 +221,7 @@ class BucketResultMatrix:
 class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
     def __init__(
         self,
+        class_id_to_name: dict[SemanticClassId, str],
         bucket_max_speed: float = 20.0 / 10.0,
         num_buckets: int = 51,
         output_path: Path = Path("/tmp/frame_results/bucketed_epe"),
@@ -230,22 +232,17 @@ class BucketedEPEEvaluator(PerFrameSceneFlowEvaluator):
         bucket_edges = np.concatenate([np.linspace(0, bucket_max_speed, num_buckets), [np.inf]])
         self.speed_thresholds = list(zip(bucket_edges, bucket_edges[1:]))
         self.meta_class_lookup = meta_class_lookup
-        super().__init__(output_path=output_path)
+        super().__init__(output_path=output_path, class_id_to_name=class_id_to_name)
 
     def _build_eval_frame_results(
-        self,
-        pc1: np.ndarray,
-        gt_class_ids: np.ndarray,
-        gt_flow: np.ndarray,
-        pred_flow: np.ndarray,
-        ground_truth,
+        self, pc1: np.ndarray, gt_class_ids: np.ndarray, gt_flow: np.ndarray, pred_flow: np.ndarray
     ) -> BaseEvalFrameResult:
         return BucketedEvalFrameResult(
             pc1,
             gt_class_ids,
             gt_flow,
             pred_flow,
-            class_id_to_name=ground_truth.pretty_name,
+            class_id_to_name=self.class_id_to_name,
             max_speed_thresholds=self.speed_thresholds,
         )
 

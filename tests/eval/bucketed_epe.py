@@ -2,7 +2,10 @@ import numpy as np
 import pytest
 
 from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow, construct_dataset
-from bucketed_scene_flow_eval.datastructures import GroundTruthPointFlow
+from bucketed_scene_flow_eval.datastructures import (
+    EgoLidarFlow,
+    TimeSyncedSceneFlowItem,
+)
 
 
 @pytest.fixture
@@ -72,18 +75,24 @@ def _run_eval_on_target_and_gt_datasets(
 
     # Iterate over both datasets, treating the pseudo dataset as the "prediction"
     # and the ground truth dataset as the "target"
-    for (_, est_gt), (_, target_gt) in zip(target_dataset, gt_dataset):
-        est_gt: GroundTruthPointFlow
-        target_gt: GroundTruthPointFlow
-        assert all(est_gt.trajectory_timestamps == target_gt.trajectory_timestamps), (
-            f"Timestamps must match between the ground truth and pseudo datasets. "
-            f"Found {est_gt.trajectory_timestamps} and {target_gt.trajectory_timestamps}."
+    iterations = 0
+    for target_lst, gt_lst in zip(target_dataset, gt_dataset):
+        assert len(target_lst) == len(gt_lst) == 2, (
+            f"Each sample must be a tuple of length 2. "
+            f"Found {len(target_lst)} and {len(gt_lst)}."
         )
-        assert (
-            len(target_gt.trajectory_timestamps) == 2
-        ), f"Timestamps must be a pair of timestamps. Found {target_gt.trajectory_timestamps}."
+        target_item1: TimeSyncedSceneFlowItem = target_lst[0]
+        gt_item1: TimeSyncedSceneFlowItem = gt_lst[0]
 
-        evaluator.eval(est_gt, target_gt, target_gt.trajectory_timestamps[0])
+        evaluator.eval(
+            target_item1.flow,
+            gt_item1,
+        )
+        iterations += 1
+
+    assert iterations == len(
+        gt_dataset
+    ), f"Expected to iterate over {len(gt_dataset)} samples, but only iterated over {iterations}."
 
     out_results_dict: dict[str, tuple[float, float]] = evaluator.compute_results()
 
@@ -98,6 +107,8 @@ def _run_eval_on_target_and_gt_datasets(
         f"Found {out_results_dict.keys()} and {EXPECTED_RESULTS_DICT.keys()}."
     )
 
+    print(out_results_dict)
+
     for key in EXPECTED_RESULTS_DICT:
         out_static_epe, out_dynamic_epe = out_results_dict[key]
         exp_static_epe, exp_dynamic_epe = EXPECTED_RESULTS_DICT[key]
@@ -105,11 +116,11 @@ def _run_eval_on_target_and_gt_datasets(
         # Check that floats are equal, but be aware of NaNs (which are not equal to anything)
         assert np.isnan(out_static_epe) == np.isnan(
             exp_static_epe
-        ), f"Static EPEs must both be NaN or not NaN. Found {out_static_epe} and {exp_static_epe}."
+        ), f"Static EPEs must both be NaN or not NaN. Found output is {out_static_epe} but expected {exp_static_epe}."
 
         assert np.isnan(out_dynamic_epe) == np.isnan(
             exp_dynamic_epe
-        ), f"Dynamic EPEs must both be NaN or not NaN. Found {out_dynamic_epe} and {exp_dynamic_epe}."
+        ), f"Dynamic EPEs must both be NaN or not NaN. Found output is {out_dynamic_epe} but expected {exp_dynamic_epe}."
 
         if not np.isnan(exp_static_epe):
             assert out_static_epe == pytest.approx(

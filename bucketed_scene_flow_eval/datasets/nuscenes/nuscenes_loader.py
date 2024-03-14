@@ -9,7 +9,7 @@ from nuscenes.utils.data_classes import LidarPointCloud as NuscLidarPointCloud
 from PIL import Image
 from pyquaternion import Quaternion
 
-from bucketed_scene_flow_eval.datasets.shared_datastructures import (
+from bucketed_scene_flow_eval.datasets.interfaces import (
     AbstractSequence,
     AbstractSequenceLoader,
     CachedSequenceLoader,

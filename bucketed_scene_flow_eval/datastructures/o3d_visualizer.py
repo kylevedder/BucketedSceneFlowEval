@@ -3,6 +3,7 @@ from typing import Optional, Union
 import numpy as np
 import open3d as o3d
 
+from .dataclasses import PointCloudFrame, RGBFrame
 from .pointcloud import PointCloud
 from .se3 import SE3
 
@@ -24,12 +25,21 @@ class O3DVisualizer:
         else:
             self.geometry_list.append(geometry)
 
-    def add_pc_frame(
+    def add_global_pc_frame(
         self,
-        pc_frame: "PointCloudFrame",
+        pc_frame: PointCloudFrame,
         color: Union[tuple[float, float, float], None] = None,
     ):
         self.add_pointcloud(pc_frame.global_pc, color=color)
+
+    def add_global_rgb_frame(self, rgb_frame: RGBFrame):
+        image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
+            rgb_frame.rgb, depth=20
+        )
+        image_plane_pc = image_plane_pc.transform(
+            rgb_frame.pose.ego_to_global.compose(rgb_frame.pose.sensor_to_ego.inverse())
+        )
+        self.add_pointcloud(image_plane_pc, color=colors)
 
     def add_pointcloud(
         self,
@@ -40,17 +50,17 @@ class O3DVisualizer:
         ] = None,
     ):
         pc = pc.transform(pose)
-        pc = pc.to_o3d()
+        pc_o3d = pc.to_o3d()
         if color is not None:
             color = np.array(color)
             if color.ndim == 1:
-                pc = pc.paint_uniform_color(color)
+                pc_o3d = pc_o3d.paint_uniform_color(color)
             elif color.ndim == 2:
                 assert len(color) == len(
-                    pc.points
-                ), f"Expected color to have length {len(pc.points)}, got {len(color)} instead"
-                pc.colors = o3d.utility.Vector3dVector(color)
-        self.add_geometry(pc)
+                    pc_o3d.points
+                ), f"Expected color to have length {len(pc_o3d.points)}, got {len(color)} instead"
+                pc_o3d.colors = o3d.utility.Vector3dVector(color)
+        self.add_geometry(pc_o3d)
 
     def add_sphere(self, location: np.ndarray, radius: float, color: tuple[float, float, float]):
         sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius, resolution=2)
@@ -146,13 +156,3 @@ class O3DVisualizer:
             vis.add_geometry(geometry)
 
         vis.run()
-
-        #
-        # o3d.visualization.draw_geometries(self.geometry_list)
-        # ctr = self.vis.get_view_control()
-        # # Set forward direction to be -X
-        # ctr.set_front([-1, 0, 0])
-        # # Set up direction to be +Z
-        # ctr.set_up([0, 0, 1])
-        # # Set lookat to be origin
-        # ctr.set_lookat([0, 0, 0])

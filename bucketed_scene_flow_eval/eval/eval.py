@@ -3,20 +3,14 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from bucketed_scene_flow_eval.datastructures import (
-    EstimatedPointFlow,
-    GroundTruthPointFlow,
-    Timestamp,
+    EgoLidarFlow,
+    TimeSyncedSceneFlowItem,
 )
 
 
 class Evaluator(ABC):
     @abstractmethod
-    def eval(
-        self,
-        predictions: EstimatedPointFlow,
-        ground_truth: GroundTruthPointFlow,
-        query_timestamp: Timestamp,
-    ):
+    def eval(self, predictions: EgoLidarFlow, gt: TimeSyncedSceneFlowItem):
         pass
 
     @abstractmethod

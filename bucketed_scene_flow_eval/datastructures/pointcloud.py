@@ -186,7 +186,7 @@ class PointCloud:
         return self.mask_points(mask)
 
     @property
-    def shape(self) -> tuple:
+    def shape(self) -> tuple[int, int]:
         return self.points.shape
 
     def to_o3d(self) -> o3d.geometry.PointCloud:

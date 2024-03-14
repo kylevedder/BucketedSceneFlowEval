@@ -8,12 +8,6 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation
 
-from bucketed_scene_flow_eval.datasets.shared_datastructures import (
-    AbstractSequence,
-    AbstractSequenceLoader,
-    CachedSequenceLoader,
-    RawItem,
-)
 from bucketed_scene_flow_eval.datastructures import (
     SE2,
     SE3,
@@ -25,7 +19,10 @@ from bucketed_scene_flow_eval.datastructures import (
     RGBFrame,
     RGBFrameLookup,
     RGBImage,
+    TimeSyncedAVLidarData,
+    TimeSyncedRawItem,
 )
+from bucketed_scene_flow_eval.interfaces import AbstractSequence, CachedSequenceLoader
 from bucketed_scene_flow_eval.utils import load_json
 
 GROUND_HEIGHT_THRESHOLD = 0.4  # 40 centimeters
@@ -356,7 +353,9 @@ class ArgoverseRawSequence(AbstractSequence):
         )
         return se3
 
-    def load(self, idx: int, relative_to_idx: int) -> RawItem:
+    def load(
+        self, idx: int, relative_to_idx: int
+    ) -> tuple[TimeSyncedRawItem, TimeSyncedAVLidarData]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc = self._load_pc(idx)
@@ -384,17 +383,22 @@ class ArgoverseRawSequence(AbstractSequence):
             self.camera_names,
         )
 
-        return RawItem(
-            pc=pc_frame,
-            rgbs=rgb_frames,
-            is_ground_points=is_ground_points,
-            in_range_mask=in_range_mask_with_ground,
-            log_id=self.log_id,
-            log_idx=idx,
-            log_timestamp=timestamp,
+        return (
+            TimeSyncedRawItem(
+                pc=pc_frame,
+                rgbs=rgb_frames,
+                log_id=self.log_id,
+                log_idx=idx,
+                log_timestamp=timestamp,
+            ),
+            TimeSyncedAVLidarData(
+                is_ground_points=is_ground_points, in_range_mask=in_range_mask_with_ground
+            ),
         )
 
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[RawItem]:
+    def load_frame_list(
+        self, relative_to_idx: Optional[int]
+    ) -> list[TimeSyncedRawItem, TimeSyncedAVLidarData]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))

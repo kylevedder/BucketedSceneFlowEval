@@ -1,7 +1,10 @@
 # import abstract base class
 from abc import ABC, abstractmethod
 
-from .scene_representations import RawItem
+from bucketed_scene_flow_eval.datastructures import (
+    TimeSyncedBaseAuxilaryData,
+    TimeSyncedRawItem,
+)
 
 
 class AbstractSequence(ABC):
@@ -9,7 +12,9 @@ class AbstractSequence(ABC):
         pass
 
     @abstractmethod
-    def load(self, idx: int, relative_to_idx: int) -> RawItem:
+    def load(
+        self, idx: int, relative_to_idx: int
+    ) -> tuple[TimeSyncedRawItem, TimeSyncedBaseAuxilaryData]:
         pass
 
     @abstractmethod
