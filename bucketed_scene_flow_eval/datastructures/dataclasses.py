@@ -28,6 +28,10 @@ class PoseInfo:
             and self.ego_to_global == __value.ego_to_global
         )
 
+    @property
+    def sensor_to_global(self) -> SE3:
+        return self.ego_to_global @ self.sensor_to_ego
+
     def __repr__(self) -> str:
         return f"PoseInfo(sensor_to_ego={self.sensor_to_ego}, ego_to_global={self.ego_to_global})"
 
@@ -54,7 +58,7 @@ class PointCloudFrame:
 
     @property
     def global_pose(self) -> SE3:
-        return self.pose.ego_to_global @ self.pose.sensor_to_ego
+        return self.pose.sensor_to_global
 
     def mask_points(self, mask: MaskArray) -> "PointCloudFrame":
         assert isinstance(mask, np.ndarray), f"mask must be an ndarray, got {type(mask)}"
@@ -159,6 +163,10 @@ class EgoLidarFlow:
             full_flow=np.zeros((flow_dim, 3), dtype=np.float32),
             mask=np.zeros(flow_dim, dtype=bool),
         )
+
+    @staticmethod
+    def make_no_flow_like(flow: "EgoLidarFlow") -> "EgoLidarFlow":
+        return EgoLidarFlow.make_no_flow(flow.shape[0])
 
     def __post_init__(self):
         assert self.full_flow.ndim == 2, f"flow must be a 2D array, got {self.full_flow.ndim}"

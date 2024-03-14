@@ -9,14 +9,7 @@ from nuscenes.utils.data_classes import LidarPointCloud as NuscLidarPointCloud
 from PIL import Image
 from pyquaternion import Quaternion
 
-from bucketed_scene_flow_eval.datasets.interfaces import (
-    AbstractSequence,
-    AbstractSequenceLoader,
-    CachedSequenceLoader,
-    RawItem,
-)
 from bucketed_scene_flow_eval.datastructures import (
-    SE2,
     SE3,
     CameraModel,
     CameraProjection,
@@ -24,8 +17,13 @@ from bucketed_scene_flow_eval.datastructures import (
     PointCloudFrame,
     PoseInfo,
     RGBFrame,
+    RGBFrameLookup,
     RGBImage,
+    TimeSyncedAVLidarData,
+    TimeSyncedBaseAuxilaryData,
+    TimeSyncedRawItem,
 )
+from bucketed_scene_flow_eval.interfaces import AbstractSequence, CachedSequenceLoader
 
 NuscDict = dict[str, Union[str, int, list]]
 NuscSample = dict[str, NuscDict]
@@ -106,11 +104,12 @@ class NuScenesSyncedSampleData:
         mask = np.ones(pc.points.shape[0], dtype=bool)
         return PointCloudFrame(pc, pose_info, mask)
 
-    def camera_to_rgb_frame(self, nusc: NuScenes) -> RGBFrame:
+    def camera_to_rgb_frame_lookup(self, nusc: NuScenes) -> RGBFrameLookup:
         rgb = self._load_rgb(nusc, self.cam_front)
         pose_info = self._load_poseinfo(nusc, self.cam_front)
         camera_projection = self._load_camera_projection(nusc, self.cam_front)
-        return RGBFrame(rgb, pose_info, camera_projection)
+        cam_front_rgb_frame = RGBFrame(rgb, pose_info, camera_projection)
+        return RGBFrameLookup({"cam_front": cam_front_rgb_frame}, ["cam_front"])
 
     def cam_front_with_points(self, nusc: NuScenes):
         pointsensor_token = self.lidar_top["token"]
@@ -229,21 +228,27 @@ class NuScenesSequence(AbstractSequence):
         np_data_float32 = np_data_uint8.astype(np.float32) / 255.0
         return RGBImage(np_data_float32)
 
-    def load(self, idx: int, relative_to_idx: int) -> RawItem:
+    def load(
+        self, idx: int, relative_to_idx: int
+    ) -> tuple[TimeSyncedRawItem, TimeSyncedBaseAuxilaryData]:
         assert 0 <= idx < len(self), f"idx must be in range [0, {len(self)}), got {idx}"
         synced_sample = self.synced_sensors[idx]
 
         pc_frame = synced_sample.lidar_to_pc_frame(self.nusc)
-        rgb_frame = synced_sample.camera_to_rgb_frame(self.nusc)
+        rgb_frames = synced_sample.camera_to_rgb_frame_lookup(self.nusc)
 
-        return RawItem(
-            pc=pc_frame,
-            is_ground_points=np.zeros(len(pc_frame.pc), dtype=bool),
-            in_range_mask=np.ones(len(pc_frame.pc), dtype=bool),
-            rgbs=[rgb_frame],
-            log_id=self.log_id,
-            log_idx=idx,
-            log_timestamp=idx,
+        return (
+            TimeSyncedRawItem(
+                pc=pc_frame,
+                rgbs=rgb_frames,
+                log_id=self.log_id,
+                log_idx=idx,
+                log_timestamp=idx,
+            ),
+            TimeSyncedAVLidarData(
+                is_ground_points=np.zeros(len(pc_frame.pc), dtype=bool),
+                in_range_mask=np.ones(len(pc_frame.pc), dtype=bool),
+            ),
         )
 
     def __len__(self):
@@ -273,6 +278,10 @@ class NuScenesLoader(CachedSequenceLoader):
     def get_sequence_ids(self) -> list:
         return sorted(self.log_lookup.keys())
 
+    def __getitem__(self, idx: int) -> NuScenesSequence:
+        seq_id = self.get_sequence_ids()[idx]
+        return self.load_sequence(seq_id)
+
     def _load_sequence_uncached(self, log_id: str) -> NuScenesSequence:
         assert log_id in self.log_lookup, f"log_id {log_id} is not in the {len(self.log_lookup)}"
         log_info_dict = self.log_lookup[log_id]
@@ -282,3 +291,6 @@ class NuScenesLoader(CachedSequenceLoader):
             log_info_dict,
             verbose=self.verbose,
         )
+
+    def config_string(self) -> str:
+        return f"nuscenes_dataset_{self.nusc.version}_dataset_dir_{self.dataset_dir.name}"

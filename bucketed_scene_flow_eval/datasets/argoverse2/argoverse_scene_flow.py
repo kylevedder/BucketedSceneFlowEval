@@ -18,7 +18,10 @@ from bucketed_scene_flow_eval.datastructures import (
     TimeSyncedSceneFlowItem,
     VectorArray,
 )
-from bucketed_scene_flow_eval.interfaces import CachedSequenceLoader
+from bucketed_scene_flow_eval.interfaces import (
+    AbstractAVLidarSequence,
+    CachedSequenceLoader,
+)
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
 from . import ArgoverseRawSequence
@@ -60,7 +63,7 @@ CATEGORY_MAP = {
 CATEGORY_MAP_INV = {v: k for k, v in CATEGORY_MAP.items()}
 
 
-class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
+class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
     def __init__(
         self,
         log_id: str,
@@ -154,26 +157,16 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
     ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
         start_pose = self._load_pose(relative_to_idx)
         idx_pose = self._load_pose(idx)
-        relative_pose = start_pose.inverse().compose(idx_pose)
+        idx_pone_pose = self._load_pose(idx + 1)
+        single_frame_ego_motion = idx_pone_pose.inverse().compose(idx_pose)
+        start_frame_relative_pose = start_pose.inverse().compose(idx_pose)
 
         (
-            relative_global_frame_flow_0_1_with_ground,
+            ego_flow_with_ground,
             is_valid_flow_with_ground_arr,
             classes_0_with_ground,
         ) = self._load_flow_feather(idx, self._make_default_classes(raw_item.pc.pc))
-
-        relative_global_frame_with_ground_flowed_pc = raw_item.pc.global_pc.copy()
-        relative_global_frame_with_ground_flowed_pc.points[
-            is_valid_flow_with_ground_arr
-        ] += relative_global_frame_flow_0_1_with_ground[is_valid_flow_with_ground_arr]
-
-        ego_flowed_pc_with_ground = relative_global_frame_with_ground_flowed_pc.transform(
-            relative_pose.inverse()
-        )
-
-        delta_flow = ego_flowed_pc_with_ground.points - raw_item.pc.full_global_pc.points
-
-        flow = EgoLidarFlow(full_flow=delta_flow, mask=is_valid_flow_with_ground_arr)
+        flow = EgoLidarFlow(full_flow=ego_flow_with_ground, mask=is_valid_flow_with_ground_arr)
         return (self._make_tssf_item(raw_item, classes_0_with_ground, flow), metadata)
 
     def load(
@@ -187,7 +180,9 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         else:
             return self._load_no_flow(raw_item, metadata)
 
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[TimeSyncedRawItem]:
+    def load_frame_list(
+        self, relative_to_idx: Optional[int] = 0
+    ) -> list[tuple[TimeSyncedRawItem, TimeSyncedAVLidarData]]:
         return [
             self.load(
                 idx=idx,
@@ -342,6 +337,9 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
     @staticmethod
     def category_name_to_id(category_name: str) -> int:
         return {v: k for k, v in CATEGORY_MAP.items()}[category_name]
+
+    def config_string(self) -> str:
+        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}"
 
 
 class ArgoverseNoFlowSequence(ArgoverseSceneFlowSequence):

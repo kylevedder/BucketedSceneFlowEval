@@ -2,12 +2,15 @@ from pathlib import Path
 
 import numpy as np
 
+from bucketed_scene_flow_eval.datastructures import SemanticClassId
+
 from .bucketed_epe import BucketedEPEEvaluator
 
 
 class ThreeWayEPEEvaluator(BucketedEPEEvaluator):
     def __init__(
         self,
+        class_id_to_name: dict[SemanticClassId, str],
         meta_class_lookup: dict[str, list[str]],
         dynamic_threshold_meters_per_frame=0.5 / 10,
         output_path: Path = Path("/tmp/frame_results/threeway_epe"),
@@ -17,7 +20,11 @@ class ThreeWayEPEEvaluator(BucketedEPEEvaluator):
         assert (
             len(meta_class_lookup.keys()) == 2
         ), f"Threeway EPE meta_class_lookup must have 2 keys, instead found {len(meta_class_lookup.keys())} keys: {meta_class_lookup.keys()}"
-        super().__init__(output_path=output_path, meta_class_lookup=meta_class_lookup)
+        super().__init__(
+            class_id_to_name=class_id_to_name,
+            output_path=output_path,
+            meta_class_lookup=meta_class_lookup,
+        )
         bucket_edges = [0.0, dynamic_threshold_meters_per_frame, np.inf]
         self.speed_thresholds = list(zip(bucket_edges, bucket_edges[1:]))
 

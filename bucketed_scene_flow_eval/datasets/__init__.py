@@ -1,9 +1,8 @@
 from bucketed_scene_flow_eval.datasets.argoverse2 import Argoverse2SceneFlow
+from bucketed_scene_flow_eval.datasets.waymoopen import WaymoOpenSceneFlow
 from bucketed_scene_flow_eval.interfaces import AbstractDataset
 
-# from bucketed_scene_flow_eval.datasets.waymoopen import WaymoOpenSceneFlow
-
-importable_classes = [Argoverse2SceneFlow]  # , WaymoOpenSceneFlow]
+importable_classes = [Argoverse2SceneFlow, WaymoOpenSceneFlow]
 name_to_class_lookup = {cls.__name__.lower(): cls for cls in importable_classes}
 
 

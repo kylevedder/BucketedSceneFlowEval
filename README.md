@@ -45,7 +45,7 @@ We provide a demo script which shows off the various features of the API.
 To render the lidar and multiple camera views of an Argoverse 2 sequence in 3D, run:
 
 ```
-python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/
+python scripts/demo_3d.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/ --with_rgb
 ```
 
 ![Argoverse 2 MultiCam](docs/imgs/av2_multicam.png)

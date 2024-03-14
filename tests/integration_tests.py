@@ -128,8 +128,8 @@ def _validate_dataloader(
     ), f"Expected {expected_len} iteration, got {num_iteration_entries}"
 
 
-# def test_waymo_dataset(waymo_dataset_gt):
-#     _validate_dataloader(waymo_dataset_gt, 124364, 124364)
+def test_waymo_dataset(waymo_dataset_gt):
+    _validate_dataloader(waymo_dataset_gt, 124364, 124364)
 
 
 def test_argo_dataset_gt_with_ground(argo_dataset_gt_with_ground):

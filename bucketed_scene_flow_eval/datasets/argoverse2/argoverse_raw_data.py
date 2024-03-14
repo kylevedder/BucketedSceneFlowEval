@@ -397,8 +397,8 @@ class ArgoverseRawSequence(AbstractSequence):
         )
 
     def load_frame_list(
-        self, relative_to_idx: Optional[int]
-    ) -> list[TimeSyncedRawItem, TimeSyncedAVLidarData]:
+        self, relative_to_idx: Optional[int] = 0
+    ) -> list[tuple[TimeSyncedRawItem, TimeSyncedAVLidarData]]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))
@@ -452,3 +452,6 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
             sample_every=self.per_sequence_sample_every,
             with_rgb=self.with_rgb,
         )
+
+    def config_string(self) -> str:
+        return f"av2_raw_data_with_rgb_{self.with_rgb}_sample_every_{self.per_sequence_sample_every}_dataset_dir_{self.dataset_dir.name}"
