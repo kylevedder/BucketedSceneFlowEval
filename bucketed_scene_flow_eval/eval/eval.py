@@ -4,13 +4,13 @@ from typing import Any
 
 from bucketed_scene_flow_eval.datastructures import (
     EgoLidarFlow,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedSceneFlowFrame,
 )
 
 
 class Evaluator(ABC):
     @abstractmethod
-    def eval(self, predictions: EgoLidarFlow, gt: TimeSyncedSceneFlowItem):
+    def eval(self, predictions: EgoLidarFlow, gt: TimeSyncedSceneFlowFrame):
         pass
 
     @abstractmethod

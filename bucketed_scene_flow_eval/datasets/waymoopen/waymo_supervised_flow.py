@@ -15,8 +15,8 @@ from bucketed_scene_flow_eval.datastructures import (
     SupervisedPointCloudFrame,
     TimeSyncedAVLidarData,
     TimeSyncedBaseAuxilaryData,
-    TimeSyncedRawItem,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedRawFrame,
+    TimeSyncedSceneFlowFrame,
 )
 from bucketed_scene_flow_eval.interfaces import (
     AbstractSequence,
@@ -67,7 +67,7 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
 
     def load(
         self, idx: int, relative_to_idx: int
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         assert idx < len(
             self
         ), f"idx {idx} out of range, len {len(self)} for {self.sequence_folder}"
@@ -106,7 +106,7 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
         flow_wrapper = EgoLidarFlow(ego_flow, np.ones(len(ego_pc), dtype=bool))
 
         return (
-            TimeSyncedSceneFlowItem(
+            TimeSyncedSceneFlowFrame(
                 pc=pc_frame,
                 rgbs=RGBFrameLookup.empty(),
                 flow=flow_wrapper,
@@ -122,7 +122,7 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
 
     def load_frame_list(
         self, relative_to_idx: Optional[int]
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))

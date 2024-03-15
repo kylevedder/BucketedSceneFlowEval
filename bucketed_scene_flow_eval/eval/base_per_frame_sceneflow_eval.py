@@ -10,7 +10,7 @@ from bucketed_scene_flow_eval.datastructures import (
     PointCloud,
     SemanticClassId,
     SemanticClassIdArray,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedSceneFlowFrame,
     VectorArray,
 )
 from bucketed_scene_flow_eval.utils import save_json, save_pickle
@@ -177,14 +177,14 @@ class PerFrameSceneFlowEvaluator(Evaluator):
     def _sanitize_and_validate_inputs(
         self,
         predictions: EgoLidarFlow,
-        ground_truth: TimeSyncedSceneFlowItem,
+        ground_truth: TimeSyncedSceneFlowFrame,
     ):
         assert isinstance(
             predictions, EgoLidarFlow
         ), f"predictions must be a EstimatedFlows, got {type(predictions)}"
 
         assert isinstance(
-            ground_truth, TimeSyncedSceneFlowItem
+            ground_truth, TimeSyncedSceneFlowFrame
         ), f"ground_truth must be a GroundTruthFlows, got {type(ground_truth)}"
 
         # Ensure that the predictions underlying array is the same shape as the gt
@@ -200,7 +200,7 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         # Set the prediction valid flow mask to be the gt flow so everything lines up
         predictions.mask = ground_truth.flow.mask
 
-    def eval(self, predicted_flow: EgoLidarFlow, gt_frame: TimeSyncedSceneFlowItem):
+    def eval(self, predicted_flow: EgoLidarFlow, gt_frame: TimeSyncedSceneFlowFrame):
         self._sanitize_and_validate_inputs(predicted_flow, gt_frame)
 
         is_valid_flow_mask = gt_frame.flow.mask

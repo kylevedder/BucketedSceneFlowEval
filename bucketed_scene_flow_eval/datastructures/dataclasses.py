@@ -212,7 +212,7 @@ class TimeSyncedAVLidarData(TimeSyncedBaseAuxilaryData):
 
 
 @dataclass(kw_only=True)
-class TimeSyncedRawItem:
+class TimeSyncedRawFrame:
     pc: PointCloudFrame
     rgbs: RGBFrameLookup
     log_id: str
@@ -221,7 +221,7 @@ class TimeSyncedRawItem:
 
 
 @dataclass(kw_only=True)
-class TimeSyncedSceneFlowItem(TimeSyncedRawItem):
+class TimeSyncedSceneFlowFrame(TimeSyncedRawFrame):
     pc: SupervisedPointCloudFrame
     flow: EgoLidarFlow
 

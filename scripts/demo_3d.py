@@ -8,11 +8,11 @@ from bucketed_scene_flow_eval.datasets import construct_dataset
 from bucketed_scene_flow_eval.datastructures import (
     EgoLidarFlow,
     O3DVisualizer,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedSceneFlowFrame,
 )
 
 
-def visualize_lidar_3d(frame_list: list[TimeSyncedSceneFlowItem], downscale_rgb_factor: int):
+def visualize_lidar_3d(frame_list: list[TimeSyncedSceneFlowFrame], downscale_rgb_factor: int):
     o3d_vis = O3DVisualizer()
 
     print("Visualizing", len(frame_list), "frames")

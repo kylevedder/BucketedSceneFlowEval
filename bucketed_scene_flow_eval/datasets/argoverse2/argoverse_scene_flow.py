@@ -14,8 +14,8 @@ from bucketed_scene_flow_eval.datastructures import (
     SemanticClassIdArray,
     SupervisedPointCloudFrame,
     TimeSyncedAVLidarData,
-    TimeSyncedRawItem,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedRawFrame,
+    TimeSyncedSceneFlowFrame,
     VectorArray,
 )
 from bucketed_scene_flow_eval.interfaces import (
@@ -126,13 +126,13 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         return flow_0_1, is_valid_arr, classes_0
 
     def _make_tssf_item(
-        self, raw_item: TimeSyncedRawItem, classes_0: SemanticClassIdArray, flow: EgoLidarFlow
-    ) -> TimeSyncedSceneFlowItem:
+        self, raw_item: TimeSyncedRawFrame, classes_0: SemanticClassIdArray, flow: EgoLidarFlow
+    ) -> TimeSyncedSceneFlowFrame:
         supervised_pc = SupervisedPointCloudFrame(
             **vars(raw_item.pc),
             full_pc_classes=classes_0,
         )
-        return TimeSyncedSceneFlowItem(
+        return TimeSyncedSceneFlowFrame(
             pc=supervised_pc,
             rgbs=raw_item.rgbs,
             log_id=raw_item.log_id,
@@ -142,19 +142,19 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         )
 
     def _load_no_flow(
-        self, raw_item: TimeSyncedRawItem, metadata: TimeSyncedAVLidarData
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+        self, raw_item: TimeSyncedRawFrame, metadata: TimeSyncedAVLidarData
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         classes_0 = self._make_default_classes(raw_item.pc.pc)
         flow = EgoLidarFlow.make_no_flow(len(classes_0))
         return self._make_tssf_item(raw_item, classes_0, flow), metadata
 
     def _load_with_flow(
         self,
-        raw_item: TimeSyncedRawItem,
+        raw_item: TimeSyncedRawFrame,
         metadata: TimeSyncedAVLidarData,
         idx: int,
         relative_to_idx: int,
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         start_pose = self._load_pose(relative_to_idx)
         idx_pose = self._load_pose(idx)
         idx_pone_pose = self._load_pose(idx + 1)
@@ -171,7 +171,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
 
     def load(
         self, idx: int, relative_to_idx: int, with_flow: bool = True
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         raw_item, metadata = super().load(idx, relative_to_idx)
 
@@ -182,7 +182,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
 
     def load_frame_list(
         self, relative_to_idx: Optional[int] = 0
-    ) -> list[tuple[TimeSyncedRawItem, TimeSyncedAVLidarData]]:
+    ) -> list[tuple[TimeSyncedRawFrame, TimeSyncedAVLidarData]]:
         return [
             self.load(
                 idx=idx,
@@ -353,7 +353,7 @@ class ArgoverseNoFlowSequence(ArgoverseSceneFlowSequence):
 
     def load(
         self, idx: int, relative_to_idx: int, with_flow: bool = True
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         return super().load(idx, relative_to_idx, with_flow=False)
 
 

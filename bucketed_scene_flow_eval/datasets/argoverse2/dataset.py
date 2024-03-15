@@ -65,7 +65,7 @@ class Argoverse2SceneFlow(BaseDatasetForAbstractSeqLoader):
         idx: int,
         subsequence_start_idx: int,
         other_load_args: dict[str, Any] = {},
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         other_load_args["with_flow"] = idx != self.subsequence_length - 1
         return super()._load_from_sequence(
             sequence,

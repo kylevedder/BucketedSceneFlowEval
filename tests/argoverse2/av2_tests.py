@@ -10,7 +10,7 @@ from bucketed_scene_flow_eval.datastructures import (
     SE3,
     PoseInfo,
     TimeSyncedAVLidarData,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedSceneFlowFrame,
 )
 
 
@@ -38,7 +38,7 @@ def _are_poseinfos_close(pose1: PoseInfo, pose2: PoseInfo, tol: float = 1e-6) ->
 
 def _load_reference_sequence(
     av2_loader: ArgoverseSceneFlowSequenceLoader,
-) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
     sequence_id = "02678d04-cc9f-3148-9f95-1ba66347dff9"
     assert sequence_id in av2_loader.get_sequence_ids(), f"sequence_id {sequence_id} not found"
     sequence = av2_loader.load_sequence(sequence_id)

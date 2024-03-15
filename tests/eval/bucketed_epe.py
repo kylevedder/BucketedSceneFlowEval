@@ -4,7 +4,7 @@ import pytest
 from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow, construct_dataset
 from bucketed_scene_flow_eval.datastructures import (
     EgoLidarFlow,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedSceneFlowFrame,
 )
 
 
@@ -81,8 +81,8 @@ def _run_eval_on_target_and_gt_datasets(
             f"Each sample must be a tuple of length 2. "
             f"Found {len(target_lst)} and {len(gt_lst)}."
         )
-        target_item1: TimeSyncedSceneFlowItem = target_lst[0]
-        gt_item1: TimeSyncedSceneFlowItem = gt_lst[0]
+        target_item1: TimeSyncedSceneFlowFrame = target_lst[0]
+        gt_item1: TimeSyncedSceneFlowFrame = gt_lst[0]
 
         evaluator.eval(
             target_item1.flow,

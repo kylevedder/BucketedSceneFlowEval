@@ -21,7 +21,7 @@ from bucketed_scene_flow_eval.datastructures import (
     RGBImage,
     TimeSyncedAVLidarData,
     TimeSyncedBaseAuxilaryData,
-    TimeSyncedRawItem,
+    TimeSyncedRawFrame,
 )
 from bucketed_scene_flow_eval.interfaces import AbstractSequence, CachedSequenceLoader
 
@@ -230,7 +230,7 @@ class NuScenesSequence(AbstractSequence):
 
     def load(
         self, idx: int, relative_to_idx: int
-    ) -> tuple[TimeSyncedRawItem, TimeSyncedBaseAuxilaryData]:
+    ) -> tuple[TimeSyncedRawFrame, TimeSyncedBaseAuxilaryData]:
         assert 0 <= idx < len(self), f"idx must be in range [0, {len(self)}), got {idx}"
         synced_sample = self.synced_sensors[idx]
 
@@ -238,7 +238,7 @@ class NuScenesSequence(AbstractSequence):
         rgb_frames = synced_sample.camera_to_rgb_frame_lookup(self.nusc)
 
         return (
-            TimeSyncedRawItem(
+            TimeSyncedRawFrame(
                 pc=pc_frame,
                 rgbs=rgb_frames,
                 log_id=self.log_id,

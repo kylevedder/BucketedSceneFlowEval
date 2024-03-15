@@ -85,10 +85,10 @@ class BaseDatasetForAbstractSeqLoader(AbstractDataset):
         return len(self.dataset_to_sequence_subsequence_idx)
 
     def _process_with_metadata(
-        self, item: TimeSyncedSceneFlowItem, metadata: TimeSyncedAVLidarData
-    ) -> TimeSyncedSceneFlowItem:
+        self, item: TimeSyncedSceneFlowFrame, metadata: TimeSyncedAVLidarData
+    ) -> TimeSyncedSceneFlowFrame:
         # Typecheck
-        assert isinstance(item, TimeSyncedSceneFlowItem), f"item is {type(item)}"
+        assert isinstance(item, TimeSyncedSceneFlowFrame), f"item is {type(item)}"
         assert isinstance(metadata, TimeSyncedAVLidarData), f"metadata is {type(metadata)}"
         # Falsify PC mask for ground points.
         item.pc.mask = item.pc.mask & metadata.in_range_mask
@@ -107,7 +107,7 @@ class BaseDatasetForAbstractSeqLoader(AbstractDataset):
         idx: int,
         subsequence_start_idx: int,
         other_load_args: dict[str, Any] = {},
-    ) -> tuple[TimeSyncedSceneFlowItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         in_subsequence_src_index = (self.subsequence_length - 1) // 2
         in_subsequence_tgt_index = in_subsequence_src_index + 1
         # with_flow=(idx != self.subsequence_length - 1)
@@ -117,7 +117,7 @@ class BaseDatasetForAbstractSeqLoader(AbstractDataset):
             **other_load_args,
         )
 
-    def __getitem__(self, dataset_idx, verbose: bool = False) -> list[TimeSyncedSceneFlowItem]:
+    def __getitem__(self, dataset_idx, verbose: bool = False) -> list[TimeSyncedSceneFlowFrame]:
         sequence_idx, subsequence_start_idx = self.dataset_to_sequence_subsequence_idx[dataset_idx]
 
         # Load sequence

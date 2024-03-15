@@ -11,8 +11,8 @@ from .dataclasses import (
     SupervisedPointCloudFrame,
     TimeSyncedAVLidarData,
     TimeSyncedBaseAuxilaryData,
-    TimeSyncedRawItem,
-    TimeSyncedSceneFlowItem,
+    TimeSyncedRawFrame,
+    TimeSyncedSceneFlowFrame,
     VectorArray,
 )
 from .o3d_visualizer import O3DVisualizer
@@ -35,8 +35,8 @@ __all__ = [
     "SupervisedPointCloudFrame",
     "TimeSyncedAVLidarData",
     "TimeSyncedBaseAuxilaryData",
-    "TimeSyncedRawItem",
-    "TimeSyncedSceneFlowItem",
+    "TimeSyncedRawFrame",
+    "TimeSyncedSceneFlowFrame",
     "VectorArray",
     "O3DVisualizer",
     "PointCloud",

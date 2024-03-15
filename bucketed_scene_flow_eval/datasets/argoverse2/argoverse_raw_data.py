@@ -20,7 +20,7 @@ from bucketed_scene_flow_eval.datastructures import (
     RGBFrameLookup,
     RGBImage,
     TimeSyncedAVLidarData,
-    TimeSyncedRawItem,
+    TimeSyncedRawFrame,
 )
 from bucketed_scene_flow_eval.interfaces import AbstractSequence, CachedSequenceLoader
 from bucketed_scene_flow_eval.utils import load_json
@@ -355,7 +355,7 @@ class ArgoverseRawSequence(AbstractSequence):
 
     def load(
         self, idx: int, relative_to_idx: int
-    ) -> tuple[TimeSyncedRawItem, TimeSyncedAVLidarData]:
+    ) -> tuple[TimeSyncedRawFrame, TimeSyncedAVLidarData]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc = self._load_pc(idx)
@@ -384,7 +384,7 @@ class ArgoverseRawSequence(AbstractSequence):
         )
 
         return (
-            TimeSyncedRawItem(
+            TimeSyncedRawFrame(
                 pc=pc_frame,
                 rgbs=rgb_frames,
                 log_id=self.log_id,
@@ -398,7 +398,7 @@ class ArgoverseRawSequence(AbstractSequence):
 
     def load_frame_list(
         self, relative_to_idx: Optional[int] = 0
-    ) -> list[tuple[TimeSyncedRawItem, TimeSyncedAVLidarData]]:
+    ) -> list[tuple[TimeSyncedRawFrame, TimeSyncedAVLidarData]]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))
