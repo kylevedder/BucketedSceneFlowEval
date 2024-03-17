@@ -37,6 +37,58 @@ class PoseInfo:
 
 
 @dataclass
+class EgoLidarFlow:
+    """
+    Ego frame lidar flow from the ego frame of P0 to the relative frame of P1.
+    """
+
+    full_flow: VectorArray
+    mask: MaskArray
+
+    @staticmethod
+    def make_no_flow(flow_dim: int) -> "EgoLidarFlow":
+        return EgoLidarFlow(
+            full_flow=np.zeros((flow_dim, 3), dtype=np.float32),
+            mask=np.zeros(flow_dim, dtype=bool),
+        )
+
+    @staticmethod
+    def make_no_flow_like(flow: "EgoLidarFlow") -> "EgoLidarFlow":
+        return EgoLidarFlow.make_no_flow(flow.shape[0])
+
+    def __post_init__(self):
+        assert self.full_flow.ndim == 2, f"flow must be a 2D array, got {self.full_flow.ndim}"
+        assert self.mask.ndim == 1, f"valid_flow_mask must be a 1D array, got {self.mask.ndim}"
+        assert self.mask.dtype == bool, f"valid_flow_mask must be boolean, got {self.mask.dtype}"
+
+        assert len(self.full_flow) == len(self.mask), (
+            f"flow and valid_flow_mask must have the same length, got {len(self.full_flow)} and "
+            f"{len(self.mask)}"
+        )
+
+        assert (
+            self.full_flow.shape[1] == 3
+        ), f"flow must have 3 columns, got {self.full_flow.shape[1]}"
+
+    def __repr__(self) -> str:
+        return f"LidarFlow(flow={self.full_flow}, valid_flow_mask={self.mask})"
+
+    @property
+    def valid_flow(self) -> VectorArray:
+        return self.full_flow[self.mask]
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return self.full_flow.shape
+
+    def mask_points(self, mask: MaskArray) -> "EgoLidarFlow":
+        assert isinstance(mask, np.ndarray), f"mask must be an ndarray, got {type(mask)}"
+        assert mask.ndim == 1, f"mask must be a 1D array, got {mask.ndim}"
+        assert mask.dtype == bool, f"mask must be a boolean array, got {mask.dtype}"
+        return EgoLidarFlow(full_flow=self.full_flow[mask], mask=self.mask[mask])
+
+
+@dataclass
 class PointCloudFrame:
     full_pc: PointCloud
     pose: PoseInfo
@@ -68,6 +120,13 @@ class PointCloudFrame:
             full_pc=self.full_pc.mask_points(mask),
             pose=self.pose,
             mask=self.mask[mask],
+        )
+
+    def flow(self, flow: EgoLidarFlow) -> "PointCloudFrame":
+        return PointCloudFrame(
+            full_pc=self.full_pc.flow_masked(flow.valid_flow, flow.mask),
+            pose=self.pose,
+            mask=self.mask,
         )
 
 
@@ -146,58 +205,6 @@ class RGBFrameLookup:
 
     def __len__(self) -> int:
         return len(self.lookup)
-
-
-@dataclass
-class EgoLidarFlow:
-    """
-    Ego frame lidar flow from the ego frame of P0 to the relative frame of P1.
-    """
-
-    full_flow: VectorArray
-    mask: MaskArray
-
-    @staticmethod
-    def make_no_flow(flow_dim: int) -> "EgoLidarFlow":
-        return EgoLidarFlow(
-            full_flow=np.zeros((flow_dim, 3), dtype=np.float32),
-            mask=np.zeros(flow_dim, dtype=bool),
-        )
-
-    @staticmethod
-    def make_no_flow_like(flow: "EgoLidarFlow") -> "EgoLidarFlow":
-        return EgoLidarFlow.make_no_flow(flow.shape[0])
-
-    def __post_init__(self):
-        assert self.full_flow.ndim == 2, f"flow must be a 2D array, got {self.full_flow.ndim}"
-        assert self.mask.ndim == 1, f"valid_flow_mask must be a 1D array, got {self.mask.ndim}"
-        assert self.mask.dtype == bool, f"valid_flow_mask must be boolean, got {self.mask.dtype}"
-
-        assert len(self.full_flow) == len(self.mask), (
-            f"flow and valid_flow_mask must have the same length, got {len(self.full_flow)} and "
-            f"{len(self.mask)}"
-        )
-
-        assert (
-            self.full_flow.shape[1] == 3
-        ), f"flow must have 3 columns, got {self.full_flow.shape[1]}"
-
-    def __repr__(self) -> str:
-        return f"LidarFlow(flow={self.full_flow}, valid_flow_mask={self.mask})"
-
-    @property
-    def valid_flow(self) -> VectorArray:
-        return self.full_flow[self.mask]
-
-    @property
-    def shape(self) -> tuple[int, int]:
-        return self.full_flow.shape
-
-    def mask_points(self, mask: MaskArray) -> "EgoLidarFlow":
-        assert isinstance(mask, np.ndarray), f"mask must be an ndarray, got {type(mask)}"
-        assert mask.ndim == 1, f"mask must be a 1D array, got {mask.ndim}"
-        assert mask.dtype == bool, f"mask must be a boolean array, got {mask.dtype}"
-        return EgoLidarFlow(full_flow=self.full_flow[mask], mask=self.mask[mask])
 
 
 @dataclass(kw_only=True)

@@ -56,9 +56,7 @@ class CameraInfo:
         rgb = self.load_rgb(timestamp)
         return RGBFrame(
             rgb=rgb,
-            pose=PoseInfo(
-                sensor_to_ego=self.rgb_camera_ego_pose.inverse(), ego_to_global=global_pose
-            ),
+            pose=PoseInfo(sensor_to_ego=self.rgb_camera_ego_pose, ego_to_global=global_pose),
             camera_projection=self.rgb_camera_projection,
         )
 
