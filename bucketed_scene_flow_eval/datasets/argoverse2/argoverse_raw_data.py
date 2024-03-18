@@ -80,6 +80,7 @@ class CameraInfo:
             # Extract the overlapping center of the two images and embed it in the target array.
             src_array = rgb_frame.rgb.image
             tgt_array = np.zeros(self.expected_shape, dtype=src_array.dtype)
+            is_valid_pixel_array = np.zeros(self.expected_shape[:2], dtype=bool)
 
             # Calculate the center of both source and target
             src_center_y, src_center_x = src_array.shape[0] // 2, src_array.shape[1] // 2
@@ -107,8 +108,9 @@ class CameraInfo:
 
             # Place the extracted region into the target array, centered
             tgt_array[tgt_start_y:tgt_end_y, tgt_start_x:tgt_end_x, :] = extracted_region
+            is_valid_pixel_array[tgt_start_y:tgt_end_y, tgt_start_x:tgt_end_x] = True
 
-            rgb_frame.rgb = RGBImage(tgt_array)
+            rgb_frame.rgb = RGBImage(tgt_array, is_valid_pixel_array)
             rgb_frame.camera_projection = rgb_frame.camera_projection.transpose()
             return rgb_frame
 
