@@ -30,12 +30,21 @@ class CameraProjection:
     def __repr__(self) -> str:
         return f"CameraProjection(fx={self.fx}, fy={self.fy}, cx={self.cx}, cy={self.cy}, camera_model={self.camera_model})"
 
-    def rescale(self, reduction_factor: int) -> "CameraProjection":
+    def rescale(self, reduction_factor: float) -> "CameraProjection":
         return CameraProjection(
             fx=self.fx / reduction_factor,
             fy=self.fy / reduction_factor,
             cx=self.cx / reduction_factor,
             cy=self.cy / reduction_factor,
+            camera_model=self.camera_model,
+        )
+
+    def transpose(self) -> "CameraProjection":
+        return CameraProjection(
+            fx=self.fy,
+            fy=self.fx,
+            cx=self.cy,
+            cy=self.cx,
             camera_model=self.camera_model,
         )
 

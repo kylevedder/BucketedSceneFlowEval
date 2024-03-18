@@ -35,6 +35,7 @@ class CameraInfo:
     timestamp_to_rgb_timestamp_map: dict[int, int]
     rgb_camera_projection: CameraProjection
     rgb_camera_ego_pose: SE3
+    expected_shape: tuple[int, int, int]
 
     def timestamp_to_rgb_path(self, timestamp: int) -> Path:
         assert timestamp in self.timestamp_to_rgb_timestamp_map, f"timestamp {timestamp} not found"
@@ -48,17 +49,82 @@ class CameraInfo:
         rgb_path = self.timestamp_to_rgb_path(timestamp)
         # Read the image, keep the same color space
         raw_img = cv2.imread(str(rgb_path), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
+
+        assert (
+            raw_img.shape[2] == self.expected_shape[2]
+        ), f"expected {self.expected_shape[2]} channels, got {raw_img.shape[2]} for {rgb_path}"
         # Convert from CV2 standard BGR to RGB
         raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
         return RGBImage(raw_img)
 
+    def _reshaped_frame(self, rgb_frame: RGBFrame) -> RGBFrame:
+        """
+        Reshape the image to the expected shape,
+        and update the camera projection to account for the scaling.
+        """
+        current_aspect_ratio = rgb_frame.rgb.shape[1] / rgb_frame.rgb.shape[0]
+        target_aspect_ratio = self.expected_shape[1] / self.expected_shape[0]
+        if rgb_frame.rgb.shape == self.expected_shape:
+            return rgb_frame
+
+        elif abs(current_aspect_ratio - target_aspect_ratio) < 1e-6:
+            # Only rescale is required.
+            reduction_factor = rgb_frame.rgb.shape[0] / self.expected_shape[0]
+            rgb_frame.rgb.rescale(reduction_factor=reduction_factor)
+            rgb_frame.camera_projection.rescale(reduction_factor=reduction_factor)
+            return rgb_frame
+        elif (rgb_frame.rgb.shape[1] == self.expected_shape[0]) and (
+            rgb_frame.rgb.shape[0] == self.expected_shape[1]
+        ):
+            # Image shape is transpose of the target shape.
+            # Extract the overlapping center of the two images and embed it in the target array.
+            src_array = rgb_frame.rgb.image
+            tgt_array = np.zeros(self.expected_shape, dtype=src_array.dtype)
+
+            # Calculate the center of both source and target
+            src_center_y, src_center_x = src_array.shape[0] // 2, src_array.shape[1] // 2
+            tgt_center_y, tgt_center_x = tgt_array.shape[0] // 2, tgt_array.shape[1] // 2
+
+            # Determine the dimensions of the region to extract from the source
+            # This is based on the minimum of the source's and target's dimensions
+            extract_height = min(src_array.shape[0], tgt_array.shape[0])
+            extract_width = min(src_array.shape[1], tgt_array.shape[1])
+
+            # Calculate start and end indices for extraction from the source
+            src_start_y = max(0, src_center_y - extract_height // 2)
+            src_end_y = src_start_y + extract_height
+            src_start_x = max(0, src_center_x - extract_width // 2)
+            src_end_x = src_start_x + extract_width
+
+            # Calculate start and end indices for insertion into the target
+            tgt_start_y = max(0, tgt_center_y - extract_height // 2)
+            tgt_end_y = tgt_start_y + extract_height
+            tgt_start_x = max(0, tgt_center_x - extract_width // 2)
+            tgt_end_x = tgt_start_x + extract_width
+
+            # Extract the region from the source image
+            extracted_region = src_array[src_start_y:src_end_y, src_start_x:src_end_x, :]
+
+            # Place the extracted region into the target array, centered
+            tgt_array[tgt_start_y:tgt_end_y, tgt_start_x:tgt_end_x, :] = extracted_region
+
+            rgb_frame.rgb = RGBImage(tgt_array)
+            rgb_frame.camera_projection = rgb_frame.camera_projection.transpose()
+            return rgb_frame
+
+        else:
+            raise NotImplementedError(
+                f"Unknown reshape case: {rgb_frame.rgb.shape} to {self.expected_shape}"
+            )
+
     def load_rgb_frame(self, timestamp: int, global_pose: SE3) -> RGBFrame:
         rgb = self.load_rgb(timestamp)
-        return RGBFrame(
+        rgb_frame = RGBFrame(
             rgb=rgb,
             pose=PoseInfo(sensor_to_ego=self.rgb_camera_ego_pose, ego_to_global=global_pose),
             camera_projection=self.rgb_camera_projection,
         )
+        return self._reshaped_frame(rgb_frame)
 
 
 class ArgoverseRawSequence(AbstractSequence):
@@ -85,6 +151,7 @@ class ArgoverseRawSequence(AbstractSequence):
             "ring_front_right",
             "ring_side_right",
         ],
+        expected_camera_shape=(1550, 2048, 3),
     ):
         self.log_id = log_id
         self.POINT_CLOUD_RANGE = POINT_CLOUD_RANGE
@@ -108,11 +175,14 @@ class ArgoverseRawSequence(AbstractSequence):
 
         self.with_rgb = with_rgb
 
+        self.camera_names = camera_names
         if not with_rgb:
             camera_names = []
+            self.camera_names = []
 
         self.camera_info_lookup: dict[str, CameraInfo] = {
-            camera_name: self._prep_camera_info(camera_name) for camera_name in camera_names
+            camera_name: self._prep_camera_info(camera_name, expected_camera_shape)
+            for camera_name in camera_names
         }
 
         self.timestamp_list = sorted(self.lidar_file_timestamps.intersection(info_timestamps))
@@ -127,14 +197,12 @@ class ArgoverseRawSequence(AbstractSequence):
             self.global_to_raster_scale,
         ) = self._load_ground_height_raster()
 
-        self.camera_names = camera_names
-
         if verbose:
             print(
                 f"Loaded {len(self.timestamp_list)} frames from {self.dataset_dir} at timestamp {time.time():.3f}"
             )
 
-    def _prep_camera_info(self, camera_name: str) -> CameraInfo:
+    def _prep_camera_info(self, camera_name: str, camera_shape: tuple[int, int, int]) -> CameraInfo:
         (
             rgb_frame_paths,
             rgb_timestamp_to_rgb_file_map,
@@ -157,6 +225,7 @@ class ArgoverseRawSequence(AbstractSequence):
             timestamp_to_rgb_timestamp_map=timestamp_to_rgb_timestamp_map,
             rgb_camera_projection=rgb_camera_projection,
             rgb_camera_ego_pose=rgb_camera_ego_pose,
+            expected_shape=camera_shape,
         )
 
     def _load_lidar_info(self):

@@ -49,7 +49,7 @@ class RGBImage:
     def copy(self) -> "RGBImage":
         return RGBImage(self.image.copy())
 
-    def rescale(self, reduction_factor: int) -> "RGBImage":
+    def rescale(self, reduction_factor: float) -> "RGBImage":
         new_shape = (
             int(math.ceil(self.image.shape[1] / reduction_factor)),
             int(math.ceil(self.image.shape[0] / reduction_factor)),
