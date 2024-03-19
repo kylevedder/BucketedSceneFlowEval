@@ -51,23 +51,38 @@ def test_rgb_sizes(av2_loader: ArgoverseSceneFlowSequenceLoader):
     assert len(first_frame.rgbs) == 5, f"expected 5 cameras, got {len(first_frame.rgbs)}"
 
     # Expect the shapes
-    expected_img_shapes = {
+    expected_full_img_shapes = {
         "ring_side_left": (1550, 2048, 3),
         "ring_front_left": (1550, 2048, 3),
-        "ring_front_center": (2048, 1550, 3),
+        "ring_front_center": (1550, 2048, 3),
+        "ring_front_right": (1550, 2048, 3),
+        "ring_side_right": (1550, 2048, 3),
+    }
+
+    expected_cropped_img_shapes = {
+        "ring_side_left": (1550, 2048, 3),
+        "ring_front_left": (1550, 2048, 3),
+        "ring_front_center": (1550, 1550, 3),
         "ring_front_right": (1550, 2048, 3),
         "ring_side_right": (1550, 2048, 3),
     }
 
     items = first_frame.rgbs.items()
     assert len(items) == len(
-        expected_img_shapes
-    ), f"expected {len(expected_img_shapes)} items, got {len(items)}"
+        expected_cropped_img_shapes
+    ), f"expected {len(expected_cropped_img_shapes)} items, got {len(items)}"
     for name, rgb_frame in items:
-        expected_shape = expected_img_shapes[name]
+        # MEASURE FULL IMAGE SHAPE
+        full_img_expected_shape = expected_full_img_shapes[name]
         assert (
-            rgb_frame.rgb.shape == expected_shape
-        ), f"expected shape {expected_shape} for {name}, got {rgb_frame.rgb.shape}"
+            rgb_frame.rgb.full_image.shape == full_img_expected_shape
+        ), f"expected shape {full_img_expected_shape} for {name}, got {rgb_frame.rgb.full_image.shape}"
+
+        # MEASURE CROPPED IMAGE SHAPE
+        cropped_img_expected_shape = expected_cropped_img_shapes[name]
+        assert (
+            rgb_frame.rgb.masked_image.shape == cropped_img_expected_shape
+        ), f"expected shape {cropped_img_expected_shape} for {name}, got {rgb_frame.rgb.masked_image.shape}"
 
 
 def test_rgb_poses(av2_loader: ArgoverseSceneFlowSequenceLoader):

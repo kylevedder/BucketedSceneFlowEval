@@ -52,7 +52,7 @@ class CameraProjection:
         self, image: RGBImage, depth: float = 1.0
     ) -> tuple[PointCloud, np.ndarray]:
         # Make pixel coordinate grid
-        image_shape = image.image.shape[:2]
+        image_shape = image.full_image.shape[:2]
         image_coordinates = (
             np.stack(
                 np.meshgrid(np.arange(image_shape[1]), np.arange(image_shape[0])),
@@ -64,7 +64,7 @@ class CameraProjection:
         image_coordinate_depths = np.ones((len(image_coordinates), 1)) * depth
 
         resulting_points = self.to_camera(image_coordinates, image_coordinate_depths)
-        colors = image.image.reshape(-1, 3)
+        colors = image.full_image.reshape(-1, 3)
         return PointCloud(resulting_points), colors
 
     def _camera_to_view_coordinates(self, camera_points: np.ndarray):

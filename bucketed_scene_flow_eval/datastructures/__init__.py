@@ -17,7 +17,7 @@ from .dataclasses import (
 )
 from .o3d_visualizer import O3DVisualizer
 from .pointcloud import PointCloud, from_fixed_array, to_fixed_array
-from .rgb_image import RGBImage
+from .rgb_image import RGBImage, RGBImageCrop
 from .se2 import SE2
 from .se3 import SE3
 
@@ -43,6 +43,7 @@ __all__ = [
     "from_fixed_array",
     "to_fixed_array",
     "RGBImage",
+    "RGBImageCrop",
     "SE2",
     "SE3",
 ]

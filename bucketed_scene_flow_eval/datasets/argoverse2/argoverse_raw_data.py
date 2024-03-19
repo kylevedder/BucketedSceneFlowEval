@@ -19,6 +19,7 @@ from bucketed_scene_flow_eval.datastructures import (
     RGBFrame,
     RGBFrameLookup,
     RGBImage,
+    RGBImageCrop,
     TimeSyncedAVLidarData,
     TimeSyncedRawFrame,
 )
@@ -78,9 +79,8 @@ class CameraInfo:
         ):
             # Image shape is transpose of the target shape.
             # Extract the overlapping center of the two images and embed it in the target array.
-            src_array = rgb_frame.rgb.image
+            src_array = rgb_frame.rgb.full_image
             tgt_array = np.zeros(self.expected_shape, dtype=src_array.dtype)
-            is_valid_pixel_array = np.zeros(self.expected_shape[:2], dtype=bool)
 
             # Calculate the center of both source and target
             src_center_y, src_center_x = src_array.shape[0] // 2, src_array.shape[1] // 2
@@ -108,9 +108,11 @@ class CameraInfo:
 
             # Place the extracted region into the target array, centered
             tgt_array[tgt_start_y:tgt_end_y, tgt_start_x:tgt_end_x, :] = extracted_region
-            is_valid_pixel_array[tgt_start_y:tgt_end_y, tgt_start_x:tgt_end_x] = True
+            valid_crop = RGBImageCrop(
+                min_x=tgt_start_x, max_x=tgt_end_x, min_y=tgt_start_y, max_y=tgt_end_y
+            )
 
-            rgb_frame.rgb = RGBImage(tgt_array, is_valid_pixel_array)
+            rgb_frame.rgb = RGBImage(tgt_array, valid_crop)
             rgb_frame.camera_projection = rgb_frame.camera_projection.transpose()
             return rgb_frame
 

@@ -170,7 +170,7 @@ def _insert_into_image(
 
     scaled_rgb = rgb_image.rescale(reduction_factor)
     scaled_projected_points = projected_points // reduction_factor
-    projected_rgb_image = scaled_rgb.image
+    projected_rgb_image = scaled_rgb.full_image
     projected_rgb_image[scaled_projected_points[:, 1], scaled_projected_points[:, 0], :] = colors
     return RGBImage(projected_rgb_image)
 
@@ -273,7 +273,7 @@ def visualize(
 
     for plot_idx, rgb_image in enumerate(rgb_images):
         plt.subplot(1, len(rgb_images), plot_idx + 1)
-        plt.imshow(rgb_image.image)
+        plt.imshow(rgb_image.full_image)
         # Disable axis ticks
         plt.xticks([])
         plt.yticks([])

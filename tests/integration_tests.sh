@@ -27,4 +27,4 @@ wget -q https://www.nuscenes.org/data/v1.0-mini.tgz -O /tmp/nuscenes/nuscenes_v1
 tar -xzf /tmp/nuscenes/nuscenes_v1.0-mini.tgz -C /tmp/nuscenes
 
 echo "Running integration tests"
-pytest tests/integration_tests.py tests/eval/bucketed_epe.py tests/eval/threeway_epe.py tests/nuscenes/nuscenes_tests.py tests/argoverse2/av2_tests.py
+pytest tests/integration_tests.py tests/eval/*.py tests/datasets/*/*.py tests/datastructures/*.py
