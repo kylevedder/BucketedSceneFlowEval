@@ -1,9 +1,9 @@
-name: Python Package Install
+name: Bucketed Scene Flow Eval full tests
 
 on: [push]
 
 jobs:
-  install:
+  run-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,12 +18,12 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install Dependencies
+    - name: Pip Install
       run: |
         python -m pip install --upgrade pip
         pip install -e .
 
-    - name: Setup Data Files
+    - name: Download and Setup Data Files
       run: |
         ./tests/setup.sh
 
