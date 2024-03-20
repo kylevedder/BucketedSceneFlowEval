@@ -23,6 +23,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
 
+    - name: Setup Data Files
+      run: |
+        ./tests/setup.sh
+
     - name: Run Tests
       run: |
         ./tests/integration_tests.sh
