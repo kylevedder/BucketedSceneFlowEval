@@ -40,15 +40,22 @@ class Argoverse2SceneFlow(BaseAstractSeqLoaderDataset):
         flow_data_path: Optional[Union[Path, list[Path]]] = None,
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
         use_cache=True,
         load_flow: bool = True,
     ) -> None:
         if load_flow:
             self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
-                root_dir, with_rgb=with_rgb, use_gt_flow=use_gt_flow, flow_data_path=flow_data_path
+                root_dir,
+                with_rgb=with_rgb,
+                use_gt_flow=use_gt_flow,
+                flow_data_path=flow_data_path,
+                expected_camera_shape=expected_camera_shape,
             )
         else:
-            self.sequence_loader = ArgoverseNoFlowSequenceLoader(root_dir, with_rgb=with_rgb)
+            self.sequence_loader = ArgoverseNoFlowSequenceLoader(
+                root_dir, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
+            )
         super().__init__(
             sequence_loader=self.sequence_loader,
             subsequence_length=subsequence_length,

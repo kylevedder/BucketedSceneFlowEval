@@ -485,12 +485,14 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
         verbose: bool = False,
         num_sequences: Optional[int] = None,
         per_sequence_sample_every: Optional[int] = None,
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
     ):
         super().__init__()
         self.dataset_dir = Path(sequence_dir)
         self.verbose = verbose
         self.with_rgb = with_rgb
         self.per_sequence_sample_every = per_sequence_sample_every
+        self.expected_camera_shape = expected_camera_shape
         assert self.dataset_dir.is_dir(), f"dataset_dir {sequence_dir} does not exist"
         self.log_lookup = {e.name: e for e in self.dataset_dir.glob("*/")}
         if log_subset is not None:
@@ -522,6 +524,7 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
             verbose=self.verbose,
             sample_every=self.per_sequence_sample_every,
             with_rgb=self.with_rgb,
+            expected_camera_shape=self.expected_camera_shape,
         )
 
     def cache_folder_name(self) -> str:

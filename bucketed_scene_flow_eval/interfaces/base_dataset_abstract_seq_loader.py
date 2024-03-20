@@ -38,7 +38,9 @@ class BaseAstractSeqLoaderDataset(AbstractDataset):
         self.sequence_loader = sequence_loader
         self.subsequence_length = subsequence_length
         self.idx_lookup_cache_path = (
-            idx_lookup_cache_root / self.sequence_loader.cache_folder_name()
+            idx_lookup_cache_root
+            / self.sequence_loader.cache_folder_name()
+            / f"subsequence_length_{subsequence_length}"
         )
 
         self.dataset_to_sequence_subsequence_idx = self._load_dataset_to_sequence_subsequence_idx()

@@ -71,8 +71,11 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         flow_dir: Path,
         with_rgb: bool = False,
         with_classes: bool = False,
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
     ):
-        super().__init__(log_id, dataset_dir, with_rgb=with_rgb)
+        super().__init__(
+            log_id, dataset_dir, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
+        )
         self.with_classes = with_classes
         self.flow_data_files: list[Path] = []
         self._prep_flow(flow_dir)
@@ -153,14 +156,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         raw_item: TimeSyncedRawFrame,
         metadata: TimeSyncedAVLidarData,
         idx: int,
-        relative_to_idx: int,
     ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
-        start_pose = self._load_pose(relative_to_idx)
-        idx_pose = self._load_pose(idx)
-        idx_pone_pose = self._load_pose(idx + 1)
-        single_frame_ego_motion = idx_pone_pose.inverse().compose(idx_pose)
-        start_frame_relative_pose = start_pose.inverse().compose(idx_pose)
-
         (
             ego_flow_with_ground,
             is_valid_flow_with_ground_arr,
@@ -176,7 +172,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         raw_item, metadata = super().load(idx, relative_to_idx)
 
         if with_flow:
-            return self._load_with_flow(raw_item, metadata, idx, relative_to_idx)
+            return self._load_with_flow(raw_item, metadata, idx)
         else:
             return self._load_no_flow(raw_item, metadata)
 
@@ -213,8 +209,9 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         use_gt_flow: bool = True,
         with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
     ):
-        self._setup_raw_data(raw_data_path, use_gt_flow, with_rgb)
+        self._setup_raw_data(raw_data_path, use_gt_flow, with_rgb, expected_camera_shape)
         self._setup_flow_data(use_gt_flow, flow_data_path)
         self._subset_log(log_subset)
 
@@ -223,11 +220,13 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         raw_data_path: Union[Path, list[Path]],
         use_gt_flow: bool,
         with_rgb: bool,
+        expected_camera_shape: tuple[int, int, int],
     ):
         super().__init__()
         self.use_gt_flow = use_gt_flow
         self.raw_data_path = self._sanitize_raw_data_path(raw_data_path)
         self.with_rgb = with_rgb
+        self.expected_camera_shape = expected_camera_shape
 
         # Raw data folders
         self.sequence_id_to_raw_data = self._load_sequence_data(self.raw_data_path)
@@ -324,6 +323,7 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
             self.sequence_id_to_flow_data[sequence_id],
             with_rgb=self.with_rgb,
             with_classes=self.use_gt_flow,
+            expected_camera_shape=self.expected_camera_shape,
         )
 
     @staticmethod
@@ -363,8 +363,14 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
         raw_data_path: Union[Path, list[Path]],
         with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
     ):
-        self._setup_raw_data(raw_data_path=raw_data_path, use_gt_flow=False, with_rgb=with_rgb)
+        self._setup_raw_data(
+            raw_data_path=raw_data_path,
+            use_gt_flow=False,
+            with_rgb=with_rgb,
+            expected_camera_shape=expected_camera_shape,
+        )
         self._subset_log(log_subset)
 
     def _load_sequence_uncached(self, sequence_id: str) -> ArgoverseNoFlowSequence:
@@ -377,4 +383,5 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
             self.sequence_id_to_raw_data[sequence_id],
             with_rgb=self.with_rgb,
             with_classes=False,
+            expected_camera_shape=self.expected_camera_shape,
         )
