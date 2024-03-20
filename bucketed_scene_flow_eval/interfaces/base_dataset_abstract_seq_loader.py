@@ -7,11 +7,6 @@ from typing import Any, Optional, Sequence, Union
 import numpy as np
 
 from bucketed_scene_flow_eval.datastructures import *
-from bucketed_scene_flow_eval.eval import (
-    BucketedEPEEvaluator,
-    Evaluator,
-    ThreeWayEPEEvaluator,
-)
 from bucketed_scene_flow_eval.interfaces import AbstractDataset
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
@@ -27,19 +22,13 @@ class EvalType(enum.Enum):
     THREEWAY_EPE = 1
 
 
-class BaseDatasetForAbstractSeqLoader(AbstractDataset):
-    """
-    Wrapper for the Argoverse 2 dataset.
-
-    It provides iterable access over all problems in the dataset.
-    """
-
+class BaseAstractSeqLoaderDataset(AbstractDataset):
     def __init__(
         self,
         sequence_loader: AbstractSequenceLoader,
         subsequence_length: int = 2,
         with_ground: bool = True,
-        cache_root: Path = Path("/tmp/"),
+        idx_lookup_cache_root: Path = Path("/tmp/"),
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
         use_cache=True,
@@ -48,7 +37,9 @@ class BaseDatasetForAbstractSeqLoader(AbstractDataset):
         self.with_ground = with_ground
         self.sequence_loader = sequence_loader
         self.subsequence_length = subsequence_length
-        self.cache_path = cache_root / self.sequence_loader.config_string()
+        self.idx_lookup_cache_path = (
+            idx_lookup_cache_root / self.sequence_loader.cache_folder_name()
+        )
 
         self.dataset_to_sequence_subsequence_idx = self._load_dataset_to_sequence_subsequence_idx()
         self.sequence_subsequence_idx_to_dataset_idx = {
@@ -58,17 +49,19 @@ class BaseDatasetForAbstractSeqLoader(AbstractDataset):
         self.eval_type = EvalType[eval_type.strip().upper()]
         self.eval_args = eval_args
 
-    def _get_cache_file(self) -> Path:
-        cache_file = self.cache_path / "dataset_index_cache.pkl"
+    def _get_idx_lookup_cache_file(self) -> Path:
+        cache_file = self.idx_lookup_cache_path / "sequence_subsequence_lookup.pkl"
         return cache_file
 
-    def _load_dataset_to_sequence_subsequence_idx(self) -> list[tuple[int, int]]:
-        cache_file = self._get_cache_file()
+    def _load_existing_cache(self) -> Optional[list[tuple[int, int]]]:
+        cache_file = self._get_idx_lookup_cache_file()
         if cache_file.exists() and self.use_cache:
             cache_pkl = load_pickle(cache_file)
             return cache_pkl
+        return None
 
-        print("Building dataset index...")
+    def _build_new_cache(self) -> list[tuple[int, int]]:
+        cache_file = self._get_idx_lookup_cache_file()
         # Build map from dataset index to sequence and subsequence index.
         dataset_to_sequence_subsequence_idx = []
         for sequence_idx, sequence in enumerate(self.sequence_loader):
@@ -80,6 +73,13 @@ class BaseDatasetForAbstractSeqLoader(AbstractDataset):
         )
         save_pickle(cache_file, dataset_to_sequence_subsequence_idx)
         return dataset_to_sequence_subsequence_idx
+
+    def _load_dataset_to_sequence_subsequence_idx(self) -> list[tuple[int, int]]:
+        existing_cache = self._load_existing_cache()
+        if existing_cache is not None:
+            return existing_cache
+
+        return self._build_new_cache()
 
     def __len__(self):
         return len(self.dataset_to_sequence_subsequence_idx)
@@ -108,9 +108,11 @@ class BaseDatasetForAbstractSeqLoader(AbstractDataset):
         subsequence_start_idx: int,
         other_load_args: dict[str, Any] = {},
     ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
+        assert isinstance(
+            sequence, AbstractAVLidarSequence
+        ), f"sequence is {type(sequence)}, not AbstractAVLidarSequence"
         in_subsequence_src_index = (self.subsequence_length - 1) // 2
         in_subsequence_tgt_index = in_subsequence_src_index + 1
-        # with_flow=(idx != self.subsequence_length - 1)
         return sequence.load(
             subsequence_start_idx + idx,
             subsequence_start_idx + in_subsequence_tgt_index,

@@ -31,6 +31,11 @@ class RGBImageCrop:
     def apply_to_image(self, image: "RGBImage") -> "RGBImage":
         return RGBImage(image.full_image[self.min_y : self.max_y, self.min_x : self.max_x])
 
+    def get_is_valid_mask(self, image: "RGBImage") -> np.ndarray:
+        mask = np.zeros(image.full_image.shape[:2], dtype=bool)
+        mask[self.min_y : self.max_y, self.min_x : self.max_x] = True
+        return mask
+
 
 class RGBImage:
     """
@@ -95,8 +100,11 @@ class RGBImage:
         return RGBImage(cv2.resize(self.full_image, new_shape))
 
     @property
-    def masked_image(self):
+    def masked_image(self) -> "RGBImage":
         return self.valid_crop.apply_to_image(self)
+
+    def get_is_valid_mask(self) -> np.ndarray:
+        return self.valid_crop.get_is_valid_mask(self)
 
     @property
     def shape(self):

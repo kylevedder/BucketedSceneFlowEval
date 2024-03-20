@@ -19,6 +19,7 @@ from bucketed_scene_flow_eval.datastructures import (
     TimeSyncedSceneFlowFrame,
 )
 from bucketed_scene_flow_eval.interfaces import (
+    AbstractAVLidarSequence,
     AbstractSequence,
     AbstractSequenceLoader,
     CachedSequenceLoader,
@@ -34,7 +35,7 @@ CATEGORY_MAP = {
 }
 
 
-class WaymoSupervisedSceneFlowSequence(AbstractSequence):
+class WaymoSupervisedSceneFlowSequence(AbstractAVLidarSequence):
     def __init__(self, sequence_folder: Path, verbose: bool = False):
         self.sequence_folder = Path(sequence_folder)
         self.sequence_files = sorted(self.sequence_folder.glob("*.pkl"))
@@ -197,5 +198,5 @@ class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
     def category_name_to_id(category_name: str) -> int:
         return {v: k for k, v in CATEGORY_MAP.items()}[category_name]
 
-    def config_string(self) -> str:
+    def cache_folder_name(self) -> str:
         return f"waymo_supervised_dataset_dir_{self.dataset_dir.name}_with_rgb_{self.with_rgb}"

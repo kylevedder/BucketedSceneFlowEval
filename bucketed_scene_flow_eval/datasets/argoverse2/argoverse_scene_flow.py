@@ -338,7 +338,7 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
     def category_name_to_id(category_name: str) -> int:
         return {v: k for k, v in CATEGORY_MAP.items()}[category_name]
 
-    def config_string(self) -> str:
+    def cache_folder_name(self) -> str:
         return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}"
 
 

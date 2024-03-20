@@ -524,5 +524,5 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
             with_rgb=self.with_rgb,
         )
 
-    def config_string(self) -> str:
+    def cache_folder_name(self) -> str:
         return f"av2_raw_data_with_rgb_{self.with_rgb}_sample_every_{self.per_sequence_sample_every}_dataset_dir_{self.dataset_dir.name}"

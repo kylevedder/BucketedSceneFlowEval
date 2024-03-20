@@ -7,15 +7,12 @@ from bucketed_scene_flow_eval.eval import (
     Evaluator,
     ThreeWayEPEEvaluator,
 )
-from bucketed_scene_flow_eval.interfaces import (
-    BaseDatasetForAbstractSeqLoader,
-    EvalType,
-)
+from bucketed_scene_flow_eval.interfaces import BaseAstractSeqLoaderDataset, EvalType
 
 from .waymo_supervised_flow import CATEGORY_MAP, WaymoSupervisedSceneFlowSequenceLoader
 
 
-class WaymoOpenSceneFlow(BaseDatasetForAbstractSeqLoader):
+class WaymoOpenSceneFlow(BaseAstractSeqLoaderDataset):
     """
     Wrapper for the Argoverse 2 dataset.
 
@@ -37,7 +34,7 @@ class WaymoOpenSceneFlow(BaseDatasetForAbstractSeqLoader):
             sequence_loader=self.sequence_loader,
             subsequence_length=subsequence_length,
             with_ground=True,
-            cache_root=cache_root,
+            idx_lookup_cache_root=cache_root,
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,

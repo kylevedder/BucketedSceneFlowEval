@@ -45,7 +45,7 @@ class AbstractSequenceLoader(ABC):
         pass
 
     @abstractmethod
-    def config_string(self) -> str:
+    def cache_folder_name(self) -> str:
         pass
 
     @abstractmethod

@@ -292,5 +292,5 @@ class NuScenesLoader(CachedSequenceLoader):
             verbose=self.verbose,
         )
 
-    def config_string(self) -> str:
+    def cache_folder_name(self) -> str:
         return f"nuscenes_dataset_{self.nusc.version}_dataset_dir_{self.dataset_dir.name}"

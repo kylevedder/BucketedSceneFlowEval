@@ -10,7 +10,7 @@ from bucketed_scene_flow_eval.eval import (
 )
 from bucketed_scene_flow_eval.interfaces import (
     AbstractAVLidarSequence,
-    BaseDatasetForAbstractSeqLoader,
+    BaseAstractSeqLoaderDataset,
     EvalType,
 )
 
@@ -22,7 +22,7 @@ from .argoverse_scene_flow import (
 from .av2_metacategories import BUCKETED_METACATAGORIES, THREEWAY_EPE_METACATAGORIES
 
 
-class Argoverse2SceneFlow(BaseDatasetForAbstractSeqLoader):
+class Argoverse2SceneFlow(BaseAstractSeqLoaderDataset):
     """
     Wrapper for the Argoverse 2 dataset.
 
@@ -53,7 +53,7 @@ class Argoverse2SceneFlow(BaseDatasetForAbstractSeqLoader):
             sequence_loader=self.sequence_loader,
             subsequence_length=subsequence_length,
             with_ground=with_ground,
-            cache_root=cache_root,
+            idx_lookup_cache_root=cache_root,
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,
