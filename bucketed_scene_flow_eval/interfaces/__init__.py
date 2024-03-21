@@ -5,7 +5,11 @@ from .abstract_sequence_loader import (
     AbstractSequenceLoader,
     CachedSequenceLoader,
 )
-from .base_dataset_abstract_seq_loader import BaseAstractSeqLoaderDataset, EvalType
+from .base_dataset_abstract_seq_loader import (
+    CausalSeqLoaderDataset,
+    EvalType,
+    NonCausalSeqLoaderDataset,
+)
 
 __all__ = [
     "AbstractDataset",
@@ -13,6 +17,7 @@ __all__ = [
     "AbstractAVLidarSequence",
     "AbstractSequenceLoader",
     "CachedSequenceLoader",
-    "BaseAstractSeqLoaderDataset",
     "EvalType",
+    "NonCausalSeqLoaderDataset",
+    "CausalSeqLoaderDataset",
 ]

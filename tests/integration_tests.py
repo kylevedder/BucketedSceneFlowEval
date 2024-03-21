@@ -12,7 +12,7 @@ from bucketed_scene_flow_eval.interfaces import AbstractDataset
 @pytest.fixture
 def waymo_dataset_gt():
     return construct_dataset(
-        "waymoopensceneflow",
+        "waymoopencausalsceneflow",
         dict(root_dir="/tmp/waymo_open_processed_flow_tiny/training"),
     )
 
@@ -20,7 +20,7 @@ def waymo_dataset_gt():
 @pytest.fixture
 def argo_dataset_gt_with_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -33,7 +33,7 @@ def argo_dataset_gt_with_ground():
 @pytest.fixture
 def argo_dataset_pseudo_with_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -46,7 +46,7 @@ def argo_dataset_pseudo_with_ground():
 @pytest.fixture
 def argo_dataset_gt_no_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -59,7 +59,7 @@ def argo_dataset_gt_no_ground():
 @pytest.fixture
 def argo_dataset_pseudo_no_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -72,7 +72,7 @@ def argo_dataset_pseudo_no_ground():
 @pytest.fixture
 def argo_dataset_test_no_flow_no_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/test",
             with_rgb=False,
@@ -85,7 +85,7 @@ def argo_dataset_test_no_flow_no_ground():
 @pytest.fixture
 def argo_dataset_test_no_flow_with_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/test",
             with_rgb=False,

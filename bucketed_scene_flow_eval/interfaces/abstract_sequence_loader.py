@@ -27,7 +27,7 @@ class AbstractSequence(ABC):
 class AbstractAVLidarSequence(AbstractSequence):
     @abstractmethod
     def load(
-        self, idx: int, relative_to_idx: int
+        self, idx: int, relative_to_idx: int, with_flow: bool = True
     ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         pass
 

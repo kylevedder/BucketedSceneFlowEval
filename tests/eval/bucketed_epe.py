@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
 
-from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow, construct_dataset
+from bucketed_scene_flow_eval.datasets import (
+    Argoverse2CausalSceneFlow,
+    construct_dataset,
+)
 from bucketed_scene_flow_eval.datastructures import (
     EgoLidarFlow,
     TimeSyncedSceneFlowFrame,
@@ -11,7 +14,7 @@ from bucketed_scene_flow_eval.datastructures import (
 @pytest.fixture
 def argo_dataset_gt_with_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -24,7 +27,7 @@ def argo_dataset_gt_with_ground():
 @pytest.fixture
 def argo_dataset_pseudo_with_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -37,7 +40,7 @@ def argo_dataset_pseudo_with_ground():
 @pytest.fixture
 def argo_dataset_gt_no_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -50,7 +53,7 @@ def argo_dataset_gt_no_ground():
 @pytest.fixture
 def argo_dataset_pseudo_no_ground():
     return construct_dataset(
-        "argoverse2sceneflow",
+        "argoverse2causalsceneflow",
         dict(
             root_dir="/tmp/argoverse2_tiny/val",
             with_rgb=False,
@@ -61,8 +64,8 @@ def argo_dataset_pseudo_no_ground():
 
 
 def _run_eval_on_target_and_gt_datasets(
-    gt_dataset: Argoverse2SceneFlow,
-    target_dataset: Argoverse2SceneFlow,
+    gt_dataset: Argoverse2CausalSceneFlow,
+    target_dataset: Argoverse2CausalSceneFlow,
     EXPECTED_RESULTS_DICT: dict[str, tuple[float, float]],
 ):
     assert len(gt_dataset) == len(target_dataset), (
@@ -133,8 +136,8 @@ def _run_eval_on_target_and_gt_datasets(
 
 
 def test_bucketed_eval_av2_with_ground(
-    argo_dataset_gt_with_ground: Argoverse2SceneFlow,
-    argo_dataset_pseudo_with_ground: Argoverse2SceneFlow,
+    argo_dataset_gt_with_ground: Argoverse2CausalSceneFlow,
+    argo_dataset_pseudo_with_ground: Argoverse2CausalSceneFlow,
 ):
     EXPECTED_RESULTS_DICT = {
         "BACKGROUND": (0.017420833175797096, float("nan")),
@@ -149,8 +152,8 @@ def test_bucketed_eval_av2_with_ground(
 
 
 def test_bucketed_eval_av2_no_ground(
-    argo_dataset_gt_no_ground: Argoverse2SceneFlow,
-    argo_dataset_pseudo_no_ground: Argoverse2SceneFlow,
+    argo_dataset_gt_no_ground: Argoverse2CausalSceneFlow,
+    argo_dataset_pseudo_no_ground: Argoverse2CausalSceneFlow,
 ):
     EXPECTED_RESULTS_DICT = {
         "BACKGROUND": (0.01975785995262935, float("nan")),

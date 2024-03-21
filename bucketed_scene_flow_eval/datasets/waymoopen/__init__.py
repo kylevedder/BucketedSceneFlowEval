@@ -1,4 +1,4 @@
-from .dataset import WaymoOpenSceneFlow
+from .dataset import WaymoOpenCausalSceneFlow, WaymoOpenNonCausalSceneFlow
 from .waymo_supervised_flow import (
     CATEGORY_MAP,
     WaymoSupervisedSceneFlowSequence,
@@ -6,5 +6,6 @@ from .waymo_supervised_flow import (
 )
 
 __all__ = [
-    "WaymoOpenSceneFlow",
+    "WaymoOpenCausalSceneFlow",
+    "WaymoOpenNonCausalSceneFlow",
 ]
