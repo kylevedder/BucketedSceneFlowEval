@@ -1,4 +1,4 @@
-from .abstract_dataset import AbstractDataset
+from .abstract_dataset import AbstractDataset, LoaderType
 from .abstract_sequence_loader import (
     AbstractAVLidarSequence,
     AbstractSequence,
@@ -18,6 +18,7 @@ __all__ = [
     "AbstractSequenceLoader",
     "CachedSequenceLoader",
     "EvalType",
+    "LoaderType",
     "NonCausalSeqLoaderDataset",
     "CausalSeqLoaderDataset",
 ]

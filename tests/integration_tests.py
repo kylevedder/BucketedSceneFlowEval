@@ -145,12 +145,12 @@ def test_argo_dataset_test_no_flow_with_ground(argo_dataset_test_no_flow_with_gr
 
 
 def test_argo_dataset_gt_no_ground(argo_dataset_gt_no_ground):
-    _validate_dataloader(argo_dataset_gt_no_ground, 80927, 65225)
+    _validate_dataloader(argo_dataset_gt_no_ground, 90430, 65225)
 
 
 def test_argo_dataset_pseudo_no_ground(argo_dataset_pseudo_no_ground):
-    _validate_dataloader(argo_dataset_pseudo_no_ground, 80927, 65225)
+    _validate_dataloader(argo_dataset_pseudo_no_ground, 90430, 65225)
 
 
 def test_argo_dataset_test_no_flow_no_ground(argo_dataset_test_no_flow_no_ground):
-    _validate_dataloader(argo_dataset_test_no_flow_no_ground, 80927, 65225)
+    _validate_dataloader(argo_dataset_test_no_flow_no_ground, 90430, 65225)

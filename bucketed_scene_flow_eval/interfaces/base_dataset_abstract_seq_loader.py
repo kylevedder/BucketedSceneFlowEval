@@ -7,7 +7,7 @@ from typing import Any, Optional, Sequence, Union
 import numpy as np
 
 from bucketed_scene_flow_eval.datastructures import *
-from bucketed_scene_flow_eval.interfaces import AbstractDataset
+from bucketed_scene_flow_eval.interfaces import AbstractDataset, LoaderType
 from bucketed_scene_flow_eval.utils import load_pickle, save_pickle
 
 from .abstract_sequence_loader import (
@@ -89,8 +89,8 @@ class BaseAbstractSeqLoaderDataset(AbstractDataset):
         frame.flow.mask = frame.flow.mask & metadata.in_range_mask
 
         if not self.with_ground:
-            frame.pc = frame.pc.mask_points(~metadata.is_ground_points)
-            frame.flow = frame.flow.mask_points(~metadata.is_ground_points)
+            frame.pc.mask = frame.pc.mask & ~metadata.is_ground_points
+            frame.flow.mask = frame.flow.mask & ~metadata.is_ground_points
 
         return frame
 
@@ -175,6 +175,9 @@ class CausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
         )
         return cache_file
 
+    def loader_type(self) -> LoaderType:
+        return LoaderType.CAUSAL
+
 
 class NonCausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
     def _build_new_cache(self) -> CacheLookup:
@@ -225,3 +228,6 @@ class NonCausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
             / f"non_causal_subsequence_{self.subsequence_length}_lookup.pkl"
         )
         return cache_file
+
+    def loader_type(self) -> LoaderType:
+        return LoaderType.NON_CAUSAL
