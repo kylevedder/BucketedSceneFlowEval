@@ -23,6 +23,16 @@ def av2_loader() -> ArgoverseSceneFlowSequenceLoader:
     )
 
 
+@pytest.fixture
+def av2_loader_downscale_imgs() -> ArgoverseSceneFlowSequenceLoader:
+    return ArgoverseSceneFlowSequenceLoader(
+        raw_data_path=Path("/tmp/argoverse2_tiny/val"),
+        flow_data_path=Path("/tmp/argoverse2_tiny/val_sceneflow_feather/"),
+        with_rgb=True,
+        expected_camera_shape=(194, 256, 3),
+    )
+
+
 def _are_poses_close(pose1: SE3, pose2: SE3, tol: float = 1e-6) -> bool:
     # Use PyTest's approx to compare the poses
     return pose1.translation == pytest.approx(
@@ -44,6 +54,45 @@ def _load_reference_sequence(
     sequence = av2_loader.load_sequence(sequence_id)
     assert len(sequence) > 0, f"no frames found in {sequence_id}"
     return sequence.load(0, 0)
+
+
+def test_downscaled_rgb_sizes(av2_loader_downscale_imgs: ArgoverseSceneFlowSequenceLoader):
+    first_frame, _ = _load_reference_sequence(av2_loader_downscale_imgs)
+    assert len(first_frame.rgbs) == 5, f"expected 5 cameras, got {len(first_frame.rgbs)}"
+
+    # Expect the shapes
+    expected_full_img_shapes = {
+        "ring_side_left": (194, 256, 3),
+        "ring_front_left": (194, 256, 3),
+        "ring_front_center": (194, 256, 3),
+        "ring_front_right": (194, 256, 3),
+        "ring_side_right": (194, 256, 3),
+    }
+
+    expected_cropped_img_shapes = {
+        "ring_side_left": (194, 256, 3),
+        "ring_front_left": (194, 256, 3),
+        "ring_front_center": (194, 194, 3),
+        "ring_front_right": (194, 256, 3),
+        "ring_side_right": (194, 256, 3),
+    }
+
+    items = first_frame.rgbs.items()
+    assert len(items) == len(
+        expected_cropped_img_shapes
+    ), f"expected {len(expected_cropped_img_shapes)} items, got {len(items)}"
+    for name, rgb_frame in items:
+        # MEASURE FULL IMAGE SHAPE
+        full_img_expected_shape = expected_full_img_shapes[name]
+        assert (
+            rgb_frame.rgb.full_image.shape == full_img_expected_shape
+        ), f"expected shape {full_img_expected_shape} for {name}, got {rgb_frame.rgb.full_image.shape}"
+
+        # MEASURE CROPPED IMAGE SHAPE
+        cropped_img_expected_shape = expected_cropped_img_shapes[name]
+        assert (
+            rgb_frame.rgb.masked_image.shape == cropped_img_expected_shape
+        ), f"expected shape {cropped_img_expected_shape} for {name}, got {rgb_frame.rgb.masked_image.shape}"
 
 
 def test_rgb_sizes(av2_loader: ArgoverseSceneFlowSequenceLoader):

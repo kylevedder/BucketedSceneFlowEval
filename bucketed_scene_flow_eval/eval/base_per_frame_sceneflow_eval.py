@@ -176,29 +176,29 @@ class PerFrameSceneFlowEvaluator(Evaluator):
 
     def _sanitize_and_validate_inputs(
         self,
-        predictions: EgoLidarFlow,
-        ground_truth: TimeSyncedSceneFlowFrame,
+        predicted_flow: EgoLidarFlow,
+        gt_frame: TimeSyncedSceneFlowFrame,
     ):
         assert isinstance(
-            predictions, EgoLidarFlow
-        ), f"predictions must be a EstimatedFlows, got {type(predictions)}"
+            predicted_flow, EgoLidarFlow
+        ), f"predictions must be a EstimatedFlows, got {type(predicted_flow)}"
 
         assert isinstance(
-            ground_truth, TimeSyncedSceneFlowFrame
-        ), f"ground_truth must be a GroundTruthFlows, got {type(ground_truth)}"
+            gt_frame, TimeSyncedSceneFlowFrame
+        ), f"ground_truth must be a GroundTruthFlows, got {type(gt_frame)}"
 
         # Ensure that the predictions underlying array is the same shape as the gt
-        assert len(predictions.full_flow) == len(
-            ground_truth.flow.full_flow
-        ), f"predictions and ground_truth must have the same length, got {len(predictions.full_flow)} and {len(ground_truth.flow.full_flow)}"
+        assert len(predicted_flow.full_flow) == len(
+            gt_frame.flow.full_flow
+        ), f"predictions and ground_truth must have the same length, got {len(predicted_flow.full_flow)} and {len(gt_frame.flow.full_flow)}"
 
         # Validate that all valid gt flow vectors are considered valid in the predictions.
         assert np.all(
-            (predictions.mask & ground_truth.flow.mask) == ground_truth.flow.mask
+            (predicted_flow.mask & gt_frame.flow.mask) == gt_frame.flow.mask
         ), "All valid gt flow vectors must be considered valid in the predictions"
 
         # Set the prediction valid flow mask to be the gt flow so everything lines up
-        predictions.mask = ground_truth.flow.mask
+        predicted_flow.mask = gt_frame.flow.mask
 
     def eval(self, predicted_flow: EgoLidarFlow, gt_frame: TimeSyncedSceneFlowFrame):
         self._sanitize_and_validate_inputs(predicted_flow, gt_frame)
@@ -210,12 +210,15 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         gt_flow = gt_frame.flow.valid_flow
         pred_flow = predicted_flow.valid_flow
 
-        self.eval_frame_results.append(
-            self._build_eval_frame_results(global_pc, class_ids, gt_flow, pred_flow)
-        )
+        assert (
+            gt_flow.shape == pred_flow.shape
+        ), f"gt_flow and pred_flow must have the same shape, got {gt_flow.shape} and {pred_flow.shape}"
+
+        eval_frame_result = self._build_eval_frame_results(global_pc, class_ids, gt_flow, pred_flow)
+        self.eval_frame_results.append(eval_frame_result)
 
     def _build_eval_frame_results(
-        self, pc1: np.ndarray, gt_class_ids: np.ndarray, gt_flow: np.ndarray, pred_flow: np.ndarray
+        self, pc1: PointCloud, gt_class_ids: np.ndarray, gt_flow: np.ndarray, pred_flow: np.ndarray
     ) -> BaseEvalFrameResult:
         """
         Override this method to build a custom EvalFrameResult child construction

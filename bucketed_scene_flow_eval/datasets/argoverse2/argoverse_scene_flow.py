@@ -24,7 +24,7 @@ from bucketed_scene_flow_eval.interfaces import (
 )
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
-from . import ArgoverseRawSequence
+from . import DEFAULT_POINT_CLOUD_RANGE, ArgoverseRawSequence, PointCloudRange
 
 CATEGORY_MAP = {
     -1: "BACKGROUND",
@@ -72,9 +72,14 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         with_rgb: bool = False,
         with_classes: bool = False,
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
     ):
         super().__init__(
-            log_id, dataset_dir, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
+            log_id,
+            dataset_dir,
+            with_rgb=with_rgb,
+            expected_camera_shape=expected_camera_shape,
+            point_cloud_range=point_cloud_range,
         )
         self.with_classes = with_classes
         self.flow_data_files: list[Path] = []
@@ -210,8 +215,11 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
     ):
-        self._setup_raw_data(raw_data_path, use_gt_flow, with_rgb, expected_camera_shape)
+        self._setup_raw_data(
+            raw_data_path, use_gt_flow, with_rgb, expected_camera_shape, point_cloud_range
+        )
         self._setup_flow_data(use_gt_flow, flow_data_path)
         self._subset_log(log_subset)
 
@@ -221,12 +229,14 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         use_gt_flow: bool,
         with_rgb: bool,
         expected_camera_shape: tuple[int, int, int],
+        point_cloud_range: Optional[PointCloudRange],
     ):
         super().__init__()
         self.use_gt_flow = use_gt_flow
         self.raw_data_path = self._sanitize_raw_data_path(raw_data_path)
         self.with_rgb = with_rgb
         self.expected_camera_shape = expected_camera_shape
+        self.point_cloud_range = point_cloud_range
 
         # Raw data folders
         self.sequence_id_to_raw_data = self._load_sequence_data(self.raw_data_path)
@@ -324,6 +334,7 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
             with_rgb=self.with_rgb,
             with_classes=self.use_gt_flow,
             expected_camera_shape=self.expected_camera_shape,
+            point_cloud_range=self.point_cloud_range,
         )
 
     @staticmethod
@@ -364,12 +375,14 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
         with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
     ):
         self._setup_raw_data(
             raw_data_path=raw_data_path,
             use_gt_flow=False,
             with_rgb=with_rgb,
             expected_camera_shape=expected_camera_shape,
+            point_cloud_range=point_cloud_range,
         )
         self._subset_log(log_subset)
 
@@ -384,4 +397,5 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
             with_rgb=self.with_rgb,
             with_classes=False,
             expected_camera_shape=self.expected_camera_shape,
+            point_cloud_range=self.point_cloud_range,
         )

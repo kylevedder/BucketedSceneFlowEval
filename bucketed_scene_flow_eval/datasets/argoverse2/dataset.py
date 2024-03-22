@@ -15,6 +15,7 @@ from bucketed_scene_flow_eval.interfaces import (
     NonCausalSeqLoaderDataset,
 )
 
+from .argoverse_raw_data import DEFAULT_POINT_CLOUD_RANGE, PointCloudRange
 from .argoverse_scene_flow import (
     CATEGORY_MAP,
     ArgoverseNoFlowSequenceLoader,
@@ -55,6 +56,7 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
         use_cache=True,
         load_flow: bool = True,
     ) -> None:
@@ -65,10 +67,14 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
                 expected_camera_shape=expected_camera_shape,
+                point_cloud_range=point_cloud_range,
             )
         else:
             self.sequence_loader = ArgoverseNoFlowSequenceLoader(
-                root_dir, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
+                root_dir,
+                with_rgb=with_rgb,
+                expected_camera_shape=expected_camera_shape,
+                point_cloud_range=point_cloud_range,
             )
         super().__init__(
             sequence_loader=self.sequence_loader,

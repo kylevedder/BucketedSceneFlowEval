@@ -1,4 +1,5 @@
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -13,6 +14,7 @@ from bucketed_scene_flow_eval.datastructures import (
     SE3,
     CameraModel,
     CameraProjection,
+    MaskArray,
     PointCloud,
     PointCloudFrame,
     PoseInfo,
@@ -27,6 +29,86 @@ from bucketed_scene_flow_eval.interfaces import AbstractSequence, CachedSequence
 from bucketed_scene_flow_eval.utils import load_json
 
 GROUND_HEIGHT_THRESHOLD = 0.4  # 40 centimeters
+
+
+PointCloudRange = tuple[float, float, float, float, float, float]
+
+DEFAULT_POINT_CLOUD_RANGE: PointCloudRange = (
+    -48,
+    -48,
+    -2.5,
+    48,
+    48,
+    2.5,
+)
+
+
+class ImageOp(ABC):
+    @abstractmethod
+    def apply(self, rgb_frame: RGBFrame) -> RGBFrame:
+        raise NotImplementedError
+
+
+class Resize(ImageOp):
+    def __init__(self, target_shape: tuple[int, int, int]):
+        self.target_shape = target_shape
+
+    def apply(self, rgb_frame: RGBFrame) -> RGBFrame:
+        current_long_size = max(rgb_frame.rgb.shape[0], rgb_frame.rgb.shape[1])
+        target_long_size = max(self.target_shape[0], self.target_shape[1])
+        reduction_factor = current_long_size / target_long_size
+        rgb_frame.rgb = rgb_frame.rgb.rescale(reduction_factor)
+        rgb_frame.camera_projection = rgb_frame.camera_projection.rescale(reduction_factor)
+        return rgb_frame
+
+
+class EmbedTranspose(ImageOp):
+    def __init__(self, target_shape: tuple[int, int, int]):
+        self.target_shape = target_shape
+
+    def apply(self, rgb_frame: RGBFrame) -> RGBFrame:
+        # Ensure image is a transpose of the target shape
+        assert (rgb_frame.rgb.shape[1] == self.target_shape[0]) and (
+            rgb_frame.rgb.shape[0] == self.target_shape[1]
+        ), f"Image shape {rgb_frame.rgb.shape} is not a transpose of the target shape {self.target_shape}"
+        # Image shape is transpose of the target shape.
+        # Extract the overlapping center of the two images and embed it in the target array.
+        src_array = rgb_frame.rgb.full_image
+        tgt_array = np.zeros(self.target_shape, dtype=src_array.dtype)
+
+        # Calculate the center of both source and target
+        src_center_y, src_center_x = src_array.shape[0] // 2, src_array.shape[1] // 2
+        tgt_center_y, tgt_center_x = tgt_array.shape[0] // 2, tgt_array.shape[1] // 2
+
+        # Determine the dimensions of the region to extract from the source
+        # This is based on the minimum of the source's and target's dimensions
+        extract_height = min(src_array.shape[0], tgt_array.shape[0])
+        extract_width = min(src_array.shape[1], tgt_array.shape[1])
+
+        # Calculate start and end indices for extraction from the source
+        src_start_y = max(0, src_center_y - extract_height // 2)
+        src_end_y = src_start_y + extract_height
+        src_start_x = max(0, src_center_x - extract_width // 2)
+        src_end_x = src_start_x + extract_width
+
+        # Calculate start and end indices for insertion into the target
+        tgt_start_y = max(0, tgt_center_y - extract_height // 2)
+        tgt_end_y = tgt_start_y + extract_height
+        tgt_start_x = max(0, tgt_center_x - extract_width // 2)
+        tgt_end_x = tgt_start_x + extract_width
+
+        # Extract the region from the source image
+        extracted_region = src_array[src_start_y:src_end_y, src_start_x:src_end_x, :]
+
+        # Place the extracted region into the target array, centered
+        tgt_array[tgt_start_y:tgt_end_y, tgt_start_x:tgt_end_x, :] = extracted_region
+        valid_crop = RGBImageCrop(
+            min_x=tgt_start_x, max_x=tgt_end_x, min_y=tgt_start_y, max_y=tgt_end_y
+        )
+
+        rgb_frame.rgb = RGBImage(tgt_array, valid_crop)
+        rgb_frame.camera_projection = rgb_frame.camera_projection.transpose()
+        return rgb_frame
 
 
 @dataclass(kw_only=True)
@@ -63,63 +145,19 @@ class CameraInfo:
         Reshape the image to the expected shape,
         and update the camera projection to account for the scaling.
         """
+        current_area = rgb_frame.rgb.shape[0] * rgb_frame.rgb.shape[1]
+        expected_area = self.expected_shape[0] * self.expected_shape[1]
+
+        if expected_area < current_area:
+            rgb_frame = Resize(self.expected_shape).apply(rgb_frame)
+
         current_aspect_ratio = rgb_frame.rgb.shape[1] / rgb_frame.rgb.shape[0]
         target_aspect_ratio = self.expected_shape[1] / self.expected_shape[0]
-        if rgb_frame.rgb.shape == self.expected_shape:
-            return rgb_frame
 
-        elif abs(current_aspect_ratio - target_aspect_ratio) < 1e-6:
-            # Only rescale is required.
-            reduction_factor = rgb_frame.rgb.shape[0] / self.expected_shape[0]
-            rgb_frame.rgb.rescale(reduction_factor=reduction_factor)
-            rgb_frame.camera_projection.rescale(reduction_factor=reduction_factor)
-            return rgb_frame
-        elif (rgb_frame.rgb.shape[1] == self.expected_shape[0]) and (
-            rgb_frame.rgb.shape[0] == self.expected_shape[1]
-        ):
-            # Image shape is transpose of the target shape.
-            # Extract the overlapping center of the two images and embed it in the target array.
-            src_array = rgb_frame.rgb.full_image
-            tgt_array = np.zeros(self.expected_shape, dtype=src_array.dtype)
+        if abs(current_aspect_ratio - target_aspect_ratio) > 0.1:
+            rgb_frame = EmbedTranspose(self.expected_shape).apply(rgb_frame)
 
-            # Calculate the center of both source and target
-            src_center_y, src_center_x = src_array.shape[0] // 2, src_array.shape[1] // 2
-            tgt_center_y, tgt_center_x = tgt_array.shape[0] // 2, tgt_array.shape[1] // 2
-
-            # Determine the dimensions of the region to extract from the source
-            # This is based on the minimum of the source's and target's dimensions
-            extract_height = min(src_array.shape[0], tgt_array.shape[0])
-            extract_width = min(src_array.shape[1], tgt_array.shape[1])
-
-            # Calculate start and end indices for extraction from the source
-            src_start_y = max(0, src_center_y - extract_height // 2)
-            src_end_y = src_start_y + extract_height
-            src_start_x = max(0, src_center_x - extract_width // 2)
-            src_end_x = src_start_x + extract_width
-
-            # Calculate start and end indices for insertion into the target
-            tgt_start_y = max(0, tgt_center_y - extract_height // 2)
-            tgt_end_y = tgt_start_y + extract_height
-            tgt_start_x = max(0, tgt_center_x - extract_width // 2)
-            tgt_end_x = tgt_start_x + extract_width
-
-            # Extract the region from the source image
-            extracted_region = src_array[src_start_y:src_end_y, src_start_x:src_end_x, :]
-
-            # Place the extracted region into the target array, centered
-            tgt_array[tgt_start_y:tgt_end_y, tgt_start_x:tgt_end_x, :] = extracted_region
-            valid_crop = RGBImageCrop(
-                min_x=tgt_start_x, max_x=tgt_end_x, min_y=tgt_start_y, max_y=tgt_end_y
-            )
-
-            rgb_frame.rgb = RGBImage(tgt_array, valid_crop)
-            rgb_frame.camera_projection = rgb_frame.camera_projection.transpose()
-            return rgb_frame
-
-        else:
-            raise NotImplementedError(
-                f"Unknown reshape case: {rgb_frame.rgb.shape} to {self.expected_shape}"
-            )
+        return rgb_frame
 
     def load_rgb_frame(self, timestamp: int, global_pose: SE3) -> RGBFrame:
         rgb = self.load_rgb(timestamp)
@@ -146,7 +184,7 @@ class ArgoverseRawSequence(AbstractSequence):
         dataset_dir: Path,
         verbose: bool = False,
         with_rgb: bool = False,
-        POINT_CLOUD_RANGE=(-48, -48, -2.5, 48, 48, 2.5),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
         sample_every: Optional[int] = None,
         camera_names=[
             "ring_side_left",
@@ -158,7 +196,7 @@ class ArgoverseRawSequence(AbstractSequence):
         expected_camera_shape=(1550, 2048, 3),
     ):
         self.log_id = log_id
-        self.POINT_CLOUD_RANGE = POINT_CLOUD_RANGE
+        self.POINT_CLOUD_RANGE = point_cloud_range
 
         self.dataset_dir = Path(dataset_dir)
         assert self.dataset_dir.is_dir(), f"dataset_dir {dataset_dir} does not exist"
@@ -379,7 +417,9 @@ class ArgoverseRawSequence(AbstractSequence):
         ) | (np.array(global_point_cloud[:, 2] - ground_height_values) < 0)
         return is_ground_boolean_arr
 
-    def is_in_range(self, global_point_cloud: PointCloud) -> np.ndarray:
+    def is_in_range(self, global_point_cloud: PointCloud) -> MaskArray:
+        if self.POINT_CLOUD_RANGE is None:
+            return np.ones(len(global_point_cloud), dtype=bool)
         xmin = self.POINT_CLOUD_RANGE[0]
         ymin = self.POINT_CLOUD_RANGE[1]
         zmin = self.POINT_CLOUD_RANGE[2]
@@ -486,6 +526,7 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
         num_sequences: Optional[int] = None,
         per_sequence_sample_every: Optional[int] = None,
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
     ):
         super().__init__()
         self.dataset_dir = Path(sequence_dir)
@@ -493,6 +534,7 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
         self.with_rgb = with_rgb
         self.per_sequence_sample_every = per_sequence_sample_every
         self.expected_camera_shape = expected_camera_shape
+        self.point_cloud_range = point_cloud_range
         assert self.dataset_dir.is_dir(), f"dataset_dir {sequence_dir} does not exist"
         self.log_lookup = {e.name: e for e in self.dataset_dir.glob("*/")}
         if log_subset is not None:
@@ -525,6 +567,7 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
             sample_every=self.per_sequence_sample_every,
             with_rgb=self.with_rgb,
             expected_camera_shape=self.expected_camera_shape,
+            point_cloud_range=self.point_cloud_range,
         )
 
     def cache_folder_name(self) -> str:
