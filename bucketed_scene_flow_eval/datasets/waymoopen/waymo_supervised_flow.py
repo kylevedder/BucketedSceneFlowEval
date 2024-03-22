@@ -3,18 +3,26 @@ from typing import Any, Optional
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datasets.shared_datastructures import (
-    AbstractSequence,
-    AbstractSequenceLoader,
-    CachedSequenceLoader,
-    SceneFlowItem,
-)
 from bucketed_scene_flow_eval.datastructures import (
     SE3,
+    EgoLidarFlow,
     PointCloud,
     PointCloudFrame,
     PoseInfo,
     RGBFrame,
+    RGBFrameLookup,
+    SemanticClassId,
+    SupervisedPointCloudFrame,
+    TimeSyncedAVLidarData,
+    TimeSyncedBaseAuxilaryData,
+    TimeSyncedRawFrame,
+    TimeSyncedSceneFlowFrame,
+)
+from bucketed_scene_flow_eval.interfaces import (
+    AbstractAVLidarSequence,
+    AbstractSequence,
+    AbstractSequenceLoader,
+    CachedSequenceLoader,
 )
 from bucketed_scene_flow_eval.utils import load_pickle
 
@@ -27,7 +35,7 @@ CATEGORY_MAP = {
 }
 
 
-class WaymoSupervisedSceneFlowSequence(AbstractSequence):
+class WaymoSupervisedSceneFlowSequence(AbstractAVLidarSequence):
     def __init__(self, sequence_folder: Path, verbose: bool = False):
         self.sequence_folder = Path(sequence_folder)
         self.sequence_files = sorted(self.sequence_folder.glob("*.pkl"))
@@ -58,7 +66,9 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
         flow[flow_speed > 30] = 0
         return flow
 
-    def load(self, idx: int, relative_to_idx: int) -> SceneFlowItem:
+    def load(
+        self, idx: int, relative_to_idx: int, with_flow: bool = True
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         assert idx < len(
             self
         ), f"idx {idx} out of range, len {len(self)} for {self.sequence_folder}"
@@ -68,10 +78,7 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
         # need to be updated if the flow is updated.
         ego_flow = self.cleanup_flow(ego_flow)
         _, _, _, start_pose = self._load_idx(relative_to_idx)
-
         relative_pose = start_pose.inverse().compose(idx_pose)
-        relative_global_frame_pc = ego_pc.transform(relative_pose)
-        car_frame_flowed_pc = ego_pc.flow(ego_flow)
 
         # From the Waymo Open dataset.proto:
         # // If the point is not annotated with scene flow information, class is set
@@ -88,48 +95,35 @@ class WaymoSupervisedSceneFlowSequence(AbstractSequence):
         # //   3: sign, i.e., the point corresponds to a sign label box.
         # //   4: cyclist, i.e., the point corresponds to a cyclist label box.
 
-        cleaned_idx_labels = idx_labels.astype(np.int32)
+        cleaned_idx_labels = idx_labels.astype(SemanticClassId)
         cleaned_idx_labels[cleaned_idx_labels == -1] = 0
 
-        # return {
-        #     "ego_pc": ego_pc,
-        #     "ego_pc_with_ground": ego_pc,
-        #     "relative_pc": relative_global_frame_pc,
-        #     "relative_pc_with_ground": relative_global_frame_pc,
-        #     "is_ground_points": np.zeros(len(relative_global_frame_pc), dtype=bool),
-        #     "relative_pose": relative_pose,
-        #     "relative_flowed_pc": relative_global_frame_flowed_pc,
-        #     "pc_classes": cleaned_idx_labels,
-        #     "pc_is_ground": (idx_labels == -1),
-        #     "log_id": self.sequence_folder.name,
-        #     "log_idx": idx,
-        # }
-
-        pc_frame = PointCloudFrame(
+        pc_frame = SupervisedPointCloudFrame(
             full_pc=ego_pc,
             pose=PoseInfo(sensor_to_ego=SE3.identity(), ego_to_global=relative_pose),
-            mask=np.ones(len(relative_global_frame_pc), dtype=bool),
+            mask=np.ones(len(ego_pc), dtype=bool),
+            full_pc_classes=cleaned_idx_labels,
+        )
+        flow_wrapper = EgoLidarFlow(ego_flow, np.ones(len(ego_pc), dtype=bool))
+
+        return (
+            TimeSyncedSceneFlowFrame(
+                pc=pc_frame,
+                rgbs=RGBFrameLookup.empty(),
+                flow=flow_wrapper,
+                log_id=self.sequence_folder.name,
+                log_idx=idx,
+                log_timestamp=idx,
+            ),
+            TimeSyncedAVLidarData(
+                is_ground_points=np.zeros(len(ego_pc), dtype=bool),
+                in_range_mask=np.ones(len(ego_pc), dtype=bool),
+            ),
         )
 
-        flowed_pc_frame = PointCloudFrame(
-            full_pc=car_frame_flowed_pc,
-            pose=PoseInfo(sensor_to_ego=SE3.identity(), ego_to_global=relative_pose),
-            mask=np.ones(len(relative_global_frame_pc), dtype=bool),
-        )
-
-        return SceneFlowItem(
-            pc=pc_frame,
-            is_ground_points=np.zeros(len(ego_pc), dtype=bool),
-            in_range_mask=np.ones(len(ego_pc), dtype=bool),
-            rgbs={},
-            pc_classes=cleaned_idx_labels,
-            flowed_pc=flowed_pc_frame,
-            log_id=self.sequence_folder.name,
-            log_idx=idx,
-            log_timestamp=idx,
-        )
-
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[SceneFlowItem]:
+    def load_frame_list(
+        self, relative_to_idx: Optional[int]
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         return [
             self.load(idx, relative_to_idx if relative_to_idx is not None else idx)
             for idx in range(len(self))
@@ -162,6 +156,7 @@ class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
     ):
         super().__init__()
         self.dataset_dir = Path(sequence_dir)
+        self.with_rgb = with_rgb
         self.verbose = verbose
         assert self.dataset_dir.is_dir(), f"dataset_dir {sequence_dir} does not exist"
 
@@ -202,3 +197,6 @@ class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
     @staticmethod
     def category_name_to_id(category_name: str) -> int:
         return {v: k for k, v in CATEGORY_MAP.items()}[category_name]
+
+    def cache_folder_name(self) -> str:
+        return f"waymo_supervised_dataset_dir_{self.dataset_dir.name}_with_rgb_{self.with_rgb}"

@@ -30,11 +30,29 @@ class CameraProjection:
     def __repr__(self) -> str:
         return f"CameraProjection(fx={self.fx}, fy={self.fy}, cx={self.cx}, cy={self.cy}, camera_model={self.camera_model})"
 
+    def rescale(self, reduction_factor: float) -> "CameraProjection":
+        return CameraProjection(
+            fx=self.fx / reduction_factor,
+            fy=self.fy / reduction_factor,
+            cx=self.cx / reduction_factor,
+            cy=self.cy / reduction_factor,
+            camera_model=self.camera_model,
+        )
+
+    def transpose(self) -> "CameraProjection":
+        return CameraProjection(
+            fx=self.fy,
+            fy=self.fx,
+            cx=self.cy,
+            cy=self.cx,
+            camera_model=self.camera_model,
+        )
+
     def image_to_image_plane_pc(
         self, image: RGBImage, depth: float = 1.0
     ) -> tuple[PointCloud, np.ndarray]:
         # Make pixel coordinate grid
-        image_shape = image.image.shape[:2]
+        image_shape = image.full_image.shape[:2]
         image_coordinates = (
             np.stack(
                 np.meshgrid(np.arange(image_shape[1]), np.arange(image_shape[0])),
@@ -46,8 +64,10 @@ class CameraProjection:
         image_coordinate_depths = np.ones((len(image_coordinates), 1)) * depth
 
         resulting_points = self.to_camera(image_coordinates, image_coordinate_depths)
-        colors = image.image.reshape(-1, 3)
-        return PointCloud(resulting_points), colors
+        colors = image.full_image.reshape(-1, 3)
+        valid_points_mask = image.valid_crop.get_is_valid_mask(image).reshape(-1)
+
+        return PointCloud(resulting_points[valid_points_mask]), colors[valid_points_mask]
 
     def _camera_to_view_coordinates(self, camera_points: np.ndarray):
         assert (

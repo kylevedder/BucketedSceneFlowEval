@@ -1,7 +1,12 @@
 # import abstract base class
 from abc import ABC, abstractmethod
 
-from .scene_representations import RawItem
+from bucketed_scene_flow_eval.datastructures import (
+    TimeSyncedAVLidarData,
+    TimeSyncedBaseAuxilaryData,
+    TimeSyncedRawFrame,
+    TimeSyncedSceneFlowFrame,
+)
 
 
 class AbstractSequence(ABC):
@@ -9,11 +14,21 @@ class AbstractSequence(ABC):
         pass
 
     @abstractmethod
-    def load(self, idx: int, relative_to_idx: int) -> RawItem:
+    def load(
+        self, idx: int, relative_to_idx: int
+    ) -> tuple[TimeSyncedRawFrame, TimeSyncedBaseAuxilaryData]:
         pass
 
     @abstractmethod
     def __len__(self):
+        pass
+
+
+class AbstractAVLidarSequence(AbstractSequence):
+    @abstractmethod
+    def load(
+        self, idx: int, relative_to_idx: int, with_flow: bool = True
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         pass
 
 
@@ -28,6 +43,17 @@ class AbstractSequenceLoader(ABC):
     @abstractmethod
     def load_sequence(self, sequence_identifier) -> AbstractSequence:
         pass
+
+    @abstractmethod
+    def cache_folder_name(self) -> str:
+        pass
+
+    @abstractmethod
+    def __len__(self) -> int:
+        pass
+
+    def __getitem__(self, idx):
+        return self.load_sequence(self.sequence_id_lst[idx])
 
 
 class CachedSequenceLoader(AbstractSequenceLoader):

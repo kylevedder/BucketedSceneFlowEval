@@ -3,22 +3,16 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from bucketed_scene_flow_eval.datastructures import (
-    EstimatedPointFlow,
-    GroundTruthPointFlow,
-    Timestamp,
+    EgoLidarFlow,
+    TimeSyncedSceneFlowFrame,
 )
 
 
 class Evaluator(ABC):
     @abstractmethod
-    def eval(
-        self,
-        predictions: EstimatedPointFlow,
-        ground_truth: GroundTruthPointFlow,
-        query_timestamp: Timestamp,
-    ):
-        pass
+    def eval(self, predictions: EgoLidarFlow, gt: TimeSyncedSceneFlowFrame):
+        raise NotImplementedError
 
     @abstractmethod
     def compute_results(self, save_results: bool = True) -> dict[Any, Any]:
-        pass
+        raise NotImplementedError

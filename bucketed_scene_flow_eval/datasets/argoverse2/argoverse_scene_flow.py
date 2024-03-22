@@ -5,17 +5,26 @@ from typing import Optional, Union
 
 import numpy as np
 
-from bucketed_scene_flow_eval.datasets.shared_datastructures import (
-    AbstractSequence,
-    AbstractSequenceLoader,
-    CachedSequenceLoader,
-    RawItem,
-    SceneFlowItem,
+from bucketed_scene_flow_eval.datastructures import (
+    EgoLidarFlow,
+    MaskArray,
+    PointCloud,
+    PointCloudFrame,
+    SemanticClassId,
+    SemanticClassIdArray,
+    SupervisedPointCloudFrame,
+    TimeSyncedAVLidarData,
+    TimeSyncedRawFrame,
+    TimeSyncedSceneFlowFrame,
+    VectorArray,
 )
-from bucketed_scene_flow_eval.datastructures import PointCloud, PointCloudFrame
+from bucketed_scene_flow_eval.interfaces import (
+    AbstractAVLidarSequence,
+    CachedSequenceLoader,
+)
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
-from . import ArgoverseRawSequence
+from . import DEFAULT_POINT_CLOUD_RANGE, ArgoverseRawSequence, PointCloudRange
 
 CATEGORY_MAP = {
     -1: "BACKGROUND",
@@ -54,7 +63,7 @@ CATEGORY_MAP = {
 CATEGORY_MAP_INV = {v: k for k, v in CATEGORY_MAP.items()}
 
 
-class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
+class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
     def __init__(
         self,
         log_id: str,
@@ -62,8 +71,16 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         flow_dir: Path,
         with_rgb: bool = False,
         with_classes: bool = False,
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
     ):
-        super().__init__(log_id, dataset_dir, with_rgb=with_rgb)
+        super().__init__(
+            log_id,
+            dataset_dir,
+            with_rgb=with_rgb,
+            expected_camera_shape=expected_camera_shape,
+            point_cloud_range=point_cloud_range,
+        )
         self.with_classes = with_classes
         self.flow_data_files: list[Path] = []
         self._prep_flow(flow_dir)
@@ -81,22 +98,25 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
         self.timestamp_list = self.timestamp_list[: len(self.flow_data_files) + 1]
 
     @staticmethod
-    def get_class_str(class_id: int) -> Optional[str]:
-        if class_id not in CATEGORY_MAP:
+    def get_class_str(class_id: SemanticClassId) -> Optional[str]:
+        class_id_int = int(class_id)
+        if class_id_int not in CATEGORY_MAP:
             return None
-        return CATEGORY_MAP[class_id]
+        return CATEGORY_MAP[class_id_int]
 
-    def _make_default_classes(self, pc: PointCloud) -> np.ndarray:
-        return np.ones(len(pc.points), dtype=np.int32) * CATEGORY_MAP_INV["BACKGROUND"]
+    def _make_default_classes(self, pc: PointCloud) -> SemanticClassIdArray:
+        return np.ones(len(pc.points), dtype=SemanticClassId) * CATEGORY_MAP_INV["BACKGROUND"]
 
-    def _load_flow(
-        self, idx, classes_0: np.ndarray
-    ) -> tuple[Optional[np.ndarray], Optional[np.ndarray], np.ndarray]:
+    def _load_flow_feather(
+        self, idx: int, classes_0: SemanticClassIdArray
+    ) -> tuple[VectorArray, MaskArray, SemanticClassIdArray]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         # There is no flow information for the last pointcloud in the sequence.
 
-        if idx == len(self) - 1 or idx == -1:
-            return None, None, classes_0
+        assert (
+            idx != len(self) - 1
+        ), f"idx {idx} is the last frame in the sequence, which has no flow data"
+        assert idx >= 0, f"idx {idx} is out of range"
         flow_data_file = self.flow_data_files[idx]
         flow_data = load_feather(flow_data_file, verbose=False)
         is_valid_arr = flow_data["is_valid"].values
@@ -113,56 +133,57 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence):
 
         return flow_0_1, is_valid_arr, classes_0
 
-    def _load_no_flow(self, raw_item: RawItem) -> SceneFlowItem:
-        classes_0 = self._make_default_classes(raw_item.pc.pc)
-
-        return SceneFlowItem(
-            **vars(raw_item), pc_classes=classes_0, flowed_pc=copy.deepcopy(raw_item.pc)
+    def _make_tssf_item(
+        self, raw_item: TimeSyncedRawFrame, classes_0: SemanticClassIdArray, flow: EgoLidarFlow
+    ) -> TimeSyncedSceneFlowFrame:
+        supervised_pc = SupervisedPointCloudFrame(
+            **vars(raw_item.pc),
+            full_pc_classes=classes_0,
+        )
+        return TimeSyncedSceneFlowFrame(
+            pc=supervised_pc,
+            rgbs=raw_item.rgbs,
+            log_id=raw_item.log_id,
+            log_idx=raw_item.log_idx,
+            log_timestamp=raw_item.log_timestamp,
+            flow=flow,
         )
 
-    def _load_with_flow(self, raw_item: RawItem, idx: int, relative_to_idx: int) -> SceneFlowItem:
-        start_pose = self._load_pose(relative_to_idx)
-        idx_pose = self._load_pose(idx)
-        relative_pose = start_pose.inverse().compose(idx_pose)
+    def _load_no_flow(
+        self, raw_item: TimeSyncedRawFrame, metadata: TimeSyncedAVLidarData
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
+        classes_0 = self._make_default_classes(raw_item.pc.pc)
+        flow = EgoLidarFlow.make_no_flow(len(classes_0))
+        return self._make_tssf_item(raw_item, classes_0, flow), metadata
 
-        classes_0_with_ground = self._make_default_classes(raw_item.pc.pc)
+    def _load_with_flow(
+        self,
+        raw_item: TimeSyncedRawFrame,
+        metadata: TimeSyncedAVLidarData,
+        idx: int,
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         (
-            relative_global_frame_flow_0_1_with_ground,
+            ego_flow_with_ground,
             is_valid_flow_with_ground_arr,
             classes_0_with_ground,
-        ) = self._load_flow(idx, classes_0_with_ground)
+        ) = self._load_flow_feather(idx, self._make_default_classes(raw_item.pc.pc))
+        flow = EgoLidarFlow(full_flow=ego_flow_with_ground, mask=is_valid_flow_with_ground_arr)
+        return (self._make_tssf_item(raw_item, classes_0_with_ground, flow), metadata)
 
-        assert (
-            relative_global_frame_flow_0_1_with_ground is not None
-        ), f"Flow data missing for {idx}"
-
-        relative_global_frame_with_ground_flowed_pc = raw_item.pc.global_pc.copy()
-        relative_global_frame_with_ground_flowed_pc.points[
-            is_valid_flow_with_ground_arr
-        ] += relative_global_frame_flow_0_1_with_ground[is_valid_flow_with_ground_arr]
-
-        ego_flowed_pc_with_ground = relative_global_frame_with_ground_flowed_pc.transform(
-            relative_pose.inverse()
-        )
-
-        return SceneFlowItem(
-            **vars(raw_item),
-            pc_classes=classes_0_with_ground,
-            flowed_pc=PointCloudFrame(
-                full_pc=ego_flowed_pc_with_ground, pose=raw_item.pc.pose, mask=raw_item.pc.mask
-            ),
-        )
-
-    def load(self, idx: int, relative_to_idx: int, with_flow: bool = True) -> SceneFlowItem:
+    def load(
+        self, idx: int, relative_to_idx: int, with_flow: bool = True
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
-        raw_item = super().load(idx, relative_to_idx)
+        raw_item, metadata = super().load(idx, relative_to_idx)
 
         if with_flow:
-            return self._load_with_flow(raw_item, idx, relative_to_idx)
+            return self._load_with_flow(raw_item, metadata, idx)
         else:
-            return self._load_no_flow(raw_item)
+            return self._load_no_flow(raw_item, metadata)
 
-    def load_frame_list(self, relative_to_idx: Optional[int]) -> list[RawItem]:
+    def load_frame_list(
+        self, relative_to_idx: Optional[int] = 0
+    ) -> list[tuple[TimeSyncedRawFrame, TimeSyncedAVLidarData]]:
         return [
             self.load(
                 idx=idx,
@@ -193,8 +214,12 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         use_gt_flow: bool = True,
         with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
     ):
-        self._setup_raw_data(raw_data_path, use_gt_flow, with_rgb)
+        self._setup_raw_data(
+            raw_data_path, use_gt_flow, with_rgb, expected_camera_shape, point_cloud_range
+        )
         self._setup_flow_data(use_gt_flow, flow_data_path)
         self._subset_log(log_subset)
 
@@ -203,11 +228,15 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         raw_data_path: Union[Path, list[Path]],
         use_gt_flow: bool,
         with_rgb: bool,
+        expected_camera_shape: tuple[int, int, int],
+        point_cloud_range: Optional[PointCloudRange],
     ):
         super().__init__()
         self.use_gt_flow = use_gt_flow
         self.raw_data_path = self._sanitize_raw_data_path(raw_data_path)
         self.with_rgb = with_rgb
+        self.expected_camera_shape = expected_camera_shape
+        self.point_cloud_range = point_cloud_range
 
         # Raw data folders
         self.sequence_id_to_raw_data = self._load_sequence_data(self.raw_data_path)
@@ -218,15 +247,17 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
     def _setup_flow_data(
         self, use_gt_flow: bool, flow_data_path: Optional[Union[Path, list[Path]]]
     ):
-        flow_data_path = self._sanitize_flow_data_path(
+        self.flow_data_path = self._sanitize_flow_data_path(
             use_gt_flow, flow_data_path, self.raw_data_path
         )
         # Flow data folders
-        self.sequence_id_to_flow_data = self._load_sequence_data(flow_data_path)
+        self.sequence_id_to_flow_data = self._load_sequence_data(self.flow_data_path)
 
         # Make sure both raw and flow have non-zero number of entries.
 
-        assert len(self.sequence_id_to_flow_data) > 0, f"No flow data found in {flow_data_path}"
+        assert (
+            len(self.sequence_id_to_flow_data) > 0
+        ), f"No flow data found in {self.flow_data_path}"
 
         self.sequence_id_lst = sorted(
             set(self.sequence_id_lst).intersection(set(self.sequence_id_to_flow_data.keys()))
@@ -304,6 +335,8 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
             self.sequence_id_to_flow_data[sequence_id],
             with_rgb=self.with_rgb,
             with_classes=self.use_gt_flow,
+            expected_camera_shape=self.expected_camera_shape,
+            point_cloud_range=self.point_cloud_range,
         )
 
     @staticmethod
@@ -318,17 +351,22 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
     def category_name_to_id(category_name: str) -> int:
         return {v: k for k, v in CATEGORY_MAP.items()}[category_name]
 
+    def cache_folder_name(self) -> str:
+        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_flow_data_path_{self.flow_data_path}"
+
 
 class ArgoverseNoFlowSequence(ArgoverseSceneFlowSequence):
     def _prep_flow(self, flow_dir: Path):
         pass
 
-    def _load_flow(
-        self, idx, classes_0: np.ndarray
-    ) -> tuple[Optional[np.ndarray], Optional[np.ndarray], np.ndarray]:
+    def _load_flow_feather(
+        self, idx: int, classes_0: SemanticClassIdArray
+    ) -> tuple[VectorArray, MaskArray, SemanticClassIdArray]:
         raise NotImplementedError("No flow data available for ArgoverseNoFlowSequence")
 
-    def load(self, idx: int, relative_to_idx: int, with_flow: bool = True) -> SceneFlowItem:
+    def load(
+        self, idx: int, relative_to_idx: int, with_flow: bool = True
+    ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         return super().load(idx, relative_to_idx, with_flow=False)
 
 
@@ -338,8 +376,16 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
         raw_data_path: Union[Path, list[Path]],
         with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
     ):
-        self._setup_raw_data(raw_data_path=raw_data_path, use_gt_flow=False, with_rgb=with_rgb)
+        self._setup_raw_data(
+            raw_data_path=raw_data_path,
+            use_gt_flow=False,
+            with_rgb=with_rgb,
+            expected_camera_shape=expected_camera_shape,
+            point_cloud_range=point_cloud_range,
+        )
         self._subset_log(log_subset)
 
     def _load_sequence_uncached(self, sequence_id: str) -> ArgoverseNoFlowSequence:
@@ -352,4 +398,9 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
             self.sequence_id_to_raw_data[sequence_id],
             with_rgb=self.with_rgb,
             with_classes=False,
+            expected_camera_shape=self.expected_camera_shape,
+            point_cloud_range=self.point_cloud_range,
         )
+
+    def cache_folder_name(self) -> str:
+        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_No_flow_data_path"

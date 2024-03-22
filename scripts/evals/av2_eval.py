@@ -9,7 +9,7 @@ from pathlib import Path
 
 import tqdm
 
-from bucketed_scene_flow_eval.datasets import Argoverse2SceneFlow
+from bucketed_scene_flow_eval.datasets import Argoverse2CausalSceneFlow
 from bucketed_scene_flow_eval.eval import Evaluator
 
 
@@ -36,15 +36,15 @@ def _make_range_shards(total_len: int, num_shards: int) -> list[tuple[int, int]]
 
 
 def _make_index_shards(
-    dataset: Argoverse2SceneFlow, num_shards: int, every_kth_in_sequence: int
+    dataset: Argoverse2CausalSceneFlow, num_shards: int, every_kth_in_sequence: int
 ) -> list[list[int]]:
     dataset_valid_indices: list[int] = [
         dataset_idx
         for (
             _,
-            subsequence_idx,
+            (subsequence_start_idx, subsequence_end_idx),
         ), dataset_idx in dataset.sequence_subsequence_idx_to_dataset_idx.items()
-        if (subsequence_idx % every_kth_in_sequence) == 0
+        if (subsequence_start_idx % every_kth_in_sequence) == 0
     ]
 
     tuple_shards = _make_range_shards(len(dataset_valid_indices), num_shards)
@@ -54,24 +54,24 @@ def _make_index_shards(
 def _work(
     shard_idx: int,
     shard_list: list[int],
-    gt_dataset: Argoverse2SceneFlow,
-    est_dataset: Argoverse2SceneFlow,
+    gt_dataset: Argoverse2CausalSceneFlow,
+    est_dataset: Argoverse2CausalSceneFlow,
     evaluator: Evaluator,
 ) -> Evaluator:
     # Set tqdm bar on the row of the terminal corresponding to the shard index
     for idx in tqdm.tqdm(shard_list, position=shard_idx + 1, desc=f"Shard {shard_idx}"):
-        (gt_query, gt_flow), (_, est_flow) = gt_dataset[idx], est_dataset[idx]
-        evaluator.eval(
-            predictions=est_flow,
-            ground_truth=gt_flow,
-            query_timestamp=gt_query.query_particles.query_init_timestamp,
-        )
+        gt_lst = gt_dataset[idx]
+        est_lst = est_dataset[idx]
+        assert len(gt_lst) == len(est_lst) == 2, f"GT and estimated lists must have length 2."
+        gt_frame0, gt_frame1 = gt_lst
+        est_frame0, est_frame1 = est_lst
+        evaluator.eval(est_frame0.flow, gt_frame0)
 
     return evaluator
 
 
 def _work_wrapper(
-    args: tuple[int, list[int], Argoverse2SceneFlow, Argoverse2SceneFlow, Evaluator]
+    args: tuple[int, list[int], Argoverse2CausalSceneFlow, Argoverse2CausalSceneFlow, Evaluator]
 ) -> Evaluator:
     return _work(*args)
 
@@ -93,7 +93,7 @@ def run_eval(
     # Make the output directory if it doesn't exist
     output_path.mkdir(parents=True, exist_ok=True)
 
-    gt_dataset = Argoverse2SceneFlow(
+    gt_dataset = Argoverse2CausalSceneFlow(
         root_dir=data_dir,
         flow_data_path=gt_flow_dir,
         with_ground=False,
@@ -104,7 +104,7 @@ def run_eval(
         cache_root=cache_root,
     )
 
-    est_dataset = Argoverse2SceneFlow(
+    est_dataset = Argoverse2CausalSceneFlow(
         root_dir=data_dir,
         flow_data_path=est_flow_dir,
         with_ground=False,
@@ -162,7 +162,12 @@ if __name__ == "__main__":
         "--every_kth", type=int, default=5, help="Only evaluate every kth scene in a sequence"
     )
     parser.add_argument("--eval_type", type=str, default="bucketed_epe", help="Type of evaluation")
-    parser.add_argument("--cache_root", type=Path, default=Path("/tmp/av2_eval_cache/"), help="Path to the cache root directory")
+    parser.add_argument(
+        "--cache_root",
+        type=Path,
+        default=Path("/tmp/av2_eval_cache/"),
+        help="Path to the cache root directory",
+    )
 
     args = parser.parse_args()
 

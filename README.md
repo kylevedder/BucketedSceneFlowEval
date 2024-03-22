@@ -10,7 +10,7 @@ This repo provides:
 Currently supported datasets:
 
  - Argoverse 2 (Human Labeled and [NSFP Pseudolabeled](https://github.com/kylevedder/BucketedSceneFlowEval/blob/master/docs/GETTING_STARTED.md#argoverse-2-nsfp-pseudolabels-new))
- - Waymo Open
+ - Waymo Open (LiDAR only)
 
 
 If you use this repository as part of a publication, please cite:
@@ -45,7 +45,7 @@ We provide a demo script which shows off the various features of the API.
 To render the lidar and multiple camera views of an Argoverse 2 sequence in 3D, run:
 
 ```
-python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/val/
+python scripts/demo_3d.py --dataset Argoverse2CausalSceneFlow --root_dir /efs/argoverse2/val/ --with_rgb --sequence_length 4
 ```
 
 ![Argoverse 2 MultiCam](docs/imgs/av2_multicam.png)
@@ -53,7 +53,7 @@ python scripts/demo.py --dataset Argoverse2SceneFlow --root_dir /efs/argoverse2/
 To render RGB frames with lidar imposed on top, run:
 
 ```
-python scripts/demo_rgb.py --dataset Argoverse2SceneFlow --mode project_lidar --save_dir /efs/av2_camera_render/ --reduction_factor 16 --root_dir /efs/argoverse2/val
+python scripts/demo_rgb.py --dataset Argoverse2SceneFlow --mode project_lidar  --reduction_factor 16 --root_dir /efs/argoverse2/val --sequence_length 150 --save_dir /efs/av2_camera_render/
 ```
 
 ![Argoverse 2 LiDAR](docs/imgs/av2_lidar.gif)
@@ -61,7 +61,7 @@ python scripts/demo_rgb.py --dataset Argoverse2SceneFlow --mode project_lidar --
 To render the flow field of an Argoverse 2 sequence, run:
 
 ```
-python scripts/demo_rgb.py --dataset Argoverse2SceneFlow --mode project_flow --save_dir /efs/av2_camera_render/ --reduction_factor 16 --root_dir /efs/argoverse2/val --flow_dir <path to method flow output>
+python scripts/demo_rgb.py --dataset Argoverse2SceneFlow --mode project_flow  --reduction_factor 16 --root_dir /efs/argoverse2/val --sequence_length 150 --save_dir /efs/av2_camera_render/ --flow_dir <path to method flow output>
 ```
 
 ![Argoverse 2 Flow](docs/imgs/av2_gt_flow.gif)

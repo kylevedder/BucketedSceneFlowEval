@@ -3,6 +3,7 @@ from typing import Optional, Union
 import numpy as np
 import open3d as o3d
 
+from .dataclasses import EgoLidarFlow, PointCloudFrame, RGBFrame, VectorArray
 from .pointcloud import PointCloud
 from .se3 import SE3
 
@@ -24,12 +25,58 @@ class O3DVisualizer:
         else:
             self.geometry_list.append(geometry)
 
-    def add_pc_frame(
+    def add_global_pc_frame(
         self,
-        pc_frame: "PointCloudFrame",
+        pc_frame: PointCloudFrame,
         color: Union[tuple[float, float, float], None] = None,
     ):
         self.add_pointcloud(pc_frame.global_pc, color=color)
+
+    def add_lineset(self, p1s: Union[VectorArray, PointCloud], p2s: Union[VectorArray, PointCloud]):
+        # Convert to PointClouds
+        if isinstance(p1s, np.ndarray):
+            # Ensure it's Nx3
+            assert (
+                p1s.ndim == 2 and p1s.shape[1] == 3
+            ), f"Expected p1s to be a Nx3 array, got {p1s.shape} instead"
+            p1s = PointCloud(p1s)
+        if isinstance(p2s, np.ndarray):
+            # Ensure it's Nx3
+            assert (
+                p2s.ndim == 2 and p2s.shape[1] == 3
+            ), f"Expected p2s to be a Nx3 array, got {p2s.shape} instead"
+            p2s = PointCloud(p2s)
+
+        assert len(p1s) == len(
+            p2s
+        ), f"Expected p1s and p2s to have the same length, got {len(p1s)} and {len(p2s)} instead"
+
+        # Convert to o3d
+        p1s_o3d = p1s.to_o3d()
+        p2s_o3d = p2s.to_o3d()
+
+        corrispondences = [(i, i) for i in range(len(p1s))]
+        lineset = o3d.geometry.LineSet.create_from_point_cloud_correspondences(
+            p1s_o3d, p2s_o3d, corrispondences
+        )
+        self.add_geometry(lineset)
+
+    def add_global_flow(self, pc_frame: PointCloudFrame, ego_flow: EgoLidarFlow):
+        # Add lineset for flow vectors
+        ego_pc1 = pc_frame.full_pc.mask_points(ego_flow.mask)
+        ego_p2 = ego_pc1.flow(ego_flow.valid_flow)
+        global_pc1 = ego_pc1.transform(pc_frame.global_pose)
+        global_pc2 = ego_p2.transform(pc_frame.global_pose)
+        # self.add_pointcloud(global_pc1, color=(0, 1, 0))
+        # self.add_pointcloud(global_pc2, color=(0, 0, 1))
+        self.add_lineset(global_pc1, global_pc2)
+
+    def add_global_rgb_frame(self, rgb_frame: RGBFrame):
+        image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
+            rgb_frame.rgb, depth=20
+        )
+        image_plane_pc = image_plane_pc.transform(rgb_frame.pose.sensor_to_global)
+        self.add_pointcloud(image_plane_pc, color=colors)
 
     def add_pointcloud(
         self,
@@ -40,17 +87,17 @@ class O3DVisualizer:
         ] = None,
     ):
         pc = pc.transform(pose)
-        pc = pc.to_o3d()
+        pc_o3d = pc.to_o3d()
         if color is not None:
             color = np.array(color)
             if color.ndim == 1:
-                pc = pc.paint_uniform_color(color)
+                pc_o3d = pc_o3d.paint_uniform_color(color)
             elif color.ndim == 2:
                 assert len(color) == len(
-                    pc.points
-                ), f"Expected color to have length {len(pc.points)}, got {len(color)} instead"
-                pc.colors = o3d.utility.Vector3dVector(color)
-        self.add_geometry(pc)
+                    pc_o3d.points
+                ), f"Expected color to have length {len(pc_o3d.points)}, got {len(color)} instead"
+                pc_o3d.colors = o3d.utility.Vector3dVector(color)
+        self.add_geometry(pc_o3d)
 
     def add_sphere(self, location: np.ndarray, radius: float, color: tuple[float, float, float]):
         sphere = o3d.geometry.TriangleMesh.create_sphere(radius=radius, resolution=2)
@@ -146,13 +193,3 @@ class O3DVisualizer:
             vis.add_geometry(geometry)
 
         vis.run()
-
-        #
-        # o3d.visualization.draw_geometries(self.geometry_list)
-        # ctr = self.vis.get_view_control()
-        # # Set forward direction to be -X
-        # ctr.set_front([-1, 0, 0])
-        # # Set up direction to be +Z
-        # ctr.set_up([0, 0, 1])
-        # # Set lookat to be origin
-        # ctr.set_lookat([0, 0, 0])
