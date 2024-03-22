@@ -38,10 +38,10 @@ class RGBImageCrop:
 
     def resize(self, reduction_factor: float) -> "RGBImageCrop":
         return RGBImageCrop(
-            int(self.min_x / reduction_factor),
-            int(self.min_y / reduction_factor),
-            int(self.max_x / reduction_factor),
-            int(self.max_y / reduction_factor),
+            int(math.floor(self.min_x / reduction_factor)),
+            int(math.floor(self.min_y / reduction_factor)),
+            int(math.ceil(self.max_x / reduction_factor)),
+            int(math.ceil(self.max_y / reduction_factor)),
         )
 
 
