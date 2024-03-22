@@ -10,7 +10,7 @@ This repo provides:
 Currently supported datasets:
 
  - Argoverse 2 (Human Labeled and [NSFP Pseudolabeled](https://github.com/kylevedder/BucketedSceneFlowEval/blob/master/docs/GETTING_STARTED.md#argoverse-2-nsfp-pseudolabels-new))
- - Waymo Open
+ - Waymo Open (LiDAR only)
 
 
 If you use this repository as part of a publication, please cite:
