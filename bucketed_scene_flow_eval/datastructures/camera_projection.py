@@ -65,7 +65,9 @@ class CameraProjection:
 
         resulting_points = self.to_camera(image_coordinates, image_coordinate_depths)
         colors = image.full_image.reshape(-1, 3)
-        return PointCloud(resulting_points), colors
+        valid_points_mask = image.valid_crop.get_is_valid_mask(image).reshape(-1)
+
+        return PointCloud(resulting_points[valid_points_mask]), colors[valid_points_mask]
 
     def _camera_to_view_coordinates(self, camera_points: np.ndarray):
         assert (

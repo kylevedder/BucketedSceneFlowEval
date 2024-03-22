@@ -40,7 +40,7 @@ def visualize_lidar_3d(frame_list: list[TimeSyncedSceneFlowFrame], downscale_rgb
 if __name__ == "__main__":
     # Take arguments to specify dataset and root directory
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="Argoverse2SceneFlow")
+    parser.add_argument("--dataset", type=str, default="Argoverse2CausalSceneFlow")
     parser.add_argument("--root_dir", type=Path, default="/efs/argoverse2/val")
     parser.add_argument("--flow_dir", type=Path, default="/efs/argoverse2/val_sceneflow_feather/")
     parser.add_argument("--with_rgb", action="store_true")

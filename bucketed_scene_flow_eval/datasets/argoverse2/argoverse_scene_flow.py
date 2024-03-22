@@ -247,15 +247,17 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
     def _setup_flow_data(
         self, use_gt_flow: bool, flow_data_path: Optional[Union[Path, list[Path]]]
     ):
-        flow_data_path = self._sanitize_flow_data_path(
+        self.flow_data_path = self._sanitize_flow_data_path(
             use_gt_flow, flow_data_path, self.raw_data_path
         )
         # Flow data folders
-        self.sequence_id_to_flow_data = self._load_sequence_data(flow_data_path)
+        self.sequence_id_to_flow_data = self._load_sequence_data(self.flow_data_path)
 
         # Make sure both raw and flow have non-zero number of entries.
 
-        assert len(self.sequence_id_to_flow_data) > 0, f"No flow data found in {flow_data_path}"
+        assert (
+            len(self.sequence_id_to_flow_data) > 0
+        ), f"No flow data found in {self.flow_data_path}"
 
         self.sequence_id_lst = sorted(
             set(self.sequence_id_lst).intersection(set(self.sequence_id_to_flow_data.keys()))
@@ -350,7 +352,7 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         return {v: k for k, v in CATEGORY_MAP.items()}[category_name]
 
     def cache_folder_name(self) -> str:
-        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}"
+        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_flow_data_path_{self.flow_data_path}"
 
 
 class ArgoverseNoFlowSequence(ArgoverseSceneFlowSequence):
@@ -399,3 +401,6 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
             expected_camera_shape=self.expected_camera_shape,
             point_cloud_range=self.point_cloud_range,
         )
+
+    def cache_folder_name(self) -> str:
+        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_No_flow_data_path"

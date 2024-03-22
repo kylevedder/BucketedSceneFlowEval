@@ -42,9 +42,9 @@ def _make_index_shards(
         dataset_idx
         for (
             _,
-            subsequence_idx,
+            (subsequence_start_idx, subsequence_end_idx),
         ), dataset_idx in dataset.sequence_subsequence_idx_to_dataset_idx.items()
-        if (subsequence_idx % every_kth_in_sequence) == 0
+        if (subsequence_start_idx % every_kth_in_sequence) == 0
     ]
 
     tuple_shards = _make_range_shards(len(dataset_valid_indices), num_shards)
@@ -60,12 +60,12 @@ def _work(
 ) -> Evaluator:
     # Set tqdm bar on the row of the terminal corresponding to the shard index
     for idx in tqdm.tqdm(shard_list, position=shard_idx + 1, desc=f"Shard {shard_idx}"):
-        (gt_query, gt_flow), (_, est_flow) = gt_dataset[idx], est_dataset[idx]
-        evaluator.eval(
-            predictions=est_flow,
-            ground_truth=gt_flow,
-            query_timestamp=gt_query.query_particles.query_init_timestamp,
-        )
+        gt_lst = gt_dataset[idx]
+        est_lst = est_dataset[idx]
+        assert len(gt_lst) == len(est_lst) == 2, f"GT and estimated lists must have length 2."
+        gt_frame0, gt_frame1 = gt_lst
+        est_frame0, est_frame1 = est_lst
+        evaluator.eval(est_frame0.flow, gt_frame0)
 
     return evaluator
 

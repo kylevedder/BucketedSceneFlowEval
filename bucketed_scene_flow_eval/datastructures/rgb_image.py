@@ -36,6 +36,14 @@ class RGBImageCrop:
         mask[self.min_y : self.max_y, self.min_x : self.max_x] = True
         return mask
 
+    def resize(self, reduction_factor: float) -> "RGBImageCrop":
+        return RGBImageCrop(
+            int(self.min_x / reduction_factor),
+            int(self.min_y / reduction_factor),
+            int(self.max_x / reduction_factor),
+            int(self.max_y / reduction_factor),
+        )
+
 
 class RGBImage:
     """
@@ -97,7 +105,11 @@ class RGBImage:
             int(math.ceil(self.full_image.shape[1] / reduction_factor)),
             int(math.ceil(self.full_image.shape[0] / reduction_factor)),
         )
-        return RGBImage(cv2.resize(self.full_image, new_shape))
+        new_img = cv2.resize(self.full_image, new_shape)
+        valid_crop = None
+        if self.valid_crop is not None:
+            valid_crop = self.valid_crop.resize(reduction_factor)
+        return RGBImage(new_img, valid_crop)
 
     @property
     def masked_image(self) -> "RGBImage":
