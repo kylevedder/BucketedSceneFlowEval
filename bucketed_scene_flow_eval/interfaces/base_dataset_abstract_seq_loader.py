@@ -208,7 +208,6 @@ class NonCausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
         sequence: AbstractAVLidarSequence,
         relative_idx: int,
         subsequence_start_idx: int,
-        other_load_args: dict[str, Any] = {},
     ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         assert isinstance(
             sequence, AbstractAVLidarSequence
@@ -219,7 +218,7 @@ class NonCausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
         return sequence.load(
             subsequence_start_idx + relative_idx,
             subsequence_start_idx + in_subsequence_tgt_index,
-            **other_load_args,
+            with_flow=relative_idx != self.subsequence_length - 1,
         )
 
     def _get_idx_lookup_cache_file(self) -> Path:

@@ -13,17 +13,18 @@ class SE3:
         """
         assert rotation_matrix.shape == (3, 3)
         assert translation.shape == (3,)
-        self.rotation_matrix = rotation_matrix
-        self.translation = translation
 
-        if isinstance(self.rotation_matrix, np.ndarray):
-            self.transform_matrix = np.eye(4)
-        else:
-            import torch
+        self.transform_matrix = np.eye(4)
+        self.transform_matrix[:3, :3] = rotation_matrix
+        self.transform_matrix[:3, 3] = translation
 
-            self.transform_matrix = torch.eye(4)
-        self.transform_matrix[:3, :3] = self.rotation_matrix
-        self.transform_matrix[:3, 3] = self.translation
+    @property
+    def rotation_matrix(self) -> np.ndarray:
+        return self.transform_matrix[:3, :3]
+
+    @property
+    def translation(self) -> np.ndarray:
+        return self.transform_matrix[:3, 3]
 
     @staticmethod
     def identity() -> "SE3":
@@ -65,9 +66,15 @@ class SE3:
         """
         return point_cloud @ self.rotation_matrix.T + self.translation
 
-    def inverse_transform_points(self, point_cloud: np.ndarray) -> np.ndarray:
-        """Undo the translation and then the rotation (Inverse SE(3) transformation)."""
-        return (point_cloud.copy() - self.translation) @ self.rotation_matrix
+    def transform_flow(self, flow: np.ndarray) -> np.ndarray:
+        """Apply the SE(3)'s rotation transformation to this flow field.
+        Args:
+            flow: Array of shape (N, 3). If the transform represents dst_SE3_src,
+                then flow should consist of flow vectors in frame `src`
+        Returns:
+            Array of shape (N, 3) representing the transformed flow field, i.e. flow vectors in frame `dst`
+        """
+        return flow @ self.rotation_matrix.T
 
     def inverse(self) -> "SE3":
         """Return the inverse of the current SE3 transformation.
@@ -89,12 +96,7 @@ class SE3:
         Returns:
             chained_se3: new instance of SE3 class
         """
-        chained_transform_matrix = self.transform_matrix @ right_se3.transform_matrix
-        chained_se3 = SE3(
-            rotation_matrix=chained_transform_matrix[:3, :3],
-            translation=chained_transform_matrix[:3, 3],
-        )
-        return chained_se3
+        return SE3.from_array(self.transform_matrix @ right_se3.transform_matrix)
 
     def __matmul__(self, right_se3: "SE3") -> "SE3":
         return self.compose(right_se3)
