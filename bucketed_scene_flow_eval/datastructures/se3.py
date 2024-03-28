@@ -32,6 +32,14 @@ class SE3:
         return SE3(rotation_matrix=np.eye(3), translation=np.zeros(3))
 
     @staticmethod
+    def from_rot_x_y_z_translation_x_y_z(rx, ry, rz, tx, ty, tz) -> "SE3":
+        rotation_matrix = Quaternion(axis=[1, 0, 0], angle=rx).rotation_matrix @ Quaternion(
+            axis=[0, 1, 0], angle=ry
+        ).rotation_matrix @ Quaternion(axis=[0, 0, 1], angle=rz).rotation_matrix
+        translation = np.array([tx, ty, tz])
+        return SE3(rotation_matrix, translation)
+
+    @staticmethod
     def from_rot_w_x_y_z_translation_x_y_z(rw, rx, ry, rz, tx, ty, tz) -> "SE3":
         rotation_matrix = Quaternion(w=rw, x=rx, y=ry, z=rz).rotation_matrix
         translation = np.array([tx, ty, tz])
