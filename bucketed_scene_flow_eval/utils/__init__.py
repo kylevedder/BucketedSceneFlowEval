@@ -1,6 +1,7 @@
 from .loaders import (
     load_by_extension,
     load_csv,
+    load_feather,
     load_json,
     load_npy,
     load_npz,
@@ -9,6 +10,7 @@ from .loaders import (
     run_cmd,
     save_by_extension,
     save_csv,
+    save_feather,
     save_json,
     save_npy,
     save_npz,
@@ -31,4 +33,7 @@ __all__ = [
     "load_txt",
     "save_txt",
     "save_by_extension",
+    "load_by_extension",
+    "load_feather",
+    "save_feather",
 ]
