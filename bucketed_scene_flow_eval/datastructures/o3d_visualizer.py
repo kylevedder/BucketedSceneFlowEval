@@ -183,12 +183,15 @@ class O3DVisualizer:
         )
         self.add_geometry(line_set)
 
+    def render(self, vis, reset_view: bool = True):
+        for geometry in self.geometry_list:
+            vis.add_geometry(geometry, reset_bounding_box=reset_view)
+
     def run(self, vis=o3d.visualization.Visualizer()):
         print("Running visualizer on geometry list of length", len(self.geometry_list))
         vis.create_window(window_name="Benchmark Visualizer")
         vis.get_render_option().point_size = self.point_size
 
-        for geometry in self.geometry_list:
-            vis.add_geometry(geometry)
+        self.render()
 
         vis.run()
