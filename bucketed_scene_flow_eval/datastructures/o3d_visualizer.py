@@ -7,6 +7,8 @@ from .dataclasses import EgoLidarFlow, PointCloudFrame, RGBFrame, VectorArray
 from .pointcloud import PointCloud
 from .se3 import SE3
 
+ColorType = Union[np.ndarray, tuple[float, float, float], list[tuple[float, float, float]]]
+
 
 class O3DVisualizer:
     def __init__(self, point_size: float = 0.1):
@@ -32,7 +34,23 @@ class O3DVisualizer:
     ):
         self.add_pointcloud(pc_frame.global_pc, color=color)
 
-    def add_lineset(self, p1s: Union[VectorArray, PointCloud], p2s: Union[VectorArray, PointCloud]):
+    def _paint_o3d_color(self, o3d_geom, color: ColorType):
+        assert color is not None, "Expected color to be not None"
+        color = np.array(color)
+        if color.ndim == 1:
+            o3d_geom.paint_uniform_color(color)
+        elif color.ndim == 2:
+            assert len(color) == len(
+                o3d_geom.points
+            ), f"Expected color to have length {len(o3d_geom.points)}, got {len(color)} instead"
+            o3d_geom.colors = o3d.utility.Vector3dVector(color)
+
+    def add_lineset(
+        self,
+        p1s: Union[VectorArray, PointCloud],
+        p2s: Union[VectorArray, PointCloud],
+        color: Optional[ColorType] = None,
+    ):
         # Convert to PointClouds
         if isinstance(p1s, np.ndarray):
             # Ensure it's Nx3
@@ -59,6 +77,9 @@ class O3DVisualizer:
         lineset = o3d.geometry.LineSet.create_from_point_cloud_correspondences(
             p1s_o3d, p2s_o3d, corrispondences
         )
+        if color is not None:
+            self._paint_o3d_color(lineset, color)
+
         self.add_geometry(lineset)
 
     def add_global_flow(self, pc_frame: PointCloudFrame, ego_flow: EgoLidarFlow):
@@ -82,21 +103,12 @@ class O3DVisualizer:
         self,
         pc: PointCloud,
         pose: SE3 = SE3.identity(),
-        color: Optional[
-            Union[np.ndarray, tuple[float, float, float], list[tuple[float, float, float]]]
-        ] = None,
+        color: Optional[ColorType] = None,
     ):
         pc = pc.transform(pose)
         pc_o3d = pc.to_o3d()
         if color is not None:
-            color = np.array(color)
-            if color.ndim == 1:
-                pc_o3d = pc_o3d.paint_uniform_color(color)
-            elif color.ndim == 2:
-                assert len(color) == len(
-                    pc_o3d.points
-                ), f"Expected color to have length {len(pc_o3d.points)}, got {len(color)} instead"
-                pc_o3d.colors = o3d.utility.Vector3dVector(color)
+            self._paint_o3d_color(pc_o3d, color)
         self.add_geometry(pc_o3d)
 
     def add_sphere(self, location: np.ndarray, radius: float, color: tuple[float, float, float]):
