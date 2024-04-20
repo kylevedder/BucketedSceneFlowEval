@@ -30,7 +30,7 @@ class O3DVisualizer:
     def add_global_pc_frame(
         self,
         pc_frame: PointCloudFrame,
-        color: Union[tuple[float, float, float], None] = None,
+        color: Optional[ColorType] = None,
     ):
         self.add_pointcloud(pc_frame.global_pc, color=color)
 
@@ -82,7 +82,9 @@ class O3DVisualizer:
 
         self.add_geometry(lineset)
 
-    def add_global_flow(self, pc_frame: PointCloudFrame, ego_flow: EgoLidarFlow):
+    def add_global_flow(
+        self, pc_frame: PointCloudFrame, ego_flow: EgoLidarFlow, color: Optional[ColorType] = None
+    ):
         # Add lineset for flow vectors
         ego_pc1 = pc_frame.full_pc.mask_points(ego_flow.mask)
         ego_p2 = ego_pc1.flow(ego_flow.valid_flow)
@@ -90,7 +92,7 @@ class O3DVisualizer:
         global_pc2 = ego_p2.transform(pc_frame.global_pose)
         # self.add_pointcloud(global_pc1, color=(0, 1, 0))
         # self.add_pointcloud(global_pc2, color=(0, 0, 1))
-        self.add_lineset(global_pc1, global_pc2)
+        self.add_lineset(global_pc1, global_pc2, color=color)
 
     def add_global_rgb_frame(self, rgb_frame: RGBFrame):
         image_plane_pc, colors = rgb_frame.camera_projection.image_to_image_plane_pc(
