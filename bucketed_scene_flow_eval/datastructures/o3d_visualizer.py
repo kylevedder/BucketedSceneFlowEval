@@ -204,6 +204,6 @@ class O3DVisualizer:
         vis.create_window(window_name="Benchmark Visualizer")
         vis.get_render_option().point_size = self.point_size
 
-        self.render()
+        self.render(vis)
 
         vis.run()
