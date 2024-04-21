@@ -201,7 +201,7 @@ class NuScenesSceneFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader, CachedSe
     ):
         CachedSequenceLoader.__init__(self)
         self.use_gt_flow = use_gt_flow
-        self.raw_data_path = raw_data_path
+        self.raw_data_path = self._sanitize_raw_data_path(raw_data_path)
         self.with_rgb = with_rgb
         self.expected_camera_shape = expected_camera_shape
         self.point_cloud_range = point_cloud_range
