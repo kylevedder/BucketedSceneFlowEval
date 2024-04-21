@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import numpy as np
 
@@ -7,21 +7,15 @@ from bucketed_scene_flow_eval.datastructures import (
     SE3,
     EgoLidarFlow,
     PointCloud,
-    PointCloudFrame,
     PoseInfo,
-    RGBFrame,
     RGBFrameLookup,
     SemanticClassId,
     SupervisedPointCloudFrame,
     TimeSyncedAVLidarData,
-    TimeSyncedBaseAuxilaryData,
-    TimeSyncedRawFrame,
     TimeSyncedSceneFlowFrame,
 )
 from bucketed_scene_flow_eval.interfaces import (
     AbstractAVLidarSequence,
-    AbstractSequence,
-    AbstractSequenceLoader,
     CachedSequenceLoader,
 )
 from bucketed_scene_flow_eval.utils import load_pickle
