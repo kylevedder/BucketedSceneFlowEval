@@ -46,6 +46,7 @@ class NuScenesCausalSceneFlow(CausalSeqLoaderDataset):
     def __init__(
         self,
         root_dir: Union[Path, list[Path]],
+        nuscenes_version: str,
         subsequence_length: int = 2,
         with_ground: bool = True,
         with_rgb: bool = False,
@@ -61,7 +62,8 @@ class NuScenesCausalSceneFlow(CausalSeqLoaderDataset):
     ) -> None:
         if load_flow:
             self.sequence_loader = NuScenesSceneFlowSequenceLoader(
-                root_dir,
+                raw_data_path=root_dir,
+                nuscenes_version=nuscenes_version,
                 with_rgb=with_rgb,
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
@@ -70,7 +72,8 @@ class NuScenesCausalSceneFlow(CausalSeqLoaderDataset):
             )
         else:
             self.sequence_loader = NuScenesNoFlowSequenceLoader(
-                root_dir,
+                raw_data_path=root_dir,
+                nuscenes_version=nuscenes_version,
                 with_rgb=with_rgb,
                 expected_camera_shape=expected_camera_shape,
                 point_cloud_range=point_cloud_range,

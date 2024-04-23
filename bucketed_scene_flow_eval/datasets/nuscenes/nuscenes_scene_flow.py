@@ -262,12 +262,13 @@ class NuScenesNoFlowSequenceLoader(NuScenesSceneFlowSequenceLoader):
     def __init__(
         self,
         raw_data_path: Path | list[Path],
-        nuscenes_version: str = "v1.0",
+        nuscenes_version: str = "v1.0-mini",
         with_rgb: bool = False,
         log_subset: list[str] | None = None,
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
         point_cloud_range: PointCloudRange | None = DEFAULT_POINT_CLOUD_RANGE,
     ):
+        CachedSequenceLoader.__init__(self)
         self.use_gt_flow = False
         self.raw_data_path = raw_data_path
         self.with_rgb = with_rgb
@@ -285,12 +286,12 @@ class NuScenesNoFlowSequenceLoader(NuScenesSceneFlowSequenceLoader):
             sequence_id in self.sequence_id_to_raw_data
         ), f"sequence_id {sequence_id} does not exist"
         return NuScenesNoFlowSequence(
-            sequence_id,
-            self.sequence_id_to_raw_data[sequence_id],
-            self.sequence_id_to_raw_data[sequence_id],
+            nusc=self.nuscenes,
+            log_id=sequence_id,
+            scene_info=self.sequence_id_to_raw_data[sequence_id],
+            flow_dir=self.sequence_id_to_raw_data[sequence_id],
             with_rgb=self.with_rgb,
             with_classes=False,
-            expected_camera_shape=self.expected_camera_shape,
             point_cloud_range=self.point_cloud_range,
         )
 

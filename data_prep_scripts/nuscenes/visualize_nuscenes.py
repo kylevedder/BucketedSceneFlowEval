@@ -7,7 +7,7 @@ from bucketed_scene_flow_eval.datasets.nuscenes.nuscenes_metacategories import B
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
 raw_sequence_loader = NuScenesRawSequenceLoader(version='v1.0-mini', sequence_dir="/efs/nuscenes_mini")
-sequence = raw_sequence_loader[4]
+sequence = raw_sequence_loader[0]
 
 starter_idx = 0
 timestamps = range(len(sequence))
@@ -74,8 +74,6 @@ def draw_frames(vis, reset_view=False):
 
     lidar_pc = [pc_obj.full_ego_pc for pc_obj in pc_objects]
 
-    print(len(lidar_pc[0]))
-
     groundish_points_mask = lidar_pc[0].within_region_mask(-1000, 1000, -1000, 1000, -2, 0.5)
     groundish_points = lidar_pc[0].mask_points(groundish_points_mask)
     actual_ground_from_groundish_mask = np.zeros((groundish_points.shape[0]), dtype=bool)
@@ -94,7 +92,9 @@ def draw_frames(vis, reset_view=False):
 
     vis.add_geometry(final_rendered_pc, reset_bounding_box=reset_view)
 
-    flow_data = load_feather(Path(f"/efs/nuscenes_mini_flow/{sequence.log_id}/{ts[0]}.feather"))
+    # flow_data = load_feather(Path(f"/efs/nuscenes_mini_sceneflow_feather/{sequence.log_id}/{ts[0]}.feather"))
+    flow_data = load_feather(Path(f"/efs/nuscenes_mini_nsfp_flow/sequence_len_002/{sequence.log_id}/{ts[0]:010d}.feather"))
+    # flow_data = load_feather(Path(f"/efs/nuscenes_mini_fast_nsf_flow/sequence_len_002/{sequence.log_id}/{ts[0]:010d}.feather"))
     # is_valid_arr = flow_data["is_valid"].values
 
     # The flow data is stored as 3 1D arrays, one for each dimension.
@@ -102,8 +102,8 @@ def draw_frames(vis, reset_view=False):
     ys = flow_data["flow_ty_m"].values
     zs = flow_data["flow_tz_m"].values
     flow_0_1 = np.stack([xs, ys, zs], axis=1)
+    # ego_frame_flow = flow_0_1
     ego_frame_flow = pc_objects[0].pose.sensor_to_ego.transform_flow(flow_0_1)
-    print(ego_frame_flow.shape)
 
     pc = lidar_pc[0].to_array()
     flowed_pc = pc + ego_frame_flow
