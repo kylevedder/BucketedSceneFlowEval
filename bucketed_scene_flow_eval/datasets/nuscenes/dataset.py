@@ -14,16 +14,16 @@ from bucketed_scene_flow_eval.interfaces import (
     NonCausalSeqLoaderDataset,
 )
 
-from .argoverse_raw_data import DEFAULT_POINT_CLOUD_RANGE, PointCloudRange
-from .argoverse_scene_flow import (
+from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_raw_data import DEFAULT_POINT_CLOUD_RANGE, PointCloudRange
+from .nuscenes_scene_flow import (
     CATEGORY_MAP,
-    ArgoverseNoFlowSequenceLoader,
-    ArgoverseSceneFlowSequenceLoader,
+    NuScenesNoFlowSequenceLoader,
+    NuScenesSceneFlowSequenceLoader,
 )
-from .av2_metacategories import BUCKETED_METACATAGORIES, THREEWAY_EPE_METACATAGORIES
+from .nuscenes_metacategories import BUCKETED_METACATAGORIES, THREEWAY_EPE_METACATAGORIES
 
 
-def _make_av2_evaluator(eval_type: EvalType, eval_args: dict) -> Evaluator:
+def _make_evaluator(eval_type: EvalType, eval_args: dict) -> Evaluator:
     eval_args_copy = copy.deepcopy(eval_args)
     # Builds the evaluator object for this dataset.
     if eval_type == EvalType.BUCKETED_EPE:
@@ -42,10 +42,11 @@ def _make_av2_evaluator(eval_type: EvalType, eval_args: dict) -> Evaluator:
         raise ValueError(f"Unknown eval type {eval_type}")
 
 
-class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
+class NuScenesCausalSceneFlow(CausalSeqLoaderDataset):
     def __init__(
         self,
         root_dir: Union[Path, list[Path]],
+        nuscenes_version: str,
         subsequence_length: int = 2,
         with_ground: bool = True,
         with_rgb: bool = False,
@@ -60,8 +61,9 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
         load_flow: bool = True,
     ) -> None:
         if load_flow:
-            self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
-                root_dir,
+            self.sequence_loader = NuScenesSceneFlowSequenceLoader(
+                raw_data_path=root_dir,
+                nuscenes_version=nuscenes_version,
                 with_rgb=with_rgb,
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
@@ -69,8 +71,9 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
                 point_cloud_range=point_cloud_range,
             )
         else:
-            self.sequence_loader = ArgoverseNoFlowSequenceLoader(
-                root_dir,
+            self.sequence_loader = NuScenesNoFlowSequenceLoader(
+                raw_data_path=root_dir,
+                nuscenes_version=nuscenes_version,
                 with_rgb=with_rgb,
                 expected_camera_shape=expected_camera_shape,
                 point_cloud_range=point_cloud_range,
@@ -86,10 +89,10 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
         )
 
     def evaluator(self) -> Evaluator:
-        return _make_av2_evaluator(self.eval_type, self.eval_args)
+        return _make_evaluator(self.eval_type, self.eval_args)
 
 
-class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
+class NuScenesNonCausalSceneFlow(NonCausalSeqLoaderDataset):
     def __init__(
         self,
         root_dir: Union[Path, list[Path]],
@@ -106,7 +109,7 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
         load_flow: bool = True,
     ) -> None:
         if load_flow:
-            self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
+            self.sequence_loader = NuScenesSceneFlowSequenceLoader(
                 root_dir,
                 with_rgb=with_rgb,
                 use_gt_flow=use_gt_flow,
@@ -114,7 +117,7 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
                 expected_camera_shape=expected_camera_shape,
             )
         else:
-            self.sequence_loader = ArgoverseNoFlowSequenceLoader(
+            self.sequence_loader = NuScenesNoFlowSequenceLoader(
                 root_dir, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
             )
         super().__init__(
@@ -128,4 +131,4 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
         )
 
     def evaluator(self) -> Evaluator:
-        return _make_av2_evaluator(self.eval_type, self.eval_args)
+        return _make_evaluator(self.eval_type, self.eval_args)

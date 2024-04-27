@@ -2,7 +2,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -196,7 +196,7 @@ class ArgoverseRawSequence(AbstractSequence):
         expected_camera_shape=(1550, 2048, 3),
     ):
         self.log_id = log_id
-        self.POINT_CLOUD_RANGE = point_cloud_range
+        self.point_cloud_range = point_cloud_range
 
         self.dataset_dir = Path(dataset_dir)
         assert self.dataset_dir.is_dir(), f"dataset_dir {dataset_dir} does not exist"
@@ -418,14 +418,14 @@ class ArgoverseRawSequence(AbstractSequence):
         return is_ground_boolean_arr
 
     def is_in_range(self, global_point_cloud: PointCloud) -> MaskArray:
-        if self.POINT_CLOUD_RANGE is None:
+        if self.point_cloud_range is None:
             return np.ones(len(global_point_cloud), dtype=bool)
-        xmin = self.POINT_CLOUD_RANGE[0]
-        ymin = self.POINT_CLOUD_RANGE[1]
-        zmin = self.POINT_CLOUD_RANGE[2]
-        xmax = self.POINT_CLOUD_RANGE[3]
-        ymax = self.POINT_CLOUD_RANGE[4]
-        zmax = self.POINT_CLOUD_RANGE[5]
+        xmin = self.point_cloud_range[0]
+        ymin = self.point_cloud_range[1]
+        zmin = self.point_cloud_range[2]
+        xmax = self.point_cloud_range[3]
+        ymax = self.point_cloud_range[4]
+        zmax = self.point_cloud_range[5]
         return global_point_cloud.within_region_mask(xmin, xmax, ymin, ymax, zmin, zmax)
 
     def __repr__(self) -> str:

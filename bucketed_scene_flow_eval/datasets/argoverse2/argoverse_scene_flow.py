@@ -1,5 +1,3 @@
-import copy
-import dataclasses
 from pathlib import Path
 from typing import Optional, Union
 
@@ -9,7 +7,6 @@ from bucketed_scene_flow_eval.datastructures import (
     EgoLidarFlow,
     MaskArray,
     PointCloud,
-    PointCloudFrame,
     SemanticClassId,
     SemanticClassIdArray,
     SupervisedPointCloudFrame,
@@ -24,7 +21,7 @@ from bucketed_scene_flow_eval.interfaces import (
 )
 from bucketed_scene_flow_eval.utils.loaders import load_feather
 
-from . import DEFAULT_POINT_CLOUD_RANGE, ArgoverseRawSequence, PointCloudRange
+from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_raw_data import DEFAULT_POINT_CLOUD_RANGE, ArgoverseRawSequence, PointCloudRange
 
 CATEGORY_MAP = {
     -1: "BACKGROUND",

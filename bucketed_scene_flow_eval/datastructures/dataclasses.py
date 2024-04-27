@@ -17,6 +17,11 @@ VectorArray = NDArray[np.float32]
 
 @dataclass
 class PoseInfo:
+    """Stores pose SE3 objects for a given frame.
+
+    sensor_to_ego: the transformation from sensor frame to ego (vehicle) frame
+    ego_to_global: the transformation from ego frame to a consistent global frame, which is defined as the ego pose at a different timestep in the sequence
+    """
     sensor_to_ego: SE3
     ego_to_global: SE3
 
@@ -90,6 +95,13 @@ class EgoLidarFlow:
 
 @dataclass
 class PointCloudFrame:
+    """A Point Cloud Frame.
+
+    full_pc: the point cloud as captured in the sensors coordinate frame
+    pose: a PoseInfo object that specifies the transformations from sensor -> ego as well as ego -> global.
+    mask: a mask for validity in the point cloud, validity is determined by the dataloader and could be any of the following:
+        if the point is valid for the purpose of computing scene flow, if the point is ground or not ground, or any other criteria enforced by the dataloader
+    """
     full_pc: PointCloud
     pose: PoseInfo
     mask: MaskArray
@@ -99,18 +111,24 @@ class PointCloudFrame:
         return self.full_pc.mask_points(self.mask)
 
     @property
-    def full_global_pc(self) -> PointCloud:
-        pose = self.global_pose
-        return self.full_pc.transform(pose)
+    def full_ego_pc(self) -> PointCloud:
+        return self.full_pc.transform(self.pose.sensor_to_ego)
 
     @property
-    def global_pc(self) -> PointCloud:
-        pose = self.global_pose
-        return self.pc.transform(pose)
+    def ego_pc(self) -> PointCloud:
+        return self.pc.transform(self.pose.sensor_to_ego)
 
     @property
     def global_pose(self) -> SE3:
         return self.pose.sensor_to_global
+
+    @property
+    def full_global_pc(self) -> PointCloud:
+        return self.full_pc.transform(self.global_pose)
+
+    @property
+    def global_pc(self) -> PointCloud:
+        return self.pc.transform(self.global_pose)
 
     def mask_points(self, mask: MaskArray) -> "PointCloudFrame":
         assert isinstance(mask, np.ndarray), f"mask must be an ndarray, got {type(mask)}"
