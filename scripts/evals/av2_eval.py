@@ -57,9 +57,14 @@ def _work(
     gt_dataset: Argoverse2CausalSceneFlow,
     est_dataset: Argoverse2CausalSceneFlow,
     evaluator: Evaluator,
+    verbose: bool = True,
 ) -> Evaluator:
     # Set tqdm bar on the row of the terminal corresponding to the shard index
-    for idx in tqdm.tqdm(shard_list, position=shard_idx + 1, desc=f"Shard {shard_idx}"):
+    iterator = shard_list
+    if verbose:
+        iterator = tqdm.tqdm(shard_list, position=shard_idx + 1, desc=f"Shard {shard_idx}")
+
+    for idx in iterator:
         gt_lst = gt_dataset[idx]
         est_lst = est_dataset[idx]
         assert len(gt_lst) == len(est_lst) == 2, f"GT and estimated lists must have length 2."
@@ -71,7 +76,9 @@ def _work(
 
 
 def _work_wrapper(
-    args: tuple[int, list[int], Argoverse2CausalSceneFlow, Argoverse2CausalSceneFlow, Evaluator]
+    args: tuple[
+        int, list[int], Argoverse2CausalSceneFlow, Argoverse2CausalSceneFlow, Evaluator, bool
+    ]
 ) -> Evaluator:
     return _work(*args)
 
@@ -85,6 +92,7 @@ def run_eval(
     cache_root: Path,
     every_kth: int = 5,
     eval_type: str = "bucketed_epe",
+    verbose: bool = True,
 ) -> None:
     assert data_dir.exists(), f"Data directory {data_dir} does not exist."
     assert gt_flow_dir.exists(), f"GT flow directory {gt_flow_dir} does not exist."
@@ -124,7 +132,7 @@ def run_eval(
     # Shard the dataset into pieces for each CPU
     shard_lists = _make_index_shards(gt_dataset, cpu_count, every_kth)
     args_list = [
-        (shard_idx, shard_list, gt_dataset, est_dataset, dataset_evaluator)
+        (shard_idx, shard_list, gt_dataset, est_dataset, dataset_evaluator, verbose)
         for shard_idx, shard_list in enumerate(shard_lists)
     ]
 
@@ -168,6 +176,11 @@ if __name__ == "__main__":
         default=Path("/tmp/av2_eval_cache/"),
         help="Path to the cache root directory",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress output",
+    )
 
     args = parser.parse_args()
 
@@ -180,4 +193,5 @@ if __name__ == "__main__":
         every_kth=args.every_kth,
         eval_type=args.eval_type,
         cache_root=args.cache_root,
+        verbose=not args.quiet,
     )

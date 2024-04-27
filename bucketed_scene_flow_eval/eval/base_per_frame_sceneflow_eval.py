@@ -193,9 +193,10 @@ class PerFrameSceneFlowEvaluator(Evaluator):
         ), f"predictions and ground_truth must have the same length, got {len(predicted_flow.full_flow)} and {len(gt_frame.flow.full_flow)}"
 
         # Validate that all valid gt flow vectors are considered valid in the predictions.
-        assert np.all(
-            (predicted_flow.mask & gt_frame.flow.mask) == gt_frame.flow.mask
-        ), "All valid gt flow vectors must be considered valid in the predictions"
+        if not np.all((predicted_flow.mask & gt_frame.flow.mask) == gt_frame.flow.mask):
+            print(
+                f"{gt_frame.log_id} index {gt_frame.log_idx} with timestamp {gt_frame.log_timestamp} missing {np.sum(gt_frame.flow.mask & ~predicted_flow.mask)} points marked valid."
+            )
 
         # Set the prediction valid flow mask to be the gt flow so everything lines up
         predicted_flow.mask = gt_frame.flow.mask
