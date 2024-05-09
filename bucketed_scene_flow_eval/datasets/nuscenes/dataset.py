@@ -2,6 +2,10 @@ import copy
 from pathlib import Path
 from typing import Optional, Union
 
+from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_raw_data import (
+    DEFAULT_POINT_CLOUD_RANGE,
+    PointCloudRange,
+)
 from bucketed_scene_flow_eval.datastructures import *
 from bucketed_scene_flow_eval.eval import (
     BucketedEPEEvaluator,
@@ -14,13 +18,15 @@ from bucketed_scene_flow_eval.interfaces import (
     NonCausalSeqLoaderDataset,
 )
 
-from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_raw_data import DEFAULT_POINT_CLOUD_RANGE, PointCloudRange
+from .nuscenes_metacategories import (
+    BUCKETED_METACATAGORIES,
+    THREEWAY_EPE_METACATAGORIES,
+)
 from .nuscenes_scene_flow import (
     CATEGORY_MAP,
     NuScenesNoFlowSequenceLoader,
     NuScenesSceneFlowSequenceLoader,
 )
-from .nuscenes_metacategories import BUCKETED_METACATAGORIES, THREEWAY_EPE_METACATAGORIES
 
 
 def _make_evaluator(eval_type: EvalType, eval_args: dict) -> Evaluator:
@@ -47,6 +53,7 @@ class NuScenesCausalSceneFlow(CausalSeqLoaderDataset):
         self,
         root_dir: Union[Path, list[Path]],
         nuscenes_version: str,
+        split: str,
         subsequence_length: int = 2,
         with_ground: bool = True,
         with_rgb: bool = False,
@@ -64,6 +71,7 @@ class NuScenesCausalSceneFlow(CausalSeqLoaderDataset):
             self.sequence_loader = NuScenesSceneFlowSequenceLoader(
                 raw_data_path=root_dir,
                 nuscenes_version=nuscenes_version,
+                split=split,
                 with_rgb=with_rgb,
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
@@ -74,6 +82,7 @@ class NuScenesCausalSceneFlow(CausalSeqLoaderDataset):
             self.sequence_loader = NuScenesNoFlowSequenceLoader(
                 raw_data_path=root_dir,
                 nuscenes_version=nuscenes_version,
+                split=split,
                 with_rgb=with_rgb,
                 expected_camera_shape=expected_camera_shape,
                 point_cloud_range=point_cloud_range,
@@ -96,6 +105,8 @@ class NuScenesNonCausalSceneFlow(NonCausalSeqLoaderDataset):
     def __init__(
         self,
         root_dir: Union[Path, list[Path]],
+        nuscenes_version: str,
+        split: str,
         subsequence_length: int = 2,
         with_ground: bool = True,
         with_rgb: bool = False,
@@ -111,6 +122,8 @@ class NuScenesNonCausalSceneFlow(NonCausalSeqLoaderDataset):
         if load_flow:
             self.sequence_loader = NuScenesSceneFlowSequenceLoader(
                 root_dir,
+                nuscenes_version=nuscenes_version,
+                split=split,
                 with_rgb=with_rgb,
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
@@ -118,7 +131,7 @@ class NuScenesNonCausalSceneFlow(NonCausalSeqLoaderDataset):
             )
         else:
             self.sequence_loader = NuScenesNoFlowSequenceLoader(
-                root_dir, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
+                root_dir, nuscenes_version=nuscenes_version, split=split, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
             )
         super().__init__(
             sequence_loader=self.sequence_loader,
