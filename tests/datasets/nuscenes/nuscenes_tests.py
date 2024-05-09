@@ -10,13 +10,14 @@ def nuscenes_loader() -> NuScenesRawSequenceLoader:
     return NuScenesRawSequenceLoader(
         sequence_dir=Path("/tmp/nuscenes"),
         version="v1.0-mini",
+        split="mini_train",
         verbose=False,
     )
 
 
 def test_nuscenes_loader_basic_load_and_len_check(nuscenes_loader: NuScenesRawSequenceLoader):
     assert len(nuscenes_loader) > 0, f"no sequences found in {nuscenes_loader}"
-    expected_lens = [236, 239, 236, 236, 233, 223, 239, 231, 231, 228]
+    expected_lens= [236, 236, 236, 233, 223, 239, 231, 231]
     assert len(nuscenes_loader) == len(
         expected_lens
     ), f"expected {len(expected_lens)} sequences, got {len(nuscenes_loader)}"

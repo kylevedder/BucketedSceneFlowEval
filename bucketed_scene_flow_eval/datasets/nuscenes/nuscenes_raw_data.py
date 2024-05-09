@@ -3,15 +3,15 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
+import open3d as o3d
 from numpy.typing import NDArray
 from nuscenes.utils.data_classes import LidarPointCloud as NuscLidarPointCloud
 from PIL import Image
 from pyquaternion import Quaternion
-import open3d as o3d
 
 from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_raw_data import (
-    PointCloudRange,
     DEFAULT_POINT_CLOUD_RANGE,
+    PointCloudRange,
 )
 from bucketed_scene_flow_eval.datastructures import (
     SE3,
@@ -28,7 +28,7 @@ from bucketed_scene_flow_eval.datastructures import (
 )
 from bucketed_scene_flow_eval.interfaces import AbstractSequence, CachedSequenceLoader
 
-from .nuscenes_utils import NuScenesWithInstanceBoxes
+from .nuscenes_utils import NuScenesWithInstanceBoxes, create_splits_tokens
 
 NuscDict = dict[str, Union[str, int, list]]
 NuscSample = dict[str, NuscDict]
@@ -350,6 +350,7 @@ class NuScenesRawSequenceLoader(CachedSequenceLoader):
     def __init__(
         self,
         sequence_dir: Path,
+        split: str,
         version: str = "v1.0-mini",
         verbose: bool = False,
         point_cloud_range: PointCloudRange | None = DEFAULT_POINT_CLOUD_RANGE,
@@ -362,6 +363,7 @@ class NuScenesRawSequenceLoader(CachedSequenceLoader):
             version=version, dataroot=sequence_dir, verbose=verbose
         )
         self.log_lookup: dict[str, NuscDict] = {e["token"]: e for e in self.nusc.scene}
+        self.log_lookup: dict[str, NuscDict] = {k: self.log_lookup[k] for k in create_splits_tokens(split, self.nusc)}
 
         self.point_cloud_range = point_cloud_range
 

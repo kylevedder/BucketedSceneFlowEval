@@ -3,9 +3,48 @@
 import numpy as np
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.data_classes import Box
+from nuscenes.utils.splits import create_splits_scenes
 from pyquaternion import Quaternion
 
 from bucketed_scene_flow_eval.datastructures.se3 import SE3
+
+
+def create_splits_tokens(split: str, nusc: 'NuScenes') -> list[str]:
+    """
+    Returns the logs in each dataset split of nuScenes.
+    Note: Previously this script included the teaser dataset splits. Since new scenes from those logs were added and
+          others removed in the full dataset, that code is incompatible and was removed.
+    :param split: NuScenes split.
+    :param nusc: NuScenes instance.
+    :return: A list of logs in that split.
+    """
+    # Load splits on a scene-level.
+    scene_splits = create_splits_scenes(verbose=False)
+
+    assert split in scene_splits.keys(), 'Requested split {} which is not a known nuScenes split.'.format(split)
+
+    # Check compatibility of split with nusc_version.
+    version = nusc.version
+    if split in {'train', 'val', 'train_detect', 'train_track'}:
+        assert version.endswith('trainval'), \
+            'Requested split {} which is not compatible with NuScenes version {}'.format(split, version)
+    elif split in {'mini_train', 'mini_val'}:
+        assert version.endswith('mini'), \
+            'Requested split {} which is not compatible with NuScenes version {}'.format(split, version)
+    elif split == 'test':
+        assert version.endswith('test'), \
+            'Requested split {} which is not compatible with NuScenes version {}'.format(split, version)
+    else:
+        raise ValueError('Requested split {} which this function cannot map to logs.'.format(split))
+
+    # Get logs for this split.
+    scene_to_log = {scene['name']: scene['token'] for scene in nusc.scene}
+    logs = set()
+    scenes = scene_splits[split]
+    for scene in scenes:
+        logs.add(scene_to_log[scene])
+
+    return list(logs)
 
 class InstanceBox(Box):
     def __init__(
