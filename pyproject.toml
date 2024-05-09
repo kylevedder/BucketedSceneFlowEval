@@ -15,7 +15,7 @@ exclude = [
 
 [project]
 name = "bucketed_scene_flow_eval"
-version = "2.0.8"
+version = "2.0.9"
 authors = [
   { name="Kyle Vedder", email="kvedder@seas.upenn.edu" },
 ]
