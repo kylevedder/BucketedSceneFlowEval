@@ -2,6 +2,7 @@ import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
 
+import enum
 import multiprocessing
 import os
 from argparse import ArgumentParser
@@ -21,6 +22,32 @@ from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_scene_flow import (
     CATEGORY_MAP_INV,
 )
 from bucketed_scene_flow_eval.utils.loaders import save_feather
+
+
+def category_to_class_id(category: str) -> int:
+    assert isinstance(category, str), f"Expected str, got {type(category)}"
+    assert category in CATEGORY_MAP_INV, f"Unknown category: {category}"
+    return CATEGORY_MAP_INV[category]
+
+
+def volume_to_class_id(volume: float) -> int:
+    # Determined by clustering.
+    if volume < 9.5:
+        return 0  # SMALL
+    elif volume < 40:
+        return 1  # MEDIUM
+    return 2  # LARGE
+
+
+class ClassType(enum.Enum):
+    SEMANTIC = "SEMANTIC"
+    VOLUME = "VOLUME"
+
+
+CLASS_TYPE_DICT = {
+    ClassType.SEMANTIC.value: category_to_class_id,
+    ClassType.VOLUME.value: volume_to_class_id,
+}
 
 
 def get_ids_and_cuboids_at_lidar_timestamps(
@@ -56,13 +83,14 @@ def get_ids_and_cuboids_at_lidar_timestamps(
 
 
 def compute_sceneflow(
-    dataset: AV2SensorDataLoader, log_id: str, timestamps: tuple[int, int]
+    dataset: AV2SensorDataLoader, log_id: str, timestamps: tuple[int, int], class_type: ClassType
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute sceneflow between the sweeps at the given timestamps.
     Args:
       dataset: Sensor dataset.
       log_id: unique id.
       timestamps: the timestamps of the lidar sweeps to compute flow between
+      class_type: ClassType to use for the output classes
     Returns:
       dictionary with fields:
         pcl_0: Nx3 array containing the points at time 0
@@ -91,7 +119,15 @@ def compute_sceneflow(
             )
             c0.width_m += 0.2
             obj_pts, obj_mask = c0.compute_interior_points(sweeps[0].xyz)
-            classes_0[obj_mask] = CATEGORY_MAP_INV[c0.category]
+
+            match class_type:
+                case ClassType.SEMANTIC:
+                    classes_0[obj_mask] = CLASS_TYPE_DICT[class_type.value](c0.category)
+                    # CATEGORY_MAP_INV[c0.category]
+                case ClassType.VOLUME:
+                    classes_0[obj_mask] = CLASS_TYPE_DICT[class_type.value](
+                        c0.length_m * c0.width_m * c0.height_m
+                    )
 
             if id in cuboids[1]:
                 c1 = cuboids[1][id]
@@ -113,7 +149,11 @@ def compute_sceneflow(
 
 
 def process_log(
-    dataset: AV2SensorDataLoader, log_id: str, output_dir: Path, n: Optional[int] = None
+    dataset: AV2SensorDataLoader,
+    log_id: str,
+    output_dir: Path,
+    class_type: ClassType,
+    n: Optional[int] = None,
 ):
     """Outputs sceneflow and auxillary information for each pair of pointclouds in the
     dataset. Output files have the format <output_dir>/<log_id>_<sweep_1_timestamp>.npz
@@ -121,6 +161,7 @@ def process_log(
        dataset: Sensor dataset to process.
        log_id: Log unique id.
        output_dir: Output_directory.
+       class_type: ClassType to use for the output classes
        n: the position to use for the progress bar
      Returns:
        None
@@ -138,7 +179,7 @@ def process_log(
         )
 
     for ts0, ts1 in iter_bar:
-        flow_0_1, classes_0, valid_0 = compute_sceneflow(dataset, log_id, (ts0, ts1))
+        flow_0_1, classes_0, valid_0 = compute_sceneflow(dataset, log_id, (ts0, ts1), class_type)
         df = pd.DataFrame(
             {
                 "flow_tx_m": flow_0_1[:, 0],
@@ -160,7 +201,7 @@ def process_log_wrapper(x, ignore_current_process=False):
     process_log(*x, n=pos)
 
 
-def process_logs(data_dir: Path, output_dir: Path, nproc: int):
+def process_logs(data_dir: Path, output_dir: Path, nproc: int, class_type: ClassType):
     """Compute sceneflow for all logs in the dataset. Logs are processed in parallel.
     Args:
       data_dir: Argoverse 2.0 directory
@@ -176,7 +217,7 @@ def process_logs(data_dir: Path, output_dir: Path, nproc: int):
 
     dataset = AV2SensorDataLoader(data_dir=data_dir, labels_dir=data_dir)
     logs = dataset.get_log_ids()
-    args = sorted([(dataset, log, split_output_dir) for log in logs])
+    args = sorted([(dataset, log, split_output_dir, class_type) for log in logs])
 
     print(f"Using {nproc} processes")
     if nproc <= 1:
@@ -196,15 +237,26 @@ if __name__ == "__main__":
     parser.add_argument(
         "--argo_dir",
         type=str,
+        required=True,
         help="The top level directory contating the input dataset",
     )
     parser.add_argument(
-        "--output_dir", type=str, help="The location to output the sceneflow files to"
+        "--output_dir",
+        type=str,
+        required=True,
+        help="The location to output the sceneflow files to",
     )
     parser.add_argument("--nproc", type=int, default=(multiprocessing.cpu_count() - 1))
+    parser.add_argument(
+        "--class_type",
+        type=str,
+        default=ClassType.SEMANTIC.value,
+        choices=[ClassType.SEMANTIC.value, ClassType.VOLUME.value],
+    )
 
     args = parser.parse_args()
     data_root = Path(args.argo_dir)
     output_dir = Path(args.output_dir)
+    class_type = ClassType[args.class_type]
 
-    process_logs(data_root, output_dir, args.nproc)
+    process_logs(data_root, output_dir, args.nproc, class_type)

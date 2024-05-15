@@ -20,6 +20,7 @@ from .abstract_sequence_loader import (
 class EvalType(enum.Enum):
     BUCKETED_EPE = 0
     THREEWAY_EPE = 1
+    BUCKETED_VOLUME_EPE = 2
 
 
 CacheLookup = list[tuple[int, tuple[int, int]]]

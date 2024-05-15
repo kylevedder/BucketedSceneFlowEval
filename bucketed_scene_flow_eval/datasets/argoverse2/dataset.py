@@ -20,7 +20,11 @@ from .argoverse_scene_flow import (
     ArgoverseNoFlowSequenceLoader,
     ArgoverseSceneFlowSequenceLoader,
 )
-from .av2_metacategories import BUCKETED_METACATAGORIES, THREEWAY_EPE_METACATAGORIES
+from .av2_metacategories import (
+    BUCKETED_METACATAGORIES,
+    BUCKETED_VOLUME_METACATAGORIES,
+    THREEWAY_EPE_METACATAGORIES,
+)
 
 
 def _make_av2_evaluator(eval_type: EvalType, eval_args: dict) -> Evaluator:
@@ -38,6 +42,17 @@ def _make_av2_evaluator(eval_type: EvalType, eval_args: dict) -> Evaluator:
         if "class_id_to_name" not in eval_args_copy:
             eval_args_copy["class_id_to_name"] = CATEGORY_MAP
         return ThreeWayEPEEvaluator(**eval_args_copy)
+    elif eval_type == EvalType.BUCKETED_VOLUME_EPE:
+        if "meta_class_lookup" not in eval_args_copy:
+            eval_args_copy["meta_class_lookup"] = BUCKETED_VOLUME_METACATAGORIES
+        if "class_id_to_name" not in eval_args_copy:
+            eval_args_copy["class_id_to_name"] = {
+                -1: "BACKGROUND",
+                0: "SMALL",
+                1: "MEDIUM",
+                2: "LARGE",
+            }
+        return BucketedEPEEvaluator(**eval_args_copy)
     else:
         raise ValueError(f"Unknown eval type {eval_type}")
 
@@ -55,7 +70,7 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
-        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
+        point_cloud_range: PointCloudRange | None = DEFAULT_POINT_CLOUD_RANGE,
         use_cache=True,
         load_flow: bool = True,
     ) -> None:
@@ -102,6 +117,7 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
         expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
+        point_cloud_range: PointCloudRange | None = DEFAULT_POINT_CLOUD_RANGE,
         use_cache=True,
         load_flow: bool = True,
     ) -> None:
@@ -112,10 +128,14 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
                 expected_camera_shape=expected_camera_shape,
+                point_cloud_range=point_cloud_range,
             )
         else:
             self.sequence_loader = ArgoverseNoFlowSequenceLoader(
-                root_dir, with_rgb=with_rgb, expected_camera_shape=expected_camera_shape
+                root_dir,
+                with_rgb=with_rgb,
+                expected_camera_shape=expected_camera_shape,
+                point_cloud_range=point_cloud_range,
             )
         super().__init__(
             sequence_loader=self.sequence_loader,

@@ -3,6 +3,11 @@ from typing import Optional, Union
 
 import numpy as np
 
+from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_raw_data import (
+    DEFAULT_POINT_CLOUD_RANGE,
+    ArgoverseRawSequence,
+    PointCloudRange,
+)
 from bucketed_scene_flow_eval.datastructures import (
     EgoLidarFlow,
     MaskArray,
@@ -20,8 +25,6 @@ from bucketed_scene_flow_eval.interfaces import (
     CachedSequenceLoader,
 )
 from bucketed_scene_flow_eval.utils.loaders import load_feather
-
-from bucketed_scene_flow_eval.datasets.argoverse2.argoverse_raw_data import DEFAULT_POINT_CLOUD_RANGE, ArgoverseRawSequence, PointCloudRange
 
 CATEGORY_MAP = {
     -1: "BACKGROUND",
@@ -116,7 +119,11 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         assert idx >= 0, f"idx {idx} is out of range"
         flow_data_file = self.flow_data_files[idx]
         flow_data = load_feather(flow_data_file, verbose=False)
-        is_valid_arr = flow_data["is_valid"].values
+        is_valid_arr = flow_data["is_valid"].values.astype(bool)
+        # Ensure that is_valid_arr is a boolean array.
+        assert (
+            is_valid_arr.dtype == bool
+        ), f"is_valid_arr must be a boolean array, got {is_valid_arr.dtype} from {flow_data_file.absolute()}"
 
         # The flow data is stored as 3 1D arrays, one for each dimension.
         xs = flow_data["flow_tx_m"].values
