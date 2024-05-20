@@ -71,15 +71,13 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         flow_dir: Path,
         with_rgb: bool = False,
         with_classes: bool = False,
-        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
-        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
+        **kwargs,
     ):
         super().__init__(
             log_id,
             dataset_dir,
             with_rgb=with_rgb,
-            expected_camera_shape=expected_camera_shape,
-            point_cloud_range=point_cloud_range,
+            **kwargs,
         )
         self.with_classes = with_classes
         self.flow_data_files: list[Path] = []
@@ -216,14 +214,11 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         raw_data_path: Union[Path, list[Path]],
         flow_data_path: Optional[Union[Path, list[Path]]] = None,
         use_gt_flow: bool = True,
-        with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
-        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
-        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
+        **kwargs,
     ):
-        self._setup_raw_data(
-            raw_data_path, use_gt_flow, with_rgb, expected_camera_shape, point_cloud_range
-        )
+        self.load_sequence_kwargs = kwargs
+        self._setup_raw_data(raw_data_path, use_gt_flow)
         self._setup_flow_data(use_gt_flow, flow_data_path)
         self._subset_log(log_subset)
 
@@ -231,16 +226,10 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         self,
         raw_data_path: Union[Path, list[Path]],
         use_gt_flow: bool,
-        with_rgb: bool,
-        expected_camera_shape: tuple[int, int, int],
-        point_cloud_range: Optional[PointCloudRange],
     ):
         super().__init__()
         self.use_gt_flow = use_gt_flow
         self.raw_data_path = self._sanitize_raw_data_path(raw_data_path)
-        self.with_rgb = with_rgb
-        self.expected_camera_shape = expected_camera_shape
-        self.point_cloud_range = point_cloud_range
 
         # Raw data folders
         self.sequence_id_to_raw_data = self._load_sequence_data(self.raw_data_path)
@@ -337,10 +326,8 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
             sequence_id,
             self.sequence_id_to_raw_data[sequence_id],
             self.sequence_id_to_flow_data[sequence_id],
-            with_rgb=self.with_rgb,
             with_classes=self.use_gt_flow,
-            expected_camera_shape=self.expected_camera_shape,
-            point_cloud_range=self.point_cloud_range,
+            **self.load_sequence_kwargs,
         )
 
     @staticmethod
@@ -356,7 +343,7 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
         return {v: k for k, v in CATEGORY_MAP.items()}[category_name]
 
     def cache_folder_name(self) -> str:
-        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_flow_data_path_{self.flow_data_path}"
+        return f"av2_raw_data_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_flow_data_path_{self.flow_data_path}"
 
 
 class ArgoverseNoFlowSequence(ArgoverseSceneFlowSequence):
@@ -378,17 +365,13 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
     def __init__(
         self,
         raw_data_path: Union[Path, list[Path]],
-        with_rgb: bool = False,
         log_subset: Optional[list[str]] = None,
-        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
-        point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
+        **kwargs,
     ):
+        self.load_sequence_kwargs = kwargs
         self._setup_raw_data(
             raw_data_path=raw_data_path,
             use_gt_flow=False,
-            with_rgb=with_rgb,
-            expected_camera_shape=expected_camera_shape,
-            point_cloud_range=point_cloud_range,
         )
         self._subset_log(log_subset)
 
@@ -400,11 +383,9 @@ class ArgoverseNoFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader):
             sequence_id,
             self.sequence_id_to_raw_data[sequence_id],
             self.sequence_id_to_raw_data[sequence_id],
-            with_rgb=self.with_rgb,
             with_classes=False,
-            expected_camera_shape=self.expected_camera_shape,
-            point_cloud_range=self.point_cloud_range,
+            **self.load_sequence_kwargs,
         )
 
     def cache_folder_name(self) -> str:
-        return f"av2_raw_data_with_rgb_{self.with_rgb}_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_No_flow_data_path"
+        return f"av2_raw_data_use_gt_flow_{self.use_gt_flow}_raw_data_path_{self.raw_data_path}_No_flow_data_path"

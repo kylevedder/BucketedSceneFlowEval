@@ -13,4 +13,4 @@ docker run --gpus=all --rm -it \
  -e DISPLAY=$DISPLAY \
  -h $HOSTNAME \
  --privileged \
- bucketed_scene_flow_eval:latest
+ kylevedder/bucketed_scene_flow_eval:latest

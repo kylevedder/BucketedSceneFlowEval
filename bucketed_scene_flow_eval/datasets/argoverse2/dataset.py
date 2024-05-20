@@ -63,32 +63,26 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
         root_dir: Union[Path, list[Path]],
         subsequence_length: int = 2,
         with_ground: bool = True,
-        with_rgb: bool = False,
         cache_root: Path = Path("/tmp/"),
         use_gt_flow: bool = True,
         flow_data_path: Optional[Union[Path, list[Path]]] = None,
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
-        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
-        point_cloud_range: PointCloudRange | None = DEFAULT_POINT_CLOUD_RANGE,
-        use_cache=True,
         load_flow: bool = True,
+        use_cache=True,
+        **kwargs,
     ) -> None:
         if load_flow:
             self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
                 root_dir,
-                with_rgb=with_rgb,
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
-                expected_camera_shape=expected_camera_shape,
-                point_cloud_range=point_cloud_range,
+                **kwargs,
             )
         else:
             self.sequence_loader = ArgoverseNoFlowSequenceLoader(
                 root_dir,
-                with_rgb=with_rgb,
-                expected_camera_shape=expected_camera_shape,
-                point_cloud_range=point_cloud_range,
+                **kwargs,
             )
         super().__init__(
             sequence_loader=self.sequence_loader,
@@ -110,32 +104,26 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
         root_dir: Union[Path, list[Path]],
         subsequence_length: int = 2,
         with_ground: bool = True,
-        with_rgb: bool = False,
         cache_root: Path = Path("/tmp/"),
         use_gt_flow: bool = True,
         flow_data_path: Optional[Union[Path, list[Path]]] = None,
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
-        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
-        point_cloud_range: PointCloudRange | None = DEFAULT_POINT_CLOUD_RANGE,
         use_cache=True,
         load_flow: bool = True,
+        **kwargs,
     ) -> None:
         if load_flow:
             self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
-                root_dir,
-                with_rgb=with_rgb,
+                raw_data_path=root_dir,
                 use_gt_flow=use_gt_flow,
                 flow_data_path=flow_data_path,
-                expected_camera_shape=expected_camera_shape,
-                point_cloud_range=point_cloud_range,
+                **kwargs,
             )
         else:
             self.sequence_loader = ArgoverseNoFlowSequenceLoader(
-                root_dir,
-                with_rgb=with_rgb,
-                expected_camera_shape=expected_camera_shape,
-                point_cloud_range=point_cloud_range,
+                raw_data_path=root_dir,
+                **kwargs,
             )
         super().__init__(
             sequence_loader=self.sequence_loader,

@@ -186,14 +186,14 @@ class ArgoverseRawSequence(AbstractSequence):
         with_rgb: bool = False,
         point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
         sample_every: Optional[int] = None,
-        camera_names=[
+        camera_names: list[str] = [
             "ring_side_left",
             "ring_front_left",
             "ring_front_center",
             "ring_front_right",
             "ring_side_right",
         ],
-        expected_camera_shape=(1550, 2048, 3),
+        expected_camera_shape: tuple[int, int, int] = (1550, 2048, 3),
     ):
         self.log_id = log_id
         self.point_cloud_range = point_cloud_range
