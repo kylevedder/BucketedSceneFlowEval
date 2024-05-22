@@ -30,6 +30,18 @@ class CameraProjection:
     def __repr__(self) -> str:
         return f"CameraProjection(fx={self.fx}, fy={self.fy}, cx={self.cx}, cy={self.cy}, camera_model={self.camera_model})"
 
+    def to_masked_projection(self, rgb_image: RGBImage) -> "CameraProjection":
+        if rgb_image.valid_crop is None:
+            return self
+
+        return CameraProjection(
+            fx=self.fx,
+            fy=self.fy,
+            cx=self.cx - rgb_image.valid_crop.min_x,
+            cy=self.cy - rgb_image.valid_crop.min_y,
+            camera_model=self.camera_model,
+        )
+
     def rescale(self, reduction_factor: float) -> "CameraProjection":
         return CameraProjection(
             fx=self.fx / reduction_factor,
