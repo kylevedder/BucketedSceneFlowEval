@@ -1,3 +1,4 @@
+import enum
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -169,6 +170,11 @@ class CameraInfo:
         return self._reshaped_frame(rgb_frame)
 
 
+class RangeCropType(enum.Enum):
+    GLOBAL = "global"
+    EGO = "ego"
+
+
 class ArgoverseRawSequence(AbstractSequence):
     """
     Argoverse Raw Sequence.
@@ -185,6 +191,7 @@ class ArgoverseRawSequence(AbstractSequence):
         verbose: bool = False,
         with_rgb: bool = False,
         point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
+        range_crop_type: RangeCropType | str = RangeCropType.GLOBAL,
         sample_every: Optional[int] = None,
         camera_names: list[str] = [
             "ring_side_left",
@@ -197,6 +204,10 @@ class ArgoverseRawSequence(AbstractSequence):
     ):
         self.log_id = log_id
         self.point_cloud_range = point_cloud_range
+
+        if isinstance(range_crop_type, str):
+            range_crop_type = RangeCropType(range_crop_type.lower())
+        self.range_crop_type = range_crop_type
 
         self.dataset_dir = Path(dataset_dir)
         assert self.dataset_dir.is_dir(), f"dataset_dir {dataset_dir} does not exist"
@@ -417,16 +428,16 @@ class ArgoverseRawSequence(AbstractSequence):
         ) | (np.array(global_point_cloud[:, 2] - ground_height_values) < 0)
         return is_ground_boolean_arr
 
-    def is_in_range(self, global_point_cloud: PointCloud) -> MaskArray:
+    def is_in_range(self, point_cloud: PointCloud) -> MaskArray:
         if self.point_cloud_range is None:
-            return np.ones(len(global_point_cloud), dtype=bool)
+            return np.ones(len(point_cloud), dtype=bool)
         xmin = self.point_cloud_range[0]
         ymin = self.point_cloud_range[1]
         zmin = self.point_cloud_range[2]
         xmax = self.point_cloud_range[3]
         ymax = self.point_cloud_range[4]
         zmax = self.point_cloud_range[5]
-        return global_point_cloud.within_region_mask(xmin, xmax, ymin, ymax, zmin, zmax)
+        return point_cloud.within_region_mask(xmin, xmax, ymin, ymax, zmin, zmax)
 
     def __repr__(self) -> str:
         return f"ArgoverseSequence with {len(self)} frames"
@@ -478,7 +489,13 @@ class ArgoverseRawSequence(AbstractSequence):
         is_ground_points = self.is_ground_points(absolute_global_frame_pc)
         relative_global_frame_pc_with_ground = ego_pc.transform(relative_pose)
 
-        in_range_mask_with_ground = self.is_in_range(relative_global_frame_pc_with_ground)
+        match self.range_crop_type:
+            case RangeCropType.GLOBAL:
+                in_range_mask_with_ground = self.is_in_range(relative_global_frame_pc_with_ground)
+            case RangeCropType.EGO:
+                in_range_mask_with_ground = self.is_in_range(ego_pc)
+            case _:
+                raise ValueError(f"Invalid range crop type {self.range_crop_type}")
 
         pc_frame = PointCloudFrame(
             full_pc=ego_pc,
