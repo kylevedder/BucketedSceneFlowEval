@@ -62,6 +62,7 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
         self,
         root_dir: Union[Path, list[Path]],
         subsequence_length: int = 2,
+        sliding_window_step_size: int | None = 1,
         with_ground: bool = True,
         cache_root: Path = Path("/tmp/"),
         use_gt_flow: bool = True,
@@ -92,6 +93,7 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,
+            sliding_window_step_size=sliding_window_step_size,
         )
 
     def evaluator(self) -> Evaluator:
@@ -103,6 +105,7 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
         self,
         root_dir: Union[Path, list[Path]],
         subsequence_length: int = 2,
+        sliding_window_step_size: int | None = None,
         with_ground: bool = True,
         cache_root: Path = Path("/tmp/"),
         use_gt_flow: bool = True,
@@ -133,6 +136,7 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,
+            sliding_window_step_size=sliding_window_step_size,
         )
 
     def evaluator(self) -> Evaluator:

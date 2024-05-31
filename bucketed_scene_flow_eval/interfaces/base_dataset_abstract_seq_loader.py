@@ -31,6 +31,7 @@ class BaseAbstractSeqLoaderDataset(AbstractDataset):
         self,
         sequence_loader: AbstractSequenceLoader,
         subsequence_length: int = 2,
+        sliding_window_step_size: int | None = 1,
         with_ground: bool = True,
         idx_lookup_cache_root: Path = Path("/tmp/idx_lookup_cache/"),
         eval_type: str = "bucketed_epe",
@@ -41,6 +42,10 @@ class BaseAbstractSeqLoaderDataset(AbstractDataset):
         self.with_ground = with_ground
         self.sequence_loader = sequence_loader
         self.subsequence_length = subsequence_length
+
+        if sliding_window_step_size is None:
+            sliding_window_step_size = subsequence_length
+        self.sliding_window_step_size = sliding_window_step_size
         self.idx_lookup_cache_path = (
             idx_lookup_cache_root / self.sequence_loader.cache_folder_name()
         )
@@ -53,6 +58,27 @@ class BaseAbstractSeqLoaderDataset(AbstractDataset):
         self.eval_type = EvalType[eval_type.strip().upper()]
         self.eval_args = eval_args
 
+    def _build_new_cache(self) -> CacheLookup:
+        cache_file = self._get_idx_lookup_cache_file()
+        dataset_idx_to_sequence_subsequence_range: CacheLookup = []
+
+        for sequence_idx, sequence in enumerate(self.sequence_loader):
+            for subsequence_start_idx in range(
+                0, len(sequence) - self.subsequence_length + 1, self.sliding_window_step_size
+            ):
+                dataset_idx_to_sequence_subsequence_range.append(
+                    (
+                        sequence_idx,
+                        (subsequence_start_idx, subsequence_start_idx + self.subsequence_length),
+                    )
+                )
+
+        print(
+            f"Loaded {len(dataset_idx_to_sequence_subsequence_range)} subsequence pairs. Saving it to {cache_file}"
+        )
+        save_pickle(cache_file, dataset_idx_to_sequence_subsequence_range)
+        return dataset_idx_to_sequence_subsequence_range
+
     @abstractmethod
     def _get_idx_lookup_cache_file(self) -> Path:
         raise NotImplementedError
@@ -63,10 +89,6 @@ class BaseAbstractSeqLoaderDataset(AbstractDataset):
             cache_pkl = load_pickle(cache_file)
             return cache_pkl
         return None
-
-    @abstractmethod
-    def _build_new_cache(self) -> CacheLookup:
-        raise NotImplementedError
 
     def _load_dataset_to_sequence_subsequence_idx(self) -> CacheLookup:
         existing_cache = self._load_existing_cache()
@@ -132,27 +154,6 @@ class BaseAbstractSeqLoaderDataset(AbstractDataset):
 
 
 class CausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
-    def _build_new_cache(self) -> CacheLookup:
-        cache_file = self._get_idx_lookup_cache_file()
-        # Build map from dataset index to sequence and subsequence range.
-        # This is a causal loader, so we load self.subsequence_length frames at a time
-        # WITH overlap between chunks.
-        dataset_idx_to_sequence_subsequence_range: CacheLookup = []
-        for sequence_idx, sequence in enumerate(self.sequence_loader):
-            for subsequence_start_idx in range(len(sequence) - self.subsequence_length + 1):
-                dataset_idx_to_sequence_subsequence_range.append(
-                    (
-                        sequence_idx,
-                        (subsequence_start_idx, subsequence_start_idx + self.subsequence_length),
-                    )
-                )
-
-        print(
-            f"Loaded {len(dataset_idx_to_sequence_subsequence_range)} subsequence pairs. Saving it to {cache_file}"
-        )
-        save_pickle(cache_file, dataset_idx_to_sequence_subsequence_range)
-        return dataset_idx_to_sequence_subsequence_range
-
     def _load_from_sequence(
         self,
         sequence: AbstractAVLidarSequence,
@@ -172,7 +173,8 @@ class CausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
 
     def _get_idx_lookup_cache_file(self) -> Path:
         cache_file = (
-            self.idx_lookup_cache_path / f"causal_subsequence_{self.subsequence_length}_lookup.pkl"
+            self.idx_lookup_cache_path
+            / f"causal_subsequence_{self.subsequence_length}_sliding_window_{self.sliding_window_step_size}_lookup.pkl"
         )
         return cache_file
 
@@ -181,34 +183,8 @@ class CausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
 
 
 class NonCausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
-    def __init__(self, *args, noncausal_step_size: int | None = None, **kwargs):
-        self.noncausal_step_size = noncausal_step_size
-        super().__init__(*args, **kwargs)
-
-    def _build_new_cache(self) -> CacheLookup:
-        cache_file = self._get_idx_lookup_cache_file()
-        # Build map from dataset index to sequence and subsequence index.
-        # This is a noncausal loader, so we load self.subsequence_length frames at a time
-        # WITHOUT overlap between chunks.
-        if self.noncausal_step_size is None:
-            self.noncausal_step_size = self.subsequence_length
-        dataset_to_sequence_subsequence_idx = []
-        for sequence_idx, sequence in enumerate(self.sequence_loader):
-            for subsequence_start_idx in range(
-                0, len(sequence) - self.subsequence_length + 1, self.noncausal_step_size
-            ):
-                dataset_to_sequence_subsequence_idx.append(
-                    (
-                        sequence_idx,
-                        (subsequence_start_idx, subsequence_start_idx + self.subsequence_length),
-                    )
-                )
-
-        print(
-            f"Loaded {len(dataset_to_sequence_subsequence_idx)} subsequence pairs. Saving it to {cache_file}"
-        )
-        save_pickle(cache_file, dataset_to_sequence_subsequence_idx)
-        return dataset_to_sequence_subsequence_idx
+    def __init__(self, *args, sliding_window_step_size: int | None = None, **kwargs):
+        super().__init__(*args, sliding_window_step_size=sliding_window_step_size, **kwargs)
 
     def _load_from_sequence(
         self,
@@ -231,7 +207,7 @@ class NonCausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
     def _get_idx_lookup_cache_file(self) -> Path:
         cache_file = (
             self.idx_lookup_cache_path
-            / f"non_causal_subsequence_{self.subsequence_length}_lookup.pkl"
+            / f"non_causal_subsequence_{self.subsequence_length}_sliding_window_{self.sliding_window_step_size}_lookup.pkl"
         )
         return cache_file
 
