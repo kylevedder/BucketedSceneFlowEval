@@ -22,6 +22,7 @@ class PoseInfo:
     sensor_to_ego: the transformation from sensor frame to ego (vehicle) frame
     ego_to_global: the transformation from ego frame to a consistent global frame, which is defined as the ego pose at a different timestep in the sequence
     """
+
     sensor_to_ego: SE3
     ego_to_global: SE3
 
@@ -102,6 +103,7 @@ class PointCloudFrame:
     mask: a mask for validity in the point cloud, validity is determined by the dataloader and could be any of the following:
         if the point is valid for the purpose of computing scene flow, if the point is ground or not ground, or any other criteria enforced by the dataloader
     """
+
     full_pc: PointCloud
     pose: PoseInfo
     mask: MaskArray
@@ -145,6 +147,26 @@ class PointCloudFrame:
             full_pc=self.full_pc.flow_masked(flow.valid_flow, flow.mask),
             pose=self.pose,
             mask=self.mask,
+        )
+
+    def __add__(self, other: "PointCloudFrame") -> "PointCloudFrame":
+        assert isinstance(
+            other, PointCloudFrame
+        ), f"other must be a PointCloudFrame, got {type(other)}"
+        assert (
+            self.full_pc.shape[1] == other.full_pc.shape[1]
+        ), f"point clouds must have the same number of columns, got {self.full_pc.shape[1]} and {other.full_pc.shape[1]}"
+        assert (
+            self.full_pc.shape[1] == 3
+        ), f"point clouds must have 3 columns, got {self.full_pc.shape[1]}"
+        # Ensure the poses are the same
+        assert (
+            self.pose == other.pose
+        ), f"point clouds must have the same pose, got {self.pose} and {other.pose}"
+        return PointCloudFrame(
+            full_pc=np.hstack((self.full_pc, other.full_pc)),
+            pose=self.pose,
+            mask=np.hstack((self.mask, other.mask)),
         )
 
 

@@ -181,15 +181,21 @@ class CausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
 
 
 class NonCausalSeqLoaderDataset(BaseAbstractSeqLoaderDataset):
+    def __init__(self, *args, noncausal_step_size: int | None = None, **kwargs):
+        self.noncausal_step_size = noncausal_step_size
+        super().__init__(*args, **kwargs)
+
     def _build_new_cache(self) -> CacheLookup:
         cache_file = self._get_idx_lookup_cache_file()
         # Build map from dataset index to sequence and subsequence index.
         # This is a noncausal loader, so we load self.subsequence_length frames at a time
         # WITHOUT overlap between chunks.
+        if self.noncausal_step_size is None:
+            self.noncausal_step_size = self.subsequence_length
         dataset_to_sequence_subsequence_idx = []
         for sequence_idx, sequence in enumerate(self.sequence_loader):
             for subsequence_start_idx in range(
-                0, len(sequence) - self.subsequence_length + 1, self.subsequence_length
+                0, len(sequence) - self.subsequence_length + 1, self.noncausal_step_size
             ):
                 dataset_to_sequence_subsequence_idx.append(
                     (
