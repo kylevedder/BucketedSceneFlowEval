@@ -261,6 +261,7 @@ class TimeSyncedAVLidarData(TimeSyncedBaseAuxilaryData):
 @dataclass(kw_only=True)
 class TimeSyncedRawFrame:
     pc: PointCloudFrame
+    auxillary_pc: PointCloudFrame | None
     rgbs: RGBFrameLookup
     log_id: str
     log_idx: int

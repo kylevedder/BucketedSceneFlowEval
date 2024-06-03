@@ -265,9 +265,9 @@ class NuScenesRawSequence(AbstractSequence):
         actual_ground_in_points_close_to_ground_mask = np.zeros(
             (points_close_to_ground.shape[0]), dtype=bool
         )
-        actual_ground_in_points_close_to_ground_mask[ground_plane_inliers] = (
-            1  # Convert indices to a binary mask of points_close_to_ground
-        )
+        actual_ground_in_points_close_to_ground_mask[
+            ground_plane_inliers
+        ] = 1  # Convert indices to a binary mask of points_close_to_ground
         # Create another mask to represent the final ground mask with respect to the full point cloud
         is_ground_mask = np.zeros_like(
             points_close_to_ground_mask, dtype=bool
@@ -331,6 +331,7 @@ class NuScenesRawSequence(AbstractSequence):
         return (
             TimeSyncedRawFrame(
                 pc=pc_frame,
+                auxillary_pc=None,
                 rgbs=rgb_frames,
                 log_id=self.log_id,
                 log_idx=idx,
@@ -363,7 +364,9 @@ class NuScenesRawSequenceLoader(CachedSequenceLoader):
             version=version, dataroot=sequence_dir, verbose=verbose
         )
         self.log_lookup: dict[str, NuscDict] = {e["token"]: e for e in self.nusc.scene}
-        self.log_lookup: dict[str, NuscDict] = {k: self.log_lookup[k] for k in create_splits_tokens(split, self.nusc)}
+        self.log_lookup: dict[str, NuscDict] = {
+            k: self.log_lookup[k] for k in create_splits_tokens(split, self.nusc)
+        }
 
         self.point_cloud_range = point_cloud_range
 
