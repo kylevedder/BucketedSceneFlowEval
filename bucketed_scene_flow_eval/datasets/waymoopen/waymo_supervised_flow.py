@@ -103,6 +103,7 @@ class WaymoSupervisedSceneFlowSequence(AbstractAVLidarSequence):
         return (
             TimeSyncedSceneFlowFrame(
                 pc=pc_frame,
+                auxillary_pc=None,
                 rgbs=RGBFrameLookup.empty(),
                 flow=flow_wrapper,
                 log_id=self.sequence_folder.name,

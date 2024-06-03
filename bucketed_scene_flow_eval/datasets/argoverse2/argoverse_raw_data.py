@@ -241,6 +241,8 @@ class ArgoverseRawSequence(AbstractSequence):
         self.timestamp_list = sorted(self.lidar_file_timestamps.intersection(info_timestamps))
         assert len(self.timestamp_list) > 0, f"no timestamps found in {self.dataset_dir}"
 
+        self.auxillary_pc_paths = self._load_auxillary_pc_info()
+
         if sample_every is not None:
             self.timestamp_list = self.timestamp_list[::sample_every]
 
@@ -281,7 +283,7 @@ class ArgoverseRawSequence(AbstractSequence):
             expected_shape=camera_shape,
         )
 
-    def _load_lidar_info(self):
+    def _load_lidar_info(self) -> tuple[list[Path], dict[int, Path], set[int]]:
         # Load the lidar frame information.
         lidar_frame_directory = self.dataset_dir / "sensors" / "lidar"
         lidar_frame_paths = sorted(lidar_frame_directory.glob("*.feather"))
@@ -290,12 +292,21 @@ class ArgoverseRawSequence(AbstractSequence):
         lidar_file_timestamps = set(timestamp_to_lidar_file_map.keys())
         return lidar_frame_paths, timestamp_to_lidar_file_map, lidar_file_timestamps
 
-    def _load_rgb_info(self, camera_name: str):
+    def _load_rgb_info(self, camera_name: str) -> tuple[list[Path], dict[int, Path]]:
         image_frame_directory = self.dataset_dir / "sensors" / "cameras" / camera_name
         image_frame_paths = sorted(image_frame_directory.glob("*.jpg"))
         assert len(image_frame_paths) > 0, f"no frames found in {image_frame_directory}"
         rgb_timestamp_to_rgb_file_map = {int(e.stem): e for e in image_frame_paths}
         return image_frame_paths, rgb_timestamp_to_rgb_file_map
+
+    def _load_auxillary_pc_info(self) -> list[Path] | None:
+        camera_pc_directory = self.dataset_dir / "sensors" / "camera_pc"
+        if not camera_pc_directory.is_dir():
+            return None
+        camera_pc_paths = sorted(camera_pc_directory.glob("*.feather"))
+        if len(camera_pc_paths) == 0:
+            return None
+        return camera_pc_paths
 
     def _quat_to_mat(self, qw, qx, qy, qz):
         """Convert a quaternion to a 3D rotation matrix.
@@ -459,6 +470,23 @@ class ArgoverseRawSequence(AbstractSequence):
         points = np.stack([xs, ys, zs], axis=1)
         return PointCloud(points)
 
+    def _load_auxillary_pc(self, idx) -> PointCloud | None:
+        if self.auxillary_pc_paths is None:
+            return None
+        assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
+        if idx >= len(self.auxillary_pc_paths):
+            # Sometimes the last few frames do not have camera point clouds.
+            # For example, with a tracker window step size of 10 and a sequence length of 156,
+            # the last 6 frames will have no camera point clouds.
+            return PointCloud(np.zeros((0, 3), dtype=np.float32))
+        camera_pc_path = self.auxillary_pc_paths[idx]
+        frame_content = pd.read_feather(camera_pc_path)
+        xs = frame_content["x"].values
+        ys = frame_content["y"].values
+        zs = frame_content["z"].values
+        points = np.stack([xs, ys, zs], axis=1)
+        return PointCloud(points)
+
     def _load_pose(self, idx) -> SE3:
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
@@ -481,6 +509,7 @@ class ArgoverseRawSequence(AbstractSequence):
         assert idx < len(self), f"idx {idx} out of range, len {len(self)} for {self.dataset_dir}"
         timestamp = self.timestamp_list[idx]
         ego_pc = self._load_pc(idx)
+        auxillary_ego_pc = self._load_auxillary_pc(idx)
 
         start_pose = self._load_pose(relative_to_idx)
         idx_pose = self._load_pose(idx)
@@ -503,6 +532,14 @@ class ArgoverseRawSequence(AbstractSequence):
             mask=np.ones(len(ego_pc), dtype=bool),
         )
 
+        auxillary_pc_frame = None
+        if auxillary_ego_pc is not None:
+            auxillary_pc_frame = PointCloudFrame(
+                full_pc=auxillary_ego_pc,
+                pose=PoseInfo(sensor_to_ego=SE3.identity(), ego_to_global=relative_pose),
+                mask=np.ones(len(auxillary_ego_pc), dtype=bool),
+            )
+
         rgb_frames = RGBFrameLookup(
             {
                 name: self.camera_info_lookup[name].load_rgb_frame(timestamp, relative_pose)
@@ -514,6 +551,7 @@ class ArgoverseRawSequence(AbstractSequence):
         return (
             TimeSyncedRawFrame(
                 pc=pc_frame,
+                auxillary_pc=auxillary_pc_frame,
                 rgbs=rgb_frames,
                 log_id=self.log_id,
                 log_idx=idx,

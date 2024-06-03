@@ -144,6 +144,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         )
         return TimeSyncedSceneFlowFrame(
             pc=supervised_pc,
+            auxillary_pc=raw_item.auxillary_pc,
             rgbs=raw_item.rgbs,
             log_id=raw_item.log_id,
             log_idx=raw_item.log_idx,

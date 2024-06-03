@@ -128,6 +128,7 @@ class NuScenesSceneFlowSequence(NuScenesRawSequence, AbstractAVLidarSequence):
         )
         return TimeSyncedSceneFlowFrame(
             pc=supervised_pc,
+            auxillary_pc=None,
             rgbs=raw_item.rgbs,
             log_id=raw_item.log_id,
             log_idx=raw_item.log_idx,
@@ -215,7 +216,9 @@ class NuScenesSceneFlowSequenceLoader(ArgoverseSceneFlowSequenceLoader, CachedSe
         self.sequence_id_to_raw_data: dict[str, NuscDict] = {
             e["token"]: e for e in self.nuscenes.scene
         }
-        self.sequence_id_to_raw_data: dict[str, NuscDict] = {k: self.sequence_id_to_raw_data[k] for k in create_splits_tokens(split, self.nuscenes)}
+        self.sequence_id_to_raw_data: dict[str, NuscDict] = {
+            k: self.sequence_id_to_raw_data[k] for k in create_splits_tokens(split, self.nuscenes)
+        }
         self.sequence_id_lst: list[str] = sorted(self.sequence_id_to_raw_data.keys())
         self._setup_flow_data(use_gt_flow, flow_data_path)
         self._subset_log(log_subset)
@@ -286,7 +289,9 @@ class NuScenesNoFlowSequenceLoader(NuScenesSceneFlowSequenceLoader):
         self.sequence_id_to_raw_data: dict[str, NuscDict] = {
             e["token"]: e for e in self.nuscenes.scene
         }
-        self.sequence_id_to_raw_data: dict[str, NuscDict] = {k: self.sequence_id_to_raw_data[k] for k in create_splits_tokens(split, self.nuscenes)}
+        self.sequence_id_to_raw_data: dict[str, NuscDict] = {
+            k: self.sequence_id_to_raw_data[k] for k in create_splits_tokens(split, self.nuscenes)
+        }
         self.sequence_id_lst: list[str] = sorted(self.sequence_id_to_raw_data.keys())
         self._subset_log(log_subset)
 
