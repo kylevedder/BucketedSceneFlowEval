@@ -17,13 +17,13 @@ Currently supported datasets:
 If you use this repository as part of a publication, please cite:
 
 ```
-@misc{khatri2024trackflow,
-    author = {Khatri, Ishan and Vedder, Kyle and Peri, Neehar and Ramanan, Deva and Hays, James},
-    title = {I Can't Believe It's Not Scene Flow!},
-    journal = {arXiv},
-    eprint = {2403.04739},
-    year = {2024},
-    pdf = {https://arxiv.org/abs/2403.04739}
+@inproceedings{khatri2024trackflow,
+  author = {Khatri, Ishan and Vedder, Kyle and Peri, Neehar and Ramanan, Deva and Hays, James},
+  title = {{I Can't Believe It's Not Scene Flow!}},
+  journal = {European Conference on Computer Vision (ECCV)},
+  year = {2024},
+  pdf = {https://arxiv.org/abs/2403.04739},
+  website={http://vedder.io/trackflow.html},
 }
 ```
 
