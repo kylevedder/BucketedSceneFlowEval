@@ -13,19 +13,22 @@ from bucketed_scene_flow_eval.datastructures import (
 
 
 def visualize_lidar_3d(frame_list: list[TimeSyncedSceneFlowFrame], downscale_rgb_factor: int):
-    o3d_vis = O3DVisualizer()
+    o3d_vis = O3DVisualizer(point_size=2)
 
     print("Visualizing", len(frame_list), "frames")
 
     for frame_idx, frame in enumerate(frame_list):
         rgb_frames = frame.rgbs
         pc_frame = frame.pc
+        aux_pc_frame = frame.auxillary_pc
         flow_frame = frame.flow
 
         # Set constant flow for debug
         # flow_frame.full_flow = np.ones_like(flow_frame.full_flow) * 0.1
 
-        o3d_vis.add_global_pc_frame(pc_frame)
+        o3d_vis.add_global_pc_frame(pc_frame, color=[1, 0, 0])
+        if aux_pc_frame is not None:
+            o3d_vis.add_global_pc_frame(aux_pc_frame, color=[0, 0, 1])
         o3d_vis.add_global_flow(pc_frame, flow_frame)
         for name, rgb_frame in rgb_frames.items():
             print(f"Adding RGB frame {frame_idx} {name}")
@@ -40,13 +43,14 @@ def visualize_lidar_3d(frame_list: list[TimeSyncedSceneFlowFrame], downscale_rgb
 if __name__ == "__main__":
     # Take arguments to specify dataset and root directory
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="NuScenesCausalSceneFlow")
-    parser.add_argument("--root_dir", type=Path, default="/efs/nuscenes_mini/")
-    parser.add_argument("--flow_dir", type=Path, default="/efs/nuscenes_mini_sceneflow_feather/")
+    parser.add_argument("--dataset", type=str, default="Argoverse2CausalSceneFlow")
+    parser.add_argument("--root_dir", type=Path, default="/efs/argoverse2/test")
+    parser.add_argument("--flow_dir", type=Path, default="/efs/argoverse2/test_sceneflow_feather")
     parser.add_argument("--with_rgb", action="store_true")
     parser.add_argument("--no_ground", action="store_true")
     parser.add_argument("--sequence_length", type=int, default=2)
     parser.add_argument("--downscale_rgb_factor", type=int, default=8)
+    parser.add_argument("--log_id", type=str, default=None)
     args = parser.parse_args()
 
     dataset = construct_dataset(
@@ -58,6 +62,8 @@ if __name__ == "__main__":
             subsequence_length=args.sequence_length,
             use_gt_flow=False,
             with_ground=not args.no_ground,
+            range_crop_type="ego",
+            log_subset=None if args.log_id is None else [args.log_id],
         ),
     )
     assert len(dataset) > 0, "Dataset is empty"
