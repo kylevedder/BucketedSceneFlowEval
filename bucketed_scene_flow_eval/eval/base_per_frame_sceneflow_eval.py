@@ -255,8 +255,8 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             counts = np.array([v.count for v in values])
             # Average of the epes weighted by the counts
 
-            weighted_split_avg_speed = np.NaN
-            weighted_average_epe = np.NaN
+            weighted_split_avg_speed = np.nan
+            weighted_average_epe = np.nan
             if counts.sum() > 0:
                 valid_counts_mask = counts > 0
 
@@ -302,8 +302,8 @@ class PerFrameSceneFlowEvaluator(Evaluator):
             for category_name in unique_category_names:
                 for speed_threshold_tuple in unique_speed_threshold_tuples:
                     key = BaseSplitKey(category_name, distance_threshold, speed_threshold_tuple)
-                    avg_epe = np.NaN
-                    avg_speed = np.NaN
+                    avg_epe = np.nan
+                    avg_speed = np.nan
                     if key in average_stats:
                         avg_epe = average_stats[key].avg_epe
                         avg_speed = average_stats[key].avg_speed
