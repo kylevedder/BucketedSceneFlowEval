@@ -7,17 +7,17 @@ from bucketed_scene_flow_eval.datasets.waymoopen import (
     WaymoOpenNonCausalSceneFlow,
 )
 
-from bucketed_scene_flow_eval.datasets.nuscenes import (
-    NuScenesCausalSceneFlow,
-    NuScenesNonCausalSceneFlow,
-)
+# from bucketed_scene_flow_eval.datasets.nuscenes import (
+#     NuScenesCausalSceneFlow,
+#     NuScenesNonCausalSceneFlow,
+# )
 from bucketed_scene_flow_eval.interfaces import AbstractDataset
 
 importable_classes = [
     Argoverse2CausalSceneFlow,
     Argoverse2NonCausalSceneFlow,
-    NuScenesCausalSceneFlow,
-    NuScenesNonCausalSceneFlow,
+    # NuScenesCausalSceneFlow,
+    # NuScenesNonCausalSceneFlow,
     WaymoOpenCausalSceneFlow,
     WaymoOpenNonCausalSceneFlow,
 ]
