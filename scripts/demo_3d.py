@@ -12,7 +12,9 @@ from bucketed_scene_flow_eval.datastructures import (
 )
 
 
-def visualize_lidar_3d(frame_list: list[TimeSyncedSceneFlowFrame], downscale_rgb_factor: int):
+def visualize_lidar_3d(
+    frame_list: list[TimeSyncedSceneFlowFrame], downscale_rgb_factor: int, with_aux: bool
+):
     o3d_vis = O3DVisualizer(point_size=2)
 
     print("Visualizing", len(frame_list), "frames")
@@ -27,7 +29,7 @@ def visualize_lidar_3d(frame_list: list[TimeSyncedSceneFlowFrame], downscale_rgb
         # flow_frame.full_flow = np.ones_like(flow_frame.full_flow) * 0.1
 
         o3d_vis.add_global_pc_frame(pc_frame, color=[1, 0, 0])
-        if aux_pc_frame is not None:
+        if aux_pc_frame is not None and with_aux:
             o3d_vis.add_global_pc_frame(aux_pc_frame, color=[0, 0, 1])
         o3d_vis.add_global_flow(pc_frame, flow_frame)
         for name, rgb_frame in rgb_frames.items():
@@ -47,6 +49,7 @@ if __name__ == "__main__":
     parser.add_argument("--root_dir", type=Path, default="/efs/argoverse2/test")
     parser.add_argument("--flow_dir", type=Path, default="/efs/argoverse2/test_sceneflow_feather")
     parser.add_argument("--with_rgb", action="store_true")
+    parser.add_argument("--with_aux", action="store_true")
     parser.add_argument("--no_ground", action="store_true")
     parser.add_argument("--sequence_length", type=int, default=2)
     parser.add_argument("--downscale_rgb_factor", type=int, default=8)
@@ -73,4 +76,4 @@ if __name__ == "__main__":
 
     print("Loading sequence idx", vis_index)
     frame_list = dataset[vis_index]
-    visualize_lidar_3d(frame_list, args.downscale_rgb_factor)
+    visualize_lidar_3d(frame_list, args.downscale_rgb_factor, args.with_aux)
