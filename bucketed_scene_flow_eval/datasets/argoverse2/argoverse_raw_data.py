@@ -190,6 +190,7 @@ class ArgoverseRawSequence(AbstractSequence):
         dataset_dir: Path,
         verbose: bool = False,
         with_rgb: bool = False,
+        with_auxillary_pc: bool = False,
         point_cloud_range: Optional[PointCloudRange] = DEFAULT_POINT_CLOUD_RANGE,
         range_crop_type: RangeCropType | str = RangeCropType.GLOBAL,
         sample_every: Optional[int] = None,
@@ -227,6 +228,7 @@ class ArgoverseRawSequence(AbstractSequence):
         ) = self._load_lidar_info()
 
         self.with_rgb = with_rgb
+        self.with_auxillary_pc = with_auxillary_pc
 
         self.camera_names = camera_names
         if not with_rgb:
@@ -300,6 +302,8 @@ class ArgoverseRawSequence(AbstractSequence):
         return image_frame_paths, rgb_timestamp_to_rgb_file_map
 
     def _load_auxillary_pc_info(self) -> list[Path] | None:
+        if not self.with_auxillary_pc:
+            return None
         camera_pc_directory = self.dataset_dir / "sensors" / "camera_pc"
         if not camera_pc_directory.is_dir():
             return None
@@ -576,6 +580,7 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
         self,
         sequence_dir: Path,
         with_rgb: bool = False,
+        with_auxillary_pc: bool = False,
         log_subset: Optional[list[str]] = None,
         verbose: bool = False,
         num_sequences: Optional[int] = None,
@@ -587,6 +592,7 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
         self.dataset_dir = Path(sequence_dir)
         self.verbose = verbose
         self.with_rgb = with_rgb
+        self.with_auxillary_pc = with_auxillary_pc
         self.per_sequence_sample_every = per_sequence_sample_every
         self.expected_camera_shape = expected_camera_shape
         self.point_cloud_range = point_cloud_range
@@ -621,6 +627,7 @@ class ArgoverseRawSequenceLoader(CachedSequenceLoader):
             verbose=self.verbose,
             sample_every=self.per_sequence_sample_every,
             with_rgb=self.with_rgb,
+            with_auxillary_pc=self.with_auxillary_pc,
             expected_camera_shape=self.expected_camera_shape,
             point_cloud_range=self.point_cloud_range,
         )

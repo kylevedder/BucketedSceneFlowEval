@@ -70,6 +70,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
         dataset_dir: Path,
         flow_dir: Path,
         with_rgb: bool = False,
+        with_auxillary_pc: bool = False,
         with_classes: bool = False,
         **kwargs,
     ):
@@ -77,6 +78,7 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
             log_id,
             dataset_dir,
             with_rgb=with_rgb,
+            with_auxillary_pc=with_auxillary_pc,
             **kwargs,
         )
         self.with_classes = with_classes
