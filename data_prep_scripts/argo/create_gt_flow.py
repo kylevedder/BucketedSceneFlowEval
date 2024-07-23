@@ -66,9 +66,15 @@ def get_ids_and_cuboids_at_lidar_timestamps(
     # NOTE: This file contains annotations for the ENTIRE sequence.
     # The sweep annotations are selected below.
     cuboid_list = CuboidList.from_feather(annotations_feather_path)
+    for cuboid in cuboid_list.cuboids:
+        # Convert timestamp_ns from string to int if necessary
+        if isinstance(cuboid.timestamp_ns, str):
+            cuboid.timestamp_ns = int(cuboid.timestamp_ns)
 
     raw_data = read_feather(annotations_feather_path)
     ids = raw_data.track_uuid.to_numpy()
+
+    cuboid_timestamps = [cuboid.timestamp_ns for cuboid in cuboid_list.cuboids]
 
     cuboids_and_ids_list = []
     for timestamp_ns in lidar_timestamps_ns:
@@ -236,13 +242,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--argo_dir",
-        type=str,
+        type=Path,
         required=True,
         help="The top level directory contating the input dataset",
     )
     parser.add_argument(
         "--output_dir",
-        type=str,
+        type=Path,
         required=True,
         help="The location to output the sceneflow files to",
     )
