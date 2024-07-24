@@ -1,3 +1,5 @@
+import datetime
+from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
@@ -209,3 +211,23 @@ class O3DVisualizer:
         self.render(vis)
 
         vis.run()
+
+
+class O3DCallbackVisualizer(O3DVisualizer):
+    def __init__(self, screenshot_path: Path = Path() / "screenshots", *args, **kwargs):
+        self.screenshot_path = screenshot_path
+        super().__init__(*args, **kwargs)
+
+    def _get_screenshot_path(self) -> Path:
+        return self.screenshot_path / f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png"
+
+    def save_screenshot(self, vis: o3d.visualization.VisualizerWithKeyCallback):
+        save_name = self._get_screenshot_path()
+        save_name.parent.mkdir(exist_ok=True, parents=True)
+        vis.capture_screen_image(str(save_name))
+
+    def _register_callbacks(self, vis: o3d.visualization.VisualizerWithKeyCallback):
+        vis.register_key_callback(ord("S"), self.save_screenshot)
+
+    def run(self, vis=o3d.visualization.VisualizerWithKeyCallback()):
+        return super().run(vis)

@@ -66,6 +66,7 @@ if __name__ == "__main__":
             use_gt_flow=False,
             with_ground=not args.no_ground,
             range_crop_type="ego",
+            point_cloud_range=[-35, -35, -2.5, 35, 35, 2.5],
             log_subset=None if args.log_id is None else [args.log_id],
         ),
     )
