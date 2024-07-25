@@ -247,6 +247,16 @@ class RGBFrameLookup:
         return len(self.lookup)
 
 
+@dataclass
+class BoundingBox:
+    pose: SE3
+    length: float
+    width: float
+    height: float
+    track_uuid: str
+    category: str
+
+
 @dataclass(kw_only=True)
 class TimeSyncedBaseAuxilaryData:
     pass
@@ -285,3 +295,14 @@ class TimeSyncedSceneFlowFrame(TimeSyncedRawFrame):
         assert len(self.flow.full_flow) == len(
             self.pc.full_pc
         ), f"flow and pc must have the same length, got {len(self.flow.full_flow)} and {len(self.pc.full_pc)}"
+
+
+@dataclass(kw_only=True)
+class TimeSyncedSceneFlowBoxFrame(TimeSyncedSceneFlowFrame):
+    boxes: list[BoundingBox]
+
+    def __post_init__(self):
+        assert isinstance(self.boxes, list), f"boxes must be a list, got {type(self.boxes)}"
+        assert all(
+            isinstance(box, BoundingBox) for box in self.boxes
+        ), f"all boxes must be BoundingBox objects, got {self.boxes}"

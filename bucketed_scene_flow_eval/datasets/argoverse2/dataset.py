@@ -14,6 +14,7 @@ from bucketed_scene_flow_eval.interfaces import (
     NonCausalSeqLoaderDataset,
 )
 
+from .argoverse_box_annotations import ArgoverseBoxAnnotationSequenceLoader
 from .argoverse_raw_data import DEFAULT_POINT_CLOUD_RANGE, PointCloudRange
 from .argoverse_scene_flow import (
     CATEGORY_MAP,
@@ -113,10 +114,16 @@ class Argoverse2NonCausalSceneFlow(NonCausalSeqLoaderDataset):
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
         use_cache=True,
+        load_boxes: bool = False,
         load_flow: bool = True,
         **kwargs,
     ) -> None:
-        if load_flow:
+        if load_boxes:
+            self.sequence_loader = ArgoverseBoxAnnotationSequenceLoader(
+                raw_data_path=root_dir,
+                **kwargs,
+            )
+        elif load_flow:
             self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
                 raw_data_path=root_dir,
                 use_gt_flow=use_gt_flow,

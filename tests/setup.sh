@@ -51,9 +51,9 @@ wget -q https://github.com/kylevedder/BucketedSceneFlowEval/files/13924555/waymo
 unzip -q /tmp/waymo_open_processed_flow_tiny.zip -d /tmp/
 
 
-# Prepare /tmp/nuscenes v1.0-mini
-rm -rf /tmp/nuscenes
-mkdir -p /tmp/nuscenes
-echo "Downloading nuscenes v1.0-mini"
-wget -q https://www.nuscenes.org/data/v1.0-mini.tgz -O /tmp/nuscenes/nuscenes_v1.0-mini.tgz
-tar -xzf /tmp/nuscenes/nuscenes_v1.0-mini.tgz -C /tmp/nuscenes
+# # Prepare /tmp/nuscenes v1.0-mini
+# rm -rf /tmp/nuscenes
+# mkdir -p /tmp/nuscenes
+# echo "Downloading nuscenes v1.0-mini"
+# wget -q https://www.nuscenes.org/data/v1.0-mini.tgz -O /tmp/nuscenes/nuscenes_v1.0-mini.tgz
+# tar -xzf /tmp/nuscenes/nuscenes_v1.0-mini.tgz -C /tmp/nuscenes

@@ -359,7 +359,7 @@ class ArgoverseNoFlowSequence(ArgoverseSceneFlowSequence):
         raise NotImplementedError("No flow data available for ArgoverseNoFlowSequence")
 
     def load(
-        self, idx: int, relative_to_idx: int, with_flow: bool = True
+        self, idx: int, relative_to_idx: int, with_flow: bool = False
     ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         return super().load(idx, relative_to_idx, with_flow=False)
 
