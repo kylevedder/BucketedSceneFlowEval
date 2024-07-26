@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import open3d as o3d
-
+import open3d.visualization.gui as gui
 # Import scipy rotation
 from scipy.spatial.transform import Rotation as R
 
@@ -121,6 +121,7 @@ class ViewStateManager:
         self.clickable_geometries: dict[str, BoxGeometryWithPose] = {}
         self.selection_axes: o3d.geometry.TriangleMesh | None = None
         self.selected_mesh_id: str | None = None
+        self.fine_grain = 1.0
 
     def add_clickable_geometry(self, id: str, box_geometry: BoxGeometryWithPose):
         self.clickable_geometries[id] = box_geometry
@@ -150,65 +151,74 @@ class ViewStateManager:
         vis.update_geometry(selected_mesh.wireframe_o3d())
         vis.update_geometry(self.selection_axes)
 
+    def shift_actions(self, vis, action, mods):
+        # PRESS:1 RELEASE:0, , fine_grain, TODO
+        actions = ["up", "down"]
+        action = actions[action]
+        if action == "down":
+            self.fine_grain = 0.2
+        elif action == "up":
+            self.fine_grain = 1.0
+
     def forward_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, forward=0.1)
+        self._update_selection(vis, forward=0.1*self.fine_grain)
 
     def backward_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, forward=-0.1)
+        self._update_selection(vis, forward=-0.1*self.fine_grain)
 
     def left_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, left=0.1)
+        self._update_selection(vis, left=0.1*self.fine_grain)
 
     def right_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, left=-0.1)
+        self._update_selection(vis, left=-0.1*self.fine_grain)
 
     def up_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, up=0.1)
+        self._update_selection(vis, up=0.1*self.fine_grain)
 
     def down_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, up=-0.1)
+        self._update_selection(vis, up=-0.1*self.fine_grain)
 
     def yaw_clockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, yaw=0.1)
+        self._update_selection(vis, yaw=0.1*self.fine_grain)
 
     def yaw_counterclockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, yaw=-0.1)
+        self._update_selection(vis, yaw=-0.1*self.fine_grain)
 
     def pitch_up_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, pitch=0.1)
+        self._update_selection(vis, pitch=0.1*self.fine_grain)
 
     def pitch_down_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, pitch=-0.1)
+        self._update_selection(vis, pitch=-0.1*self.fine_grain)
 
     def roll_clockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, roll=0.1)
+        self._update_selection(vis, roll=0.1*self.fine_grain)
 
     def roll_counterclockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, roll=-0.1)
+        self._update_selection(vis, roll=-0.1*self.fine_grain)
 
     def on_mouse_move(self, vis, x, y):
         if self.prior_mouse_position is not None:
@@ -347,6 +357,9 @@ def custom_mouse_action(pcd):
 
     state_manager = ViewStateManager()
 
+    # TODO: Box Loader
+    # load_box()
+
     box1 = BoxGeometryWithPose(
         SE3.from_rot_x_y_z_translation_x_y_z(0, 0, 0, 3, 2, 1),
         box_size=BoxSize(1.5, 3.0, 1.0),
@@ -363,7 +376,7 @@ def custom_mouse_action(pcd):
     vis.register_mouse_scroll_callback(state_manager.on_mouse_scroll)
     vis.register_mouse_button_callback(state_manager.on_mouse_button)
 
-    # fmt: off
+    # fmt: off   
     vis.register_key_callback(ord("W"), state_manager.forward_press)
     vis.register_key_callback(ord("S"), state_manager.backward_press)
     vis.register_key_callback(ord("A"), state_manager.left_press)
@@ -377,6 +390,8 @@ def custom_mouse_action(pcd):
     vis.register_key_callback(GLFW_KEY_DOWN, state_manager.pitch_down_press)
     vis.register_key_callback(GLFW_KEY_RIGHT, state_manager.roll_clockwise_press)
     vis.register_key_callback(GLFW_KEY_LEFT, state_manager.roll_counterclockwise_press)
+    # Use Shift to fine tune
+    vis.register_key_action_callback(GLFW_KEY_LEFT_SHIFT , state_manager.shift_actions)
     # fmt: on
 
     vis.create_window()
@@ -393,6 +408,26 @@ def custom_mouse_action(pcd):
 
 
 if __name__ == "__main__":
+    # TODO
+    # (input_path, output_path, scene_names) = parse_options()
+    # print(f"Output path: {output_path}")
+
+    # # Verify input path exists
+    # if not os.path.exists(input_path):
+    #     sys.exit("Invalid input path. Please check paths entered and try again.")
+    # input_path += ("" if input_path[-1] == "/" else "/")
+    # output_path += ("" if output_path[-1] == "/" else "/")
+    # # Verify scenes exists
+    # if len(scene_names) == 0:
+    #     print("Converting All Scenes...")
+    #     for scene in os.scandir(input_path):
+    #         if scene.is_dir():
+    #             scene_names.append(scene.name)
+    #     print(scene_names)
+    # for scene_name in scene_names:
+    #     convert_dataset(input_path+scene_name+"/", output_path+scene_name+"/")
+
+        
     ply_data = o3d.data.PLYPointCloud()
     pcd = o3d.io.read_point_cloud(ply_data.path)
 
