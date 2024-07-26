@@ -70,11 +70,17 @@ class Argoverse2CausalSceneFlow(CausalSeqLoaderDataset):
         flow_data_path: Optional[Union[Path, list[Path]]] = None,
         eval_type: str = "bucketed_epe",
         eval_args=dict(),
+        load_boxes: bool = False,
         load_flow: bool = True,
         use_cache=True,
         **kwargs,
     ) -> None:
-        if load_flow:
+        if load_boxes:
+            self.sequence_loader = ArgoverseBoxAnnotationSequenceLoader(
+                root_dir,
+                **kwargs,
+            )
+        elif load_flow:
             self.sequence_loader = ArgoverseSceneFlowSequenceLoader(
                 root_dir,
                 use_gt_flow=use_gt_flow,

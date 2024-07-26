@@ -264,6 +264,7 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
             self.sequence_id_lst = [
                 sequence_id for sequence_id in self.sequence_id_lst if sequence_id in log_subset
             ]
+            assert len(self.sequence_id_lst) > 0, f"No sequences found in log_subset {log_subset}"
 
     def _sanitize_raw_data_path(self, raw_data_path: Union[Path, list[Path]]) -> list[Path]:
         if isinstance(raw_data_path, str):
