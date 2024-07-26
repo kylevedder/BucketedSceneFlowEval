@@ -8,6 +8,7 @@ from bucketed_scene_flow_eval.datasets import (
     Argoverse2NonCausalSceneFlow,
 )
 from bucketed_scene_flow_eval.datasets.argoverse2 import (
+    ArgoverseBoxAnnotationSequenceLoader,
     ArgoverseSceneFlowSequenceLoader,
 )
 from bucketed_scene_flow_eval.datastructures import (
