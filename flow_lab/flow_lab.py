@@ -132,7 +132,7 @@ class ViewStateManager:
         self.frames = frames
         self.cropping_range = cropping_range
         self.rolling_window_size = rolling_window_size
-        self.trajectory_geometries = []  # Track geometries for the selected mesh trajectory
+        self.trajectory_geometries = []
 
     def add_clickable_geometry(self, id: str, box_geometry: BoxGeometryWithPose):
         self.clickable_geometries[id] = box_geometry
@@ -436,7 +436,6 @@ class ViewStateManager:
 
         # Render bounding boxes for the current frame only
         frame: TimeSyncedSceneFlowBoxFrame = self.frames[current_frame_index]
-        # ego_translation = frame.pc.global_pose.translation
         for idx, (box, pose_info) in enumerate(frame.boxes.valid_boxes()):
             global_box = box.transform(pose_info.sensor_to_global)
             self.add_clickable_geometry(f"box{idx:06d}", BoxGeometryWithPose(global_box))
