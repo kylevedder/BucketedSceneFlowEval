@@ -249,22 +249,11 @@ class RGBFrameLookup:
 
 @dataclass
 class BoundingBox:
-    pose: SE3
     length: float
     width: float
     height: float
     track_uuid: str
     category: str
-
-    def transform(self, pose: SE3) -> "BoundingBox":
-        return BoundingBox(
-            pose=pose @ self.pose,
-            length=self.length,
-            width=self.width,
-            height=self.height,
-            track_uuid=self.track_uuid,
-            category=self.category,
-        )
 
 
 @dataclass
@@ -297,6 +286,9 @@ class BoundingBoxFrame:
             for box, pose, mask in zip(self.full_boxes, self.full_poses, self.mask)
             if mask
         ]
+
+    def __len__(self) -> int:
+        return len(self.full_boxes)
 
 
 @dataclass(kw_only=True)

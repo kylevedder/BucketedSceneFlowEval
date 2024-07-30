@@ -8,6 +8,7 @@ from bucketed_scene_flow_eval.datasets import construct_dataset
 from bucketed_scene_flow_eval.datastructures import (
     SE3,
     BoundingBox,
+    PoseInfo,
     TimeSyncedSceneFlowBoxFrame,
 )
 from bucketed_scene_flow_eval.interfaces import AbstractSequence
@@ -22,9 +23,10 @@ def _update_o3d_mesh_pose(mesh: o3d.geometry.TriangleMesh, start_pose: SE3, targ
     mesh.rotate(global_rotation, center=target_pose.translation)
 
 
-class BoxGeometryWithPose:
-    def __init__(self, base_box: BoundingBox, color=[0.1, 0.1, 0.1]):
+class RenderableBox:
+    def __init__(self, base_box: BoundingBox, pose: PoseInfo, color=[0.1, 0.1, 0.1]):
         self.base_box = base_box
+        self.pose = pose
         self.color = color
 
         # O3D doesn't support rendering boxers as wireframes directly, so we create a box and its associated rendered lineset.
@@ -32,7 +34,7 @@ class BoxGeometryWithPose:
             width=base_box.length, height=base_box.height, depth=base_box.width
         )
         self.o3d_wireframe = o3d.geometry.LineSet.create_from_triangle_mesh(self.o3d_triangle_mesh)
-        self.imit_pose_of_o3d_geomerty(base_box.pose)
+        self.imit_pose_of_o3d_geomerty(self.pose.sensor_to_global)
         self.set_color(self.color)
 
     def set_color(self, color):
@@ -56,7 +58,7 @@ class BoxGeometryWithPose:
         _update_o3d_mesh_pose(self.o3d_wireframe, SE3.identity(), o3d_target_pose)
         _update_o3d_mesh_pose(self.o3d_triangle_mesh, SE3.identity(), o3d_target_pose)
 
-    def compute_global_pose(
+    def compute_new_global_pose_from_inputs(
         self,
         forward: float = 0,
         left: float = 0,
@@ -69,22 +71,20 @@ class BoxGeometryWithPose:
             roll, pitch, yaw, forward, left, up
         )
 
-        return self.base_box.pose.compose(local_frame_offset_se3)
+        return self.pose.sensor_to_global.compose(local_frame_offset_se3)
 
-    def update_from_global(self, global_se3: SE3):
-        _update_o3d_mesh_pose(self.o3d_wireframe, self.base_box.pose, global_se3)
-        _update_o3d_mesh_pose(self.o3d_triangle_mesh, self.base_box.pose, global_se3)
-        self.base_box.pose = global_se3
+    def update_from_global(self, global_target_se3: SE3):
+        _update_o3d_mesh_pose(self.o3d_wireframe, self.pose.sensor_to_global, global_target_se3)
+        _update_o3d_mesh_pose(self.o3d_triangle_mesh, self.pose.sensor_to_global, global_target_se3)
+        # We only edit sensor to ego; ego to global stays fixed for the box
+        # because the ego vehicle position never changes.
+        self.pose.sensor_to_ego = self.pose.ego_to_global.inverse().compose(global_target_se3)
 
     def triangle_mesh_o3d(self) -> o3d.geometry.TriangleMesh:
         return self.o3d_triangle_mesh
 
     def wireframe_o3d(self) -> o3d.geometry.LineSet:
         return self.o3d_wireframe
-
-    @property
-    def pose(self) -> SE3:
-        return self.base_box.pose
 
 
 def ray_triangle_intersect(ray_origin, ray_direction, v0, v1, v2) -> tuple[bool, np.ndarray | None]:
@@ -124,7 +124,7 @@ class ViewStateManager:
         self.is_translating = False
         self.pixel_to_rotate_scale_factor = 1
         self.pixel_to_translate_scale_factor = 1
-        self.clickable_geometries: dict[str, BoxGeometryWithPose] = {}
+        self.clickable_geometries: dict[str, RenderableBox] = {}
         self.selection_axes: o3d.geometry.TriangleMesh | None = None
         self.selected_mesh_id: str | None = None
         self.current_frame_index = 0
@@ -134,7 +134,7 @@ class ViewStateManager:
         self.rolling_window_size = rolling_window_size
         self.trajectory_geometries = []
 
-    def add_clickable_geometry(self, id: str, box_geometry: BoxGeometryWithPose):
+    def add_clickable_geometry(self, id: str, box_geometry: RenderableBox):
         self.clickable_geometries[id] = box_geometry
 
     def _update_selection(
@@ -150,13 +150,15 @@ class ViewStateManager:
         assert self.selected_mesh_id is not None
         assert self.selection_axes is not None
         selected_mesh = self.clickable_geometries[self.selected_mesh_id]
-        global_target_se3 = selected_mesh.compute_global_pose(
+        global_target_se3 = selected_mesh.compute_new_global_pose_from_inputs(
             forward=forward, left=left, up=up, pitch=pitch, yaw=yaw, roll=roll
         )
         # for g in global_target_se3.to_o3d():
         #     vis.add_geometry(g, reset_bounding_box=False)
 
-        _update_o3d_mesh_pose(self.selection_axes, selected_mesh.pose, global_target_se3)
+        _update_o3d_mesh_pose(
+            self.selection_axes, selected_mesh.pose.sensor_to_global, global_target_se3
+        )
         selected_mesh.update_from_global(global_target_se3)
 
         vis.update_geometry(selected_mesh.wireframe_o3d())
@@ -293,8 +295,8 @@ class ViewStateManager:
         # o3d.geometry.TriangleMesh.create_sphere(radius=1)
 
         selected_box_with_pose = self.clickable_geometries[mesh_id]
-        center = selected_box_with_pose.pose.translation
-        rotation_matrix = selected_box_with_pose.pose.rotation_matrix
+        center = selected_box_with_pose.pose.sensor_to_global.translation
+        rotation_matrix = selected_box_with_pose.pose.sensor_to_global.rotation_matrix
         # Use the oriented bounding box center as the origin of the axes
         self.selection_axes.translate(center, relative=False)
         # Use the oriented bounding box rotation as the rotation of the axes
@@ -409,10 +411,10 @@ class ViewStateManager:
                     continue
 
                 # Green color for other frames
-                frame = self.frames[i]
-                for box in frame.boxes:
+                frame: TimeSyncedSceneFlowBoxFrame = self.frames[i]
+                for box, pose_info in frame.boxes.valid_boxes():
                     if box.track_uuid == selected_box_uuid:
-                        box_geom = BoxGeometryWithPose(box, color=[0, 0.5, 0])
+                        box_geom = RenderableBox(box, pose_info, color=[0, 0.5, 0])
                         wireframe = box_geom.wireframe_o3d()
                         vis.add_geometry(wireframe, reset_bounding_box=False)
                         self.trajectory_geometries.append(wireframe)
@@ -437,12 +439,15 @@ class ViewStateManager:
         # Render bounding boxes for the current frame only
         frame: TimeSyncedSceneFlowBoxFrame = self.frames[current_frame_index]
         for idx, (box, pose_info) in enumerate(frame.boxes.valid_boxes()):
-            global_box = box.transform(pose_info.sensor_to_global)
-            self.add_clickable_geometry(f"box{idx:06d}", BoxGeometryWithPose(global_box))
+            self.add_clickable_geometry(f"box{idx:06d}", RenderableBox(box, pose_info))
             vis.add_geometry(
                 self.clickable_geometries[f"box{idx:06d}"].wireframe_o3d(),
                 reset_bounding_box=reset_bounding_box,
             )
+
+        # Add axes at the origin
+        axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=5)
+        vis.add_geometry(axes, reset_bounding_box=reset_bounding_box)
 
 
 def load_box_frames() -> list[TimeSyncedSceneFlowBoxFrame]:
