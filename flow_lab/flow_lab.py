@@ -430,12 +430,12 @@ class ViewStateManager:
         # Loop over the frames and display pointclouds
         for i in range(start_index, end_index):
             frame = self.frames[i]
-            ego_translation = frame.pc.global_pose.translation
             pc_color = [1, 0, 0] if i == current_frame_index else [0.75, 0.75, 0.75]
             vis.add_geometry(frame.pc.ego_pc.to_o3d().paint_uniform_color(pc_color))
 
         # Render bounding boxes for the current frame only
         frame = self.frames[current_frame_index]
+        ego_translation = frame.pc.global_pose.translation
         for idx, box in enumerate(frame.boxes):
             box_translation = box.pose.transform_matrix[:3, 3]
             if np.linalg.norm(ego_translation - box_translation) < self.cropping_range:
