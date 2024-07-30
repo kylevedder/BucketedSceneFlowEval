@@ -438,7 +438,7 @@ class ViewStateManager:
         frame: TimeSyncedSceneFlowBoxFrame = self.frames[current_frame_index]
         # ego_translation = frame.pc.global_pose.translation
         for idx, (box, pose_info) in enumerate(frame.boxes.valid_boxes()):
-            global_box = box.transform(pose_info.ego_to_global)
+            global_box = box.transform(pose_info.sensor_to_global)
             self.add_clickable_geometry(f"box{idx:06d}", BoxGeometryWithPose(global_box))
             vis.add_geometry(
                 self.clickable_geometries[f"box{idx:06d}"].wireframe_o3d(),
