@@ -226,13 +226,11 @@ class ViewStateManager:
         self.current_frame_index = self.current_frame_index + 1
         self.current_frame_index = min(len(self.frames) - 1, self.current_frame_index)
         self.render_pc_and_boxes(vis)
-        print(f"At frame: {self.current_frame_index}")
 
     def backward_frame_press(self, vis):
         self.current_frame_index = self.current_frame_index - 1
         self.current_frame_index = max(0, self.current_frame_index)
         self.render_pc_and_boxes(vis)
-        print(f"You are at frame: {self.current_frame_index}")
 
     def shift_actions(self, vis, action, mods):
         actions = ["up", "down"]
@@ -419,7 +417,7 @@ class ViewStateManager:
                         vis.add_geometry(wireframe, reset_bounding_box=False)
                         self.trajectory_geometries.append(wireframe)
 
-    def render_pc_and_boxes(self, vis):
+    def render_pc_and_boxes(self, vis, reset_bounding_box: bool = False):
         """
         Renders the point clouds and bounding boxes for the given frames
         """
@@ -431,22 +429,21 @@ class ViewStateManager:
         for i in range(start_index, end_index):
             frame = self.frames[i]
             pc_color = [1, 0, 0] if i == current_frame_index else [0.75, 0.75, 0.75]
-            vis.add_geometry(frame.pc.ego_pc.to_o3d().paint_uniform_color(pc_color))
+            vis.add_geometry(
+                frame.pc.global_pc.to_o3d().paint_uniform_color(pc_color),
+                reset_bounding_box=reset_bounding_box,
+            )
 
         # Render bounding boxes for the current frame only
-        frame = self.frames[current_frame_index]
-        ego_translation = frame.pc.global_pose.translation
-        for idx, box in enumerate(frame.boxes):
-            box_translation = box.pose.transform_matrix[:3, 3]
-            if np.linalg.norm(ego_translation - box_translation) < self.cropping_range:
-                self.add_clickable_geometry(f"box{idx:06d}", BoxGeometryWithPose(box))
-                vis.add_geometry(
-                    self.clickable_geometries[f"box{idx:06d}"].wireframe_o3d(),
-                    # reset_bounding_box=False,
-                )
-
-        # Add a coordinate frame at the origin
-        vis.add_geometry(o3d.geometry.TriangleMesh.create_coordinate_frame(size=5))
+        frame: TimeSyncedSceneFlowBoxFrame = self.frames[current_frame_index]
+        # ego_translation = frame.pc.global_pose.translation
+        for idx, (box, pose_info) in enumerate(frame.boxes.valid_boxes()):
+            global_box = box.transform(pose_info.ego_to_global)
+            self.add_clickable_geometry(f"box{idx:06d}", BoxGeometryWithPose(global_box))
+            vis.add_geometry(
+                self.clickable_geometries[f"box{idx:06d}"].wireframe_o3d(),
+                reset_bounding_box=reset_bounding_box,
+            )
 
 
 def load_box_frames() -> list[TimeSyncedSceneFlowBoxFrame]:
@@ -515,7 +512,7 @@ def main(cropping_range=10000.0, rolling_window_size=5):
     # fmt: on
 
     vis.create_window()
-    state_manager.render_pc_and_boxes(vis)
+    state_manager.render_pc_and_boxes(vis, reset_bounding_box=True)
 
     render_option = vis.get_render_option()
     # render_option.mesh_show_wireframe = True

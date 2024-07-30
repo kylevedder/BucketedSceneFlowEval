@@ -443,9 +443,12 @@ class ArgoverseRawSequence(AbstractSequence):
         ) | (np.array(global_point_cloud[:, 2] - ground_height_values) < 0)
         return is_ground_boolean_arr
 
-    def is_in_range(self, point_cloud: PointCloud) -> MaskArray:
+    def is_in_range(self, point_cloud: PointCloud | np.ndarray) -> MaskArray:
         if self.point_cloud_range is None:
             return np.ones(len(point_cloud), dtype=bool)
+        if isinstance(point_cloud, np.ndarray):
+            assert point_cloud.shape[1] == 3, f"expected shape (k,3), got {point_cloud.shape}"
+            point_cloud = PointCloud(point_cloud)
         xmin = self.point_cloud_range[0]
         ymin = self.point_cloud_range[1]
         zmin = self.point_cloud_range[2]

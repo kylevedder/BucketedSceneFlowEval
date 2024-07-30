@@ -256,6 +256,48 @@ class BoundingBox:
     track_uuid: str
     category: str
 
+    def transform(self, pose: SE3) -> "BoundingBox":
+        return BoundingBox(
+            pose=pose @ self.pose,
+            length=self.length,
+            width=self.width,
+            height=self.height,
+            track_uuid=self.track_uuid,
+            category=self.category,
+        )
+
+
+@dataclass
+class BoundingBoxFrame:
+    full_boxes: list[BoundingBox]
+    full_poses: list[PoseInfo]
+    mask: MaskArray
+
+    def __post_init__(self):
+        assert isinstance(
+            self.full_boxes, list
+        ), f"boxes must be a list, got {type(self.full_boxes)}"
+        assert all(
+            isinstance(box, BoundingBox) for box in self.full_boxes
+        ), f"all boxes must be BoundingBox objects, got {self.full_boxes}"
+        assert isinstance(
+            self.full_poses, list
+        ), f"poses must be a list, got {type(self.full_poses)}"
+        assert all(
+            isinstance(pose, PoseInfo) for pose in self.full_poses
+        ), f"all poses must be PoseInfo objects, got {self.full_poses}"
+
+        assert len(self.full_boxes) == len(
+            self.full_poses
+        ), f"boxes and poses must have the same length, got {len(self.full_boxes)} and {len(self.full_poses)}"
+
+    def valid_boxes(self) -> list[tuple[BoundingBox, PoseInfo]]:
+        return [
+            (box, pose)
+            for box, pose, mask in zip(self.full_boxes, self.full_poses, self.mask)
+            if mask
+        ]
+
 
 @dataclass(kw_only=True)
 class TimeSyncedBaseAuxilaryData:
@@ -299,10 +341,9 @@ class TimeSyncedSceneFlowFrame(TimeSyncedRawFrame):
 
 @dataclass(kw_only=True)
 class TimeSyncedSceneFlowBoxFrame(TimeSyncedSceneFlowFrame):
-    boxes: list[BoundingBox]
+    boxes: BoundingBoxFrame
 
     def __post_init__(self):
-        assert isinstance(self.boxes, list), f"boxes must be a list, got {type(self.boxes)}"
-        assert all(
-            isinstance(box, BoundingBox) for box in self.boxes
-        ), f"all boxes must be BoundingBox objects, got {self.boxes}"
+        assert isinstance(
+            self.boxes, BoundingBoxFrame
+        ), f"boxes must be a BoundingBoxFrame, got {type(self.boxes)}"

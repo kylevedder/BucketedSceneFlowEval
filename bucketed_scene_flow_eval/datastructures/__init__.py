@@ -1,6 +1,7 @@
 from .camera_projection import CameraModel, CameraProjection
 from .dataclasses import (
     BoundingBox,
+    BoundingBoxFrame,
     EgoLidarFlow,
     MaskArray,
     PointCloudFrame,

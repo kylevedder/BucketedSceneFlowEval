@@ -1,9 +1,13 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+
 from bucketed_scene_flow_eval.datastructures import (
     SE3,
     BoundingBox,
+    BoundingBoxFrame,
+    PoseInfo,
     TimeSyncedAVLidarData,
     TimeSyncedSceneFlowBoxFrame,
     TimeSyncedSceneFlowFrame,
@@ -33,7 +37,7 @@ class ArgoverseBoxAnnotationSequence(ArgoverseNoFlowSequence):
             timestamp_ns = row["timestamp_ns"]
             if timestamp_ns not in timestamp_to_annotations:
                 timestamp_to_annotations[timestamp_ns] = []
-            pose = SE3.from_rot_w_x_y_z_translation_x_y_z(
+            saved_pose = SE3.from_rot_w_x_y_z_translation_x_y_z(
                 row["qw"],
                 row["qx"],
                 row["qy"],
@@ -44,7 +48,7 @@ class ArgoverseBoxAnnotationSequence(ArgoverseNoFlowSequence):
             )
             timestamp_to_annotations[timestamp_ns].append(
                 BoundingBox(
-                    pose=pose,
+                    pose=saved_pose,
                     length=row["length_m"],
                     width=row["width_m"],
                     height=row["height_m"],
@@ -60,7 +64,22 @@ class ArgoverseBoxAnnotationSequence(ArgoverseNoFlowSequence):
         scene_flow_frame, lidar_data = super().load(idx, relative_to_idx, with_flow)
         timestamp = self.timestamp_list[idx]
         boxes = self.timestamp_to_boxes.get(timestamp, [])
-        return TimeSyncedSceneFlowBoxFrame(**vars(scene_flow_frame), boxes=boxes), lidar_data
+        ego_to_global = scene_flow_frame.pc.pose.ego_to_global
+        pose_infos = [
+            PoseInfo(
+                sensor_to_ego=SE3.identity(),
+                ego_to_global=ego_to_global,
+            )
+            for box in boxes
+        ]
+        box_positions = np.array([box.pose.translation for box in boxes])
+        mask = self.is_in_range(box_positions)
+
+        bounding_box_frame = BoundingBoxFrame(full_boxes=boxes, full_poses=pose_infos, mask=mask)
+        return (
+            TimeSyncedSceneFlowBoxFrame(**vars(scene_flow_frame), boxes=bounding_box_frame),
+            lidar_data,
+        )
 
 
 class ArgoverseBoxAnnotationSequenceLoader(ArgoverseNoFlowSequenceLoader):
