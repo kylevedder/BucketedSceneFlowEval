@@ -22,7 +22,7 @@ class ArgoverseBoxAnnotationSequence(ArgoverseNoFlowSequence):
         super().__init__(*args, **kwargs)
         self.timestamp_to_boxes = self._prep_bbox_annotations()
 
-    def _prep_bbox_annotations(self) -> dict[int, list[BoundingBox]]:
+    def _prep_bbox_annotations(self) -> dict[int, list[tuple[BoundingBox, SE3]]]:
         annotations_file = self.dataset_dir / "annotations.feather"
         assert annotations_file.exists(), f"Annotations file {annotations_file} does not exist"
         annotation_df = load_feather(annotations_file)
@@ -32,7 +32,7 @@ class ArgoverseBoxAnnotationSequence(ArgoverseNoFlowSequence):
         #         dtype='object')
 
         # Convert to dictionary keyed by timestamp_ns int
-        timestamp_to_annotations: dict[int, list[BoundingBox]] = {}
+        timestamp_to_annotations: dict[int, list[tuple[BoundingBox, SE3]]] = {}
         for _, row in annotation_df.iterrows():
             timestamp_ns = row["timestamp_ns"]
             if timestamp_ns not in timestamp_to_annotations:
@@ -47,13 +47,15 @@ class ArgoverseBoxAnnotationSequence(ArgoverseNoFlowSequence):
                 row["tz_m"],
             )
             timestamp_to_annotations[timestamp_ns].append(
-                BoundingBox(
-                    pose=saved_pose,
-                    length=row["length_m"],
-                    width=row["width_m"],
-                    height=row["height_m"],
-                    track_uuid=row["track_uuid"],
-                    category=row["category"],
+                (
+                    BoundingBox(
+                        length=row["length_m"],
+                        width=row["width_m"],
+                        height=row["height_m"],
+                        track_uuid=row["track_uuid"],
+                        category=row["category"],
+                    ),
+                    saved_pose,
                 )
             )
         return timestamp_to_annotations
@@ -63,19 +65,24 @@ class ArgoverseBoxAnnotationSequence(ArgoverseNoFlowSequence):
     ) -> tuple[TimeSyncedSceneFlowBoxFrame, TimeSyncedAVLidarData]:
         scene_flow_frame, lidar_data = super().load(idx, relative_to_idx, with_flow)
         timestamp = self.timestamp_list[idx]
-        boxes = self.timestamp_to_boxes.get(timestamp, [])
+        boxes_sensor_to_ego = self.timestamp_to_boxes.get(timestamp, [])
         ego_to_global = scene_flow_frame.pc.pose.ego_to_global
         pose_infos = [
             PoseInfo(
-                sensor_to_ego=SE3.identity(),
+                sensor_to_ego=sensor_to_ego,
                 ego_to_global=ego_to_global,
             )
-            for box in boxes
+            for box, sensor_to_ego in boxes_sensor_to_ego
         ]
-        box_positions = np.array([box.pose.translation for box in boxes])
-        mask = self.is_in_range(box_positions)
+        box_ego_positions = np.array(
+            [pose_info.sensor_to_ego.translation for pose_info in pose_infos]
+        )
+        mask = self.is_in_range(box_ego_positions)
+        full_boxes = [box for box, _ in boxes_sensor_to_ego]
 
-        bounding_box_frame = BoundingBoxFrame(full_boxes=boxes, full_poses=pose_infos, mask=mask)
+        bounding_box_frame = BoundingBoxFrame(
+            full_boxes=full_boxes, full_poses=pose_infos, mask=mask
+        )
         return (
             TimeSyncedSceneFlowBoxFrame(**vars(scene_flow_frame), boxes=bounding_box_frame),
             lidar_data,
