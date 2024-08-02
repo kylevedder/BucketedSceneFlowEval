@@ -1,5 +1,6 @@
 from .camera_projection import CameraModel, CameraProjection
 from .dataclasses import (
+    BoundingBox,
     EgoLidarDistance,
     EgoLidarFlow,
     MaskArray,
@@ -13,6 +14,7 @@ from .dataclasses import (
     TimeSyncedAVLidarData,
     TimeSyncedBaseAuxilaryData,
     TimeSyncedRawFrame,
+    TimeSyncedSceneFlowBoxFrame,
     TimeSyncedSceneFlowFrame,
     VectorArray,
 )

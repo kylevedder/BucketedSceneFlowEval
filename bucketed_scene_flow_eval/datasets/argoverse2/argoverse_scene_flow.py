@@ -264,6 +264,7 @@ class ArgoverseSceneFlowSequenceLoader(CachedSequenceLoader):
             self.sequence_id_lst = [
                 sequence_id for sequence_id in self.sequence_id_lst if sequence_id in log_subset
             ]
+            assert len(self.sequence_id_lst) > 0, f"No sequences found in log_subset {log_subset}"
 
     def _sanitize_raw_data_path(self, raw_data_path: Union[Path, list[Path]]) -> list[Path]:
         if isinstance(raw_data_path, str):
@@ -359,7 +360,7 @@ class ArgoverseNoFlowSequence(ArgoverseSceneFlowSequence):
         raise NotImplementedError("No flow data available for ArgoverseNoFlowSequence")
 
     def load(
-        self, idx: int, relative_to_idx: int, with_flow: bool = True
+        self, idx: int, relative_to_idx: int, with_flow: bool = False
     ) -> tuple[TimeSyncedSceneFlowFrame, TimeSyncedAVLidarData]:
         return super().load(idx, relative_to_idx, with_flow=False)
 

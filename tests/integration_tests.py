@@ -95,22 +95,42 @@ def argo_dataset_test_no_flow_with_ground():
     )
 
 
+@pytest.fixture
+def argo_box_dataset():
+    return construct_dataset(
+        "argoverse2noncausalsceneflow",
+        dict(
+            root_dir="/tmp/argoverse2_small/val",
+            subsequence_length=150,
+            load_boxes=True,
+            range_crop_type="ego",
+            log_subset=["02678d04-cc9f-3148-9f95-1ba66347dff9"],
+        ),
+    )
+
+
 def _validate_dataloader(
     dataloader: AbstractDataset,
     full_pc_size: int,
     masked_pc_size: int,
     expected_len: int = 1,
+    expected_num_frames: int = 2,
 ):
     assert len(dataloader) == expected_len, f"Expected {expected_len} scene, got {len(dataloader)}"
 
+    dataloader_entries = dataloader[0]
+    assert (
+        len(dataloader_entries) == expected_num_frames
+    ), f"Expected list of length {expected_num_frames}, got {len(dataloader_entries)}"
     # Failure of the following line indicates that the __getitem__ method is broken.
-    _, _ = dataloader[0]
 
     num_iteration_entries = 0
     for entry in dataloader:
         assert isinstance(entry, list), f"Expected list, got {type(entry)}"
-        assert len(entry) == 2, f"Expected list of length 2, got {len(entry)}"
-        item_t1, _ = entry
+        assert (
+            len(entry) == expected_num_frames
+        ), f"Expected list of length {expected_num_frames}, got {len(entry)}"
+        item_t1 = entry[0]
 
         assert (
             full_pc_size == item_t1.pc.full_pc.shape[0]
@@ -126,6 +146,10 @@ def _validate_dataloader(
     assert (
         num_iteration_entries == expected_len
     ), f"Expected {expected_len} iteration, got {num_iteration_entries}"
+
+
+def test_argo_box_dataset(argo_box_dataset):
+    _validate_dataloader(argo_box_dataset, 95381, 69600, 1, 150)
 
 
 def test_waymo_dataset(waymo_dataset_gt):
