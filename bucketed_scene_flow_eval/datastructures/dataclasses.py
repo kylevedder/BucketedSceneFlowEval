@@ -95,6 +95,31 @@ class EgoLidarFlow:
 
 
 @dataclass
+class EgoLidarDistance:
+    distances: np.ndarray
+    is_colliding_mask: np.ndarray
+
+    def __post__init__(self):
+        assert self.distances.ndim == 1, f"distances must be a 1D array, got {self.distances.ndim}"
+        assert (
+            self.is_colliding_mask.ndim == 1
+        ), f"is_colliding_mask must be a 1D array, got {self.is_colliding_mask.ndim}"
+        assert (
+            self.is_colliding_mask.dtype == bool
+        ), f"is_colliding_mask must be a boolean array, got {self.is_colliding_mask.dtype}"
+        assert len(self.distances) == len(
+            self.is_colliding_mask
+        ), f"distances and is_colliding_mask must have the same length, got {len(self.distances)} and {len(self.is_colliding_mask)}"
+
+    def __repr__(self) -> str:
+        return f"EgoLidarDistance(distances={self.distances}, is_colliding_mask={self.is_colliding_mask})"
+
+    @property
+    def shape(self) -> tuple[int]:
+        return self.distances.shape
+
+
+@dataclass
 class PointCloudFrame:
     """A Point Cloud Frame.
 

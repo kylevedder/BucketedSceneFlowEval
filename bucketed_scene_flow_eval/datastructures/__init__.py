@@ -1,5 +1,6 @@
 from .camera_projection import CameraModel, CameraProjection
 from .dataclasses import (
+    EgoLidarDistance,
     EgoLidarFlow,
     MaskArray,
     PointCloudFrame,
@@ -25,6 +26,7 @@ __all__ = [
     "CameraModel",
     "CameraProjection",
     "EgoLidarFlow",
+    "EgoLidarDistance",
     "MaskArray",
     "PointCloudFrame",
     "PoseInfo",
