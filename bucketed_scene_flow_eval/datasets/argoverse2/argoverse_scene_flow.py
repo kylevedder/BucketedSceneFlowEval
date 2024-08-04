@@ -87,7 +87,10 @@ class ArgoverseSceneFlowSequence(ArgoverseRawSequence, AbstractAVLidarSequence):
 
     def _prep_flow(self, flow_dir: Path):
         # The flow data does not have a timestamp, so we need to just rely on the order of the files.
-        self.flow_data_files = sorted(flow_dir.glob("*.feather"))
+        # Only select files that have number and nothing else, e.g. 0000000069.feather, not 0000000069_occ.feather
+        self.flow_data_files = sorted(
+            file for file in flow_dir.glob("*.feather") if file.stem.isdigit()
+        )
 
         assert len(self.timestamp_list) > len(
             self.flow_data_files
