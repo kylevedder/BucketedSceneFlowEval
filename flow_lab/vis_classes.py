@@ -243,13 +243,13 @@ class ViewStateManager:
         print("roll_counterclockwise_press")
 
     def forward_frame_press(self, vis):
-        # self.annotation_saver.save(self.frames)
+        self.annotation_saver.save(self.frames)
         self.current_frame_index = self.current_frame_index + 1
         self.current_frame_index = min(len(self.frames) - 1, self.current_frame_index)
         self.render_pc_and_boxes(vis)
 
     def backward_frame_press(self, vis):
-        # self.annotation_saver.save(self.frames)
+        self.annotation_saver.save(self.frames)
         self.current_frame_index = self.current_frame_index - 1
         self.current_frame_index = max(0, self.current_frame_index)
         self.render_pc_and_boxes(vis)

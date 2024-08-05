@@ -16,7 +16,7 @@ from bucketed_scene_flow_eval.datastructures import (
 from bucketed_scene_flow_eval.utils.glfw_key_ids import *
 
 
-def setup_save_path(root_dir: Path, sequence_id: str, save_dir) -> Path:
+def setup_save_path(root_dir: Path, sequence_id: str, save_dir, preprocess) -> Path:
     """
     Sets up the path to the directory where processed data should be saved.
     """
@@ -27,12 +27,16 @@ def setup_save_path(root_dir: Path, sequence_id: str, save_dir) -> Path:
         sequence_save_dir = save_dir / sequence_id
         sequence_save_dir.mkdir(exist_ok=True)
     else:
-        # Get the parent directory of root_dir and create a new directory called root_dir_processed
-        parent_dir = root_dir.parent
-        processed_dir = parent_dir / f"{root_dir.name}_processed"
-        processed_dir.mkdir(exist_ok=True)
-        sequence_save_dir = processed_dir / sequence_id
-        sequence_save_dir.mkdir(exist_ok=True)
+        if preprocess:
+            # Get the parent directory of root_dir and create a new directory called root_dir_processed
+            parent_dir = root_dir.parent
+            processed_dir = parent_dir / f"{root_dir.name}_processed"
+            processed_dir.mkdir(exist_ok=True)
+            sequence_save_dir = processed_dir / sequence_id
+            sequence_save_dir.mkdir(exist_ok=True)
+        else:
+            sequence_save_dir = root_dir / sequence_id
+            sequence_save_dir.mkdir(exist_ok=True)
 
     return sequence_save_dir
 
@@ -63,7 +67,7 @@ def parse_arguments():
         "--lookup_table",
         type=Path,
         default=default_lookup_table_path,
-        help="Path to JSON lookup table for sequence lengths",
+        help="Path to JSON lookup table for sequence lengths.",
     )
     parser.add_argument(
         "--save_dir",
@@ -84,9 +88,7 @@ def parse_arguments():
     )
 
     args = parser.parse_args()
-    if not args.root_dir.exists():
-        raise ValueError(f"The provided root_dir '{args.root_dir}' does not exist.")
-    args.save_dir = setup_save_path(args.root_dir, args.sequence_id, args.save_dir)
+    args.save_dir = setup_save_path(args.root_dir, args.sequence_id, args.save_dir, args.preprocess)
 
     return args
 
@@ -198,7 +200,7 @@ def main():
     # load frames
     frames = load_box_frames(args.root_dir, args.dataset_name, sequence_length, args.sequence_id)
 
-    # declare the saver
+    # this is used to save edited data
     annotation_saver = AnnotationSaver(args.save_dir)
 
     if args.preprocess:
