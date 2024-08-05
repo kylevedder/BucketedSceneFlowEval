@@ -165,14 +165,14 @@ def setup_visualizer(state_manager, annotation_saver, frames):
         ord("S"),
         lambda vis, action, mods: state_manager.key_S_actions(vis, action, mods),
     )
-    # Use space to zoom in
+    # Use enter to zoom in
     vis.register_key_action_callback(
-        GLFW_KEY_SPACE,
+        GLFW_KEY_ENTER,
         lambda vis, action, mods: state_manager.zoom_press(vis, action, mods),
     )
-    # Use enter to toggle box
+    # Use space to toggle box
     vis.register_key_action_callback(
-        GLFW_KEY_ENTER, lambda vis, action, mods: state_manager.toggle_box(vis, action, mods)
+        GLFW_KEY_SPACE, lambda vis, action, mods: state_manager.toggle_box(vis, action, mods)
     )
 
     vis.create_window()
