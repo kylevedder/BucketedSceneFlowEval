@@ -1,5 +1,7 @@
 import numpy as np
 import open3d as o3d
+from annotation_saver import AnnotationSaver
+from scipy.spatial.transform import Rotation as R
 
 from bucketed_scene_flow_eval.datastructures import (
     SE3,
@@ -19,7 +21,7 @@ def _update_o3d_mesh_pose(mesh: o3d.geometry.TriangleMesh, start_pose: SE3, targ
 
 
 class RenderableBox:
-    def __init__(self, base_box: BoundingBox, pose: PoseInfo, color=[0.1, 0.1, 0.1]):
+    def __init__(self, base_box: BoundingBox, pose: PoseInfo, color: list[float] = [0.1, 0.1, 0.1]):
         self.base_box = base_box
         self.pose = pose
         self.color = color
@@ -31,16 +33,6 @@ class RenderableBox:
         self.o3d_wireframe = o3d.geometry.LineSet.create_from_triangle_mesh(self.o3d_triangle_mesh)
         self.imit_pose_of_o3d_geomerty(self.pose.sensor_to_global)
         self.set_color(self.color)
-
-    def set_color(self, color):
-        """
-        Sets the color of the geomerty
-
-        Args:
-            color: A list or array of three floats representing the RGB color.
-        """
-        num_lines = len(self.o3d_wireframe.lines)
-        self.o3d_wireframe.colors = o3d.utility.Vector3dVector([color] * num_lines)
 
     def imit_pose_of_o3d_geomerty(self, pose: SE3):
         o3d_geom_centering_translation = -np.array(
@@ -81,6 +73,16 @@ class RenderableBox:
     def wireframe_o3d(self) -> o3d.geometry.LineSet:
         return self.o3d_wireframe
 
+    def set_color(self, color: list[float]):
+        """
+        Sets the color of the geomerty
+
+        Args:
+            color: A list or array of three floats representing the RGB color.
+        """
+        num_lines = len(self.o3d_wireframe.lines)
+        self.o3d_wireframe.colors = o3d.utility.Vector3dVector([color] * num_lines)
+
 
 def ray_triangle_intersect(ray_origin, ray_direction, v0, v1, v2) -> tuple[bool, np.ndarray | None]:
     epsilon = 1e-8
@@ -113,7 +115,12 @@ def ray_triangle_intersect(ray_origin, ray_direction, v0, v1, v2) -> tuple[bool,
 
 
 class ViewStateManager:
-    def __init__(self, frames, rolling_window_size) -> None:
+    def __init__(
+        self,
+        frames: list[TimeSyncedSceneFlowBoxFrame],
+        annotation_saver: AnnotationSaver,
+        rolling_window_size: int,
+    ) -> None:
         self.prior_mouse_position: tuple[float, float] | None = None
         self.is_view_rotating = False
         self.is_translating = False
@@ -124,9 +131,14 @@ class ViewStateManager:
         self.selected_mesh_id: str | None = None
         self.current_frame_index = 0
         self.tuning_scale = 0.1
+        self.annotation_saver = annotation_saver
         self.frames = frames
         self.rolling_window_size = rolling_window_size
         self.trajectory_geometries: list[RenderableBox] = []
+        self.is_zoomed = False
+        self.original_view = None
+        # Used for toggle box
+        self.current_box_index = -1
 
     def add_clickable_geometry(self, id: str, box_geometry: RenderableBox):
         self.clickable_geometries[id] = box_geometry
@@ -162,79 +174,109 @@ class ViewStateManager:
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, forward=self.tuning_scale)
+        print("forward_press")
 
     def backward_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, forward=-self.tuning_scale)
+        print("backward_press")
 
     def left_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, left=self.tuning_scale)
+        print("left_press")
 
     def right_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, left=-self.tuning_scale)
+        print("right_press")
 
     def up_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, up=self.tuning_scale)
+        print("up_press")
 
     def down_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, up=-self.tuning_scale)
+        print("down_press")
 
     def yaw_clockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, yaw=self.tuning_scale)
+        print("yaw_clockwise_press")
 
     def yaw_counterclockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, yaw=-self.tuning_scale)
+        print("yaw_counterclockwise_press")
 
     def pitch_up_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, pitch=self.tuning_scale)
+        print("pitch_up_press")
 
     def pitch_down_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, pitch=-self.tuning_scale)
+        print("pitch_down_press")
 
     def roll_clockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, roll=self.tuning_scale)
+        print("roll_clockwise_press")
 
     def roll_counterclockwise_press(self, vis):
         if self.selected_mesh_id is None:
             return
         self._update_selection(vis, roll=-self.tuning_scale)
+        print("roll_counterclockwise_press")
 
     def forward_frame_press(self, vis):
+        # self.annotation_saver.save(self.frames)
         self.current_frame_index = self.current_frame_index + 1
         self.current_frame_index = min(len(self.frames) - 1, self.current_frame_index)
         self.render_pc_and_boxes(vis)
 
     def backward_frame_press(self, vis):
+        # self.annotation_saver.save(self.frames)
         self.current_frame_index = self.current_frame_index - 1
         self.current_frame_index = max(0, self.current_frame_index)
         self.render_pc_and_boxes(vis)
 
     def shift_actions(self, vis, action, mods):
-        actions = ["up", "down"]
+        actions = ["release", "press", "repeat"]
         action = actions[action]
-        if action == "down":
+        if action == "press":
             self.tuning_scale = 0.02
-        elif action == "up":
+        elif action == "release":
             self.tuning_scale = 0.1
+
+    def key_S_actions(self, vis, action, mods):
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self.backward_press(vis)
+            elif mods == ["shift"]:
+                self.tuning_scale = 0.02
+                self.backward_press(vis)
+                self.tuning_scale = 0.1
+            elif mods == ["ctrl"]:
+                self.annotation_saver.save(self.frames)
 
     def on_mouse_move(self, vis, x, y):
         if self.prior_mouse_position is not None:
@@ -451,12 +493,79 @@ class ViewStateManager:
         """
         annotations = []
         for box_id, box in self.clickable_geometries.items():
+            global_pose = box.pose.sensor_to_global
+            translation = global_pose.transform_matrix[:3, 3]
+            rotation = R.from_matrix(global_pose.transform_matrix[:3, :3])
             annotations.append(
                 {
                     "id": box_id,
-                    "pose": box.pose,  # You may need to convert pose to a suitable format
+                    "translation": translation,
+                    "rotation": rotation.as_quat(),  # (x,y,z,w) quaternion, may change as need
                     "dimensions": (box.base_box.length, box.base_box.width, box.base_box.height),
+                    "category": box.base_box.category,
+                    "track_uuid": box.base_box.track_uuid,
                     # Add other relevant attributes
                 }
             )
         return annotations
+
+    def zoom_press(self, vis, action, mods):
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+
+        if action == "press":
+            ctr = vis.get_view_control()
+            if mods == ["ctrl"] and self.original_view is not None:
+                ctr.convert_from_pinhole_camera_parameters(self.original_view)
+                self.is_zoomed = False
+            elif mods == [] and self.selected_mesh_id:
+                if not self.is_zoomed:
+                    self.original_view = ctr.convert_to_pinhole_camera_parameters()
+                    self.is_zoomed = True
+                self.zoom_to_box(vis)
+
+    def zoom_to_box(self, vis):
+        assert self.selected_mesh_id is not None, "No box selected. Cannot zoom to box."
+
+        ctr = vis.get_view_control()
+        selected_box = self.clickable_geometries[self.selected_mesh_id]
+        box_center = selected_box.pose.sensor_to_global.translation
+
+        ctr.set_lookat(box_center)
+        ctr.set_front([0, 0, -1])
+        ctr.set_up([0, -1, 0])
+        ctr.set_zoom(0.1)
+
+    def toggle_box(self, vis, action, mods):
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press":
+            box_indices = sorted(
+                self.clickable_geometries.keys(),
+                key=lambda k: self.clickable_geometries[k].pose.sensor_to_global.translation[0],
+            )
+
+            if self.selected_mesh_id:
+                try:
+                    self.current_box_index = box_indices.index(self.selected_mesh_id)
+                except ValueError:
+                    print(f"Selected box {self.selected_mesh_id} not found in box indices.")
+                    self.current_box_index = -1
+
+            if mods == []:
+                self.current_box_index = (self.current_box_index + 1) % len(box_indices)
+            elif mods == ["ctrl"]:
+                self.current_box_index = (self.current_box_index - 1) % len(box_indices)
+
+            new_mesh_id = box_indices[self.current_box_index]
+            self.selected_mesh_id = new_mesh_id
+            self.select_mesh(vis, new_mesh_id)
+            print(f"Selected mesh: {new_mesh_id}")
+            if self.is_zoomed == True:
+                self.zoom_to_box(vis)
+
+            # print(f"Toggled to box {new_mesh_id}")

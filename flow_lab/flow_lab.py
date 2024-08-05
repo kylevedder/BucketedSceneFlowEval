@@ -1,5 +1,5 @@
 import argparse
-import shutil
+import json
 from pathlib import Path
 
 import open3d as o3d
@@ -13,27 +13,80 @@ from bucketed_scene_flow_eval.datastructures import (
     PoseInfo,
     TimeSyncedSceneFlowBoxFrame,
 )
-from bucketed_scene_flow_eval.interfaces import AbstractSequence
 from bucketed_scene_flow_eval.utils.glfw_key_ids import *
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_name", type=str, default="Argoverse2NonCausalSceneFlow")
-    parser.add_argument("--root_dir", type=Path, required=True)
-    parser.add_argument("--sequence_length", type=int, required=True)
-    parser.add_argument("--sequence_id", type=str, required=True)
-    parser.add_argument("--save_dir", type=Path, required=False)
-    parser.add_argument("--preprocess", action="store_true")
-    parser.add_argument("--rolling_window_size", type=int, default=5)
-    args = parser.parse_args()
-
-    if args.preprocess:
-        if not args.save_dir:
-            raise ValueError("The --save_dir argument is required when --preprocess is specified.")
+def setup_save_path(root_dir: Path, sequence_id: str, save_dir) -> Path:
+    """
+    Sets up the path to the directory where processed data should be saved.
+    """
+    if save_dir:
+        # Check if the provided save_dir exists
+        if not save_dir.exists():
+            raise ValueError(f"The provided save_dir '{save_dir}' does not exist.")
+        sequence_save_dir = save_dir / sequence_id
+        sequence_save_dir.mkdir(exist_ok=True)
     else:
-        if not args.save_dir:
-            args.save_dir = args.root_dir
+        # Get the parent directory of root_dir and create a new directory called root_dir_processed
+        parent_dir = root_dir.parent
+        processed_dir = parent_dir / f"{root_dir.name}_processed"
+        processed_dir.mkdir(exist_ok=True)
+        sequence_save_dir = processed_dir / sequence_id
+        sequence_save_dir.mkdir(exist_ok=True)
+
+    return sequence_save_dir
+
+
+def parse_arguments():
+    # Define the default path for the lookup table inside the flow_lab folder
+    flow_lab_dir = Path(__file__).resolve().parent
+    default_lookup_table_path = flow_lab_dir / "av2_small_sequence_length.json"
+
+    parser = argparse.ArgumentParser(description="Scene flow data visualization and annotation.")
+
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        default="Argoverse2NonCausalSceneFlow",
+        help="Name of the dataset to use. Default is 'Argoverse2NonCausalSceneFlow'.",
+    )
+    parser.add_argument(
+        "--root_dir",
+        type=Path,
+        required=True,
+        help="Path to the root directory containing the dataset.",
+    )
+    parser.add_argument(
+        "--sequence_id", type=str, required=True, help="The specific sequence name."
+    )
+    parser.add_argument(
+        "--lookup_table",
+        type=Path,
+        default=default_lookup_table_path,
+        help="Path to JSON lookup table for sequence lengths",
+    )
+    parser.add_argument(
+        "--save_dir",
+        type=Path,
+        required=False,
+        help="Directory where processed data will be saved. ",
+    )
+    parser.add_argument(
+        "--preprocess",
+        action="store_true",
+        help="Whether the data need to be preprocessed. If speciffied, it will save the processed data to save_dir",
+    )
+    parser.add_argument(
+        "--rolling_window_size",
+        type=int,
+        default=5,
+        help="Number of frames to display around the current frame.",
+    )
+
+    args = parser.parse_args()
+    if not args.root_dir.exists():
+        raise ValueError(f"The provided root_dir '{args.root_dir}' does not exist.")
+    args.save_dir = setup_save_path(args.root_dir, args.sequence_id, args.save_dir)
 
     return args
 
@@ -41,7 +94,6 @@ def parse_arguments():
 def load_box_frames(
     root_dir: Path, dataset_name: str, sequence_length, sequence_id: str
 ) -> list[TimeSyncedSceneFlowBoxFrame]:
-    # input_path = root_dir / 'val'
     dataset = construct_dataset(
         name=dataset_name,
         args=dict(
@@ -90,7 +142,6 @@ def setup_visualizer(state_manager, annotation_saver, frames):
     # Register key callbacks
     # Use WASD keys for translation, Q and E keys for yaw
     vis.register_key_callback(ord("W"), state_manager.forward_press)
-    vis.register_key_callback(ord("S"), state_manager.backward_press)
     vis.register_key_callback(ord("A"), state_manager.left_press)
     vis.register_key_callback(ord("D"), state_manager.right_press)
     vis.register_key_callback(ord("Z"), state_manager.down_press)
@@ -107,38 +158,59 @@ def setup_visualizer(state_manager, annotation_saver, frames):
     vis.register_key_callback(ord("."), lambda vis: state_manager.forward_frame_press(vis))
     # Press Shift to fine tune
     vis.register_key_action_callback(GLFW_KEY_LEFT_SHIFT, state_manager.shift_actions)
-    # Use the 'Ctrl+X' to save
+    # Use the 'Ctrl+X' to save, 'S' to translate
     vis.register_key_action_callback(
-        ord("X"),
-        lambda vis, action, mods: annotation_saver.save_callback(vis, action, mods, frames),
+        ord("S"),
+        lambda vis, action, mods: state_manager.key_S_actions(vis, action, mods),
+    )
+    # Use space to zoom in
+    vis.register_key_action_callback(
+        GLFW_KEY_SPACE,
+        lambda vis, action, mods: state_manager.zoom_press(vis, action, mods),
+    )
+    # Use enter to toggle box
+    vis.register_key_action_callback(
+        GLFW_KEY_ENTER, lambda vis, action, mods: state_manager.toggle_box(vis, action, mods)
     )
 
     vis.create_window()
+    # render_option = vis.get_render_option()
+    # render_option.mesh_show_wireframe = True
+    # render_option.light_on = False
+    # render_option.mesh_shade_option = o3d.visualization.MeshShadeOption.Default
     return vis
+
+
+def load_sequence_length(sequence_id: str, lookup_table: Path) -> int:
+    with open(lookup_table, "r") as f:
+        data = json.load(f)
+    return data.get(sequence_id, 0)  # Default to 0 if the sequence_id is not found
 
 
 def main():
     args = parse_arguments()
 
-    frames = load_box_frames(
-        args.root_dir, args.dataset_name, args.sequence_length, args.sequence_id
-    )
+    # load scequence length
+    sequence_length = load_sequence_length(args.sequence_id, args.lookup_table)
+    if sequence_length == 0:
+        raise ValueError(f"Sequence ID {args.sequence_id} not found in lookup table.")
 
-    annotation_saver = AnnotationSaver(args.save_dir / args.sequence_id)
+    # load frames
+    frames = load_box_frames(args.root_dir, args.dataset_name, sequence_length, args.sequence_id)
+
+    # declare the saver
+    annotation_saver = AnnotationSaver(args.save_dir)
+
     if args.preprocess:
         print("Preprocessing data...")
         frames = preprocess_box_frames(frames)
         annotation_saver.save(frames)
-
-    state_manager = ViewStateManager(frames, args.rolling_window_size)
-    vis = setup_visualizer(state_manager, annotation_saver, frames)
-    state_manager.render_pc_and_boxes(vis, reset_bounding_box=True)
-
-    # render_option = vis.get_render_option()
-    # render_option.mesh_show_wireframe = True
-    # render_option.light_on = False
-    # render_option.mesh_shade_option = o3d.visualization.MeshShadeOption.Default
-    vis.run()
+    else:
+        # declare the view state manager and display the window
+        state_manager = ViewStateManager(frames, annotation_saver, args.rolling_window_size)
+        vis = setup_visualizer(state_manager, annotation_saver, frames)
+        state_manager.render_pc_and_boxes(vis, reset_bounding_box=True)
+        vis.run()
 
 
 if __name__ == "__main__":

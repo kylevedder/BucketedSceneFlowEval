@@ -19,7 +19,7 @@ class AnnotationSaver:
     def format_annotations(self, frames: list[TimeSyncedSceneFlowBoxFrame]) -> list[dict]:
         formatted_annotations = []
 
-        for frame_num, frame in enumerate(frames):
+        for frame in frames:
             timestamp_ns = frame.log_timestamp
             for box, pose_info in zip(frame.boxes.full_boxes, frame.boxes.full_poses):
                 pose = pose_info.sensor_to_ego
@@ -29,7 +29,6 @@ class AnnotationSaver:
 
                 tx, ty, tz = pose.transform_matrix[:3, 3]
 
-                # Format the annotation
                 formatted_annotation = {
                     "timestamp_ns": timestamp_ns,
                     "track_uuid": box.track_uuid,
@@ -49,12 +48,6 @@ class AnnotationSaver:
 
                 formatted_annotations.append(formatted_annotation)
         return formatted_annotations
-
-    def save_callback(self, vis, action, mods, frames):
-        mods_name = ["shift", "ctrl", "alt", "cmd"]
-        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
-        if mods == ["ctrl"]:
-            self.save(frames)
 
     def save(self, frames: list[TimeSyncedSceneFlowBoxFrame]):
         formatted_annotations = self.format_annotations(frames)
