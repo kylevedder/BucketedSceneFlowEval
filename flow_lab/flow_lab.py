@@ -16,31 +16,6 @@ from bucketed_scene_flow_eval.datastructures import (
 from bucketed_scene_flow_eval.utils.glfw_key_ids import *
 
 
-def setup_save_path(root_dir: Path, sequence_id: str, save_dir, preprocess) -> Path:
-    """
-    Sets up the path to the directory where processed data should be saved.
-    """
-    if save_dir:
-        # Check if the provided save_dir exists
-        if not save_dir.exists():
-            raise ValueError(f"The provided save_dir '{save_dir}' does not exist.")
-        sequence_save_dir = save_dir / sequence_id
-        sequence_save_dir.mkdir(exist_ok=True)
-    else:
-        if preprocess:
-            # Get the parent directory of root_dir and create a new directory called root_dir_processed
-            parent_dir = root_dir.parent
-            processed_dir = parent_dir / f"{root_dir.name}_processed"
-            processed_dir.mkdir(exist_ok=True)
-            sequence_save_dir = processed_dir / sequence_id
-            sequence_save_dir.mkdir(exist_ok=True)
-        else:
-            sequence_save_dir = root_dir / sequence_id
-            sequence_save_dir.mkdir(exist_ok=True)
-
-    return sequence_save_dir
-
-
 def parse_arguments():
     # Define the default path for the lookup table inside the flow_lab folder
     flow_lab_dir = Path(__file__).resolve().parent
@@ -69,12 +44,12 @@ def parse_arguments():
         default=default_lookup_table_path,
         help="Path to JSON lookup table for sequence lengths.",
     )
-    parser.add_argument(
-        "--save_dir",
-        type=Path,
-        required=False,
-        help="Directory where processed data will be saved. ",
-    )
+    # parser.add_argument(
+    #     "--save_dir",
+    #     type=Path,
+    #     required=False,
+    #     help="Directory where processed data will be saved. ",
+    # )
     parser.add_argument(
         "--preprocess",
         action="store_true",
@@ -88,7 +63,6 @@ def parse_arguments():
     )
 
     args = parser.parse_args()
-    args.save_dir = setup_save_path(args.root_dir, args.sequence_id, args.save_dir, args.preprocess)
 
     return args
 
@@ -174,6 +148,7 @@ def setup_visualizer(state_manager, annotation_saver, frames):
     vis.register_key_action_callback(
         GLFW_KEY_SPACE, lambda vis, action, mods: state_manager.toggle_box(vis, action, mods)
     )
+    vis.register_key_callback(ord("V"), state_manager.toggle_propagate_with_velocity)
 
     vis.create_window()
     # render_option = vis.get_render_option()
@@ -189,6 +164,28 @@ def load_sequence_length(sequence_id: str, lookup_table: Path) -> int:
     return data.get(sequence_id, 0)  # Default to 0 if the sequence_id is not found
 
 
+def setup_save_path(root_dir: Path, sequence_id: str) -> Path:
+    """
+    Set up the path to the folder where processed annotations should be saved.
+    """
+    parent_dir = root_dir.parent
+    processed_dir = parent_dir / f"{root_dir.name}_processed"
+    sequence_save_dir = processed_dir / "val" / sequence_id
+
+    return sequence_save_dir
+
+
+def setup_load_path(root_dir: Path, sequence_id: str) -> Path:
+    """
+    Set up the path to load data when preprocess is required.
+    """
+    parent_dir = root_dir.parent
+    processed_dir = parent_dir / f"{root_dir.name}_processed"
+    sequence_save_dir = processed_dir / "val"
+
+    return sequence_save_dir
+
+
 def main():
     args = parse_arguments()
 
@@ -197,22 +194,27 @@ def main():
     if sequence_length == 0:
         raise ValueError(f"Sequence ID {args.sequence_id} not found in lookup table.")
 
-    # load frames
-    frames = load_box_frames(args.root_dir, args.dataset_name, sequence_length, args.sequence_id)
-
     # this is used to save edited data
-    annotation_saver = AnnotationSaver(args.save_dir)
+    output_path = setup_save_path(args.root_dir, args.sequence_id)
+    annotation_saver = AnnotationSaver(output_path)
 
-    if args.preprocess:
+    # Check if preprocessing is required and load frames
+    annotation_file_path = output_path / "annotations.feather"
+    if args.preprocess or not annotation_file_path.exists():
         print("Preprocessing data...")
+        input_path = args.root_dir / "val"
+        frames = load_box_frames(input_path, args.dataset_name, sequence_length, args.sequence_id)
         frames = preprocess_box_frames(frames)
         annotation_saver.save(frames)
     else:
-        # declare the view state manager and display the window
-        state_manager = ViewStateManager(frames, annotation_saver, args.rolling_window_size)
-        vis = setup_visualizer(state_manager, annotation_saver, frames)
-        state_manager.render_pc_and_boxes(vis, reset_bounding_box=True)
-        vis.run()
+        input_path = setup_load_path(args.root_dir, args.sequence_id)
+        frames = load_box_frames(input_path, args.dataset_name, sequence_length, args.sequence_id)
+
+    # declare the view state manager and display the window
+    state_manager = ViewStateManager(frames, annotation_saver, args.rolling_window_size)
+    vis = setup_visualizer(state_manager, annotation_saver, frames)
+    state_manager.render_pc_and_boxes(vis, reset_bounding_box=True)
+    vis.run()
 
 
 if __name__ == "__main__":

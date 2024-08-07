@@ -135,8 +135,12 @@ class ViewStateManager:
         self.frames = frames
         self.rolling_window_size = rolling_window_size
         self.trajectory_geometries: list[RenderableBox] = []
+        # the two blow is used for zoom
         self.is_zoomed = False
         self.original_view = None
+        # Used for velocity
+        self.propagate_with_velocity = False
+        self.velocities = {}
         # Used for toggle box
         self.current_box_index = -1
 
@@ -243,13 +247,16 @@ class ViewStateManager:
         print("roll_counterclockwise_press")
 
     def forward_frame_press(self, vis):
-        self.annotation_saver.save(self.frames)
-        self.current_frame_index = self.current_frame_index + 1
-        self.current_frame_index = min(len(self.frames) - 1, self.current_frame_index)
-        self.render_pc_and_boxes(vis)
+        # self.annotation_saver.save(self.frames)
+        if self.current_frame_index < len(self.frames) - 1:
+            self.current_frame_index += 1
+            self.render_pc_and_boxes(vis)
+            if self.propagate_with_velocity:
+                self.apply_velocity()
+            self.render_pc_and_boxes(vis)
 
     def backward_frame_press(self, vis):
-        self.annotation_saver.save(self.frames)
+        # self.annotation_saver.save(self.frames)
         self.current_frame_index = self.current_frame_index - 1
         self.current_frame_index = max(0, self.current_frame_index)
         self.render_pc_and_boxes(vis)
@@ -301,7 +308,7 @@ class ViewStateManager:
 
     def on_mouse_button(self, vis, button, action, mods):
         buttons = ["left", "right", "middle"]
-        actions = ["up", "down"]
+        actions = ["up", "down", "drag"]
         mods_name = ["shift", "ctrl", "alt", "cmd"]
 
         button = buttons[button]
@@ -338,7 +345,7 @@ class ViewStateManager:
         # Use the oriented bounding box rotation as the rotation of the axes
         self.selection_axes.rotate(rotation_matrix)
         vis.add_geometry(self.selection_axes, reset_bounding_box=False)
-        self.render_selected_mesh_trajectory(vis)
+        # self.render_selected_mesh_trajectory(vis)
 
     def deselect_mesh(self, vis):
         self.selected_mesh_id = None
@@ -463,6 +470,7 @@ class ViewStateManager:
         start_index, end_index = self.rolling_window_range()
 
         vis.clear_geometries()
+        self.clickable_geometries = {}
         # Loop over the frames and display pointclouds
         for i in range(start_index, end_index):
             frame = self.frames[i]
@@ -510,6 +518,9 @@ class ViewStateManager:
         return annotations
 
     def zoom_press(self, vis, action, mods):
+        """
+        Callback function for zoom to box.
+        """
         actions = ["release", "press", "repeat"]
         mods_name = ["shift", "ctrl", "alt", "cmd"]
         action = actions[action]
@@ -539,6 +550,9 @@ class ViewStateManager:
         ctr.set_zoom(0.1)
 
     def toggle_box(self, vis, action, mods):
+        """
+        Toggle the selected box.
+        """
         actions = ["release", "press", "repeat"]
         mods_name = ["shift", "ctrl", "alt", "cmd"]
         action = actions[action]
@@ -569,3 +583,78 @@ class ViewStateManager:
                 self.zoom_to_box(vis)
 
             # print(f"Toggled to box {new_mesh_id}")
+
+    def toggle_propagate_with_velocity(self, vis):
+        """
+        Toggle the propagate_with_velocity feature on and off.
+        """
+        self.propagate_with_velocity = not self.propagate_with_velocity
+        print(f"Propagate with velocity: {'On' if self.propagate_with_velocity else 'Off'}")
+        if self.propagate_with_velocity:
+            self.compute_velocities()
+
+    def compute_velocities(self):
+        """
+        Compute velocities for all the meshes.
+        """
+        if self.current_frame_index < 2:
+            return  # Need at least two frames to calculate velocity
+        self.velocities.clear()
+
+        current_frame = self.frames[self.current_frame_index]
+        prev_frame = self.frames[self.current_frame_index - 1]
+        prev_prev_frame = self.frames[self.current_frame_index - 2]
+
+        for box, pose in current_frame.boxes.valid_boxes():
+            uuid = box.track_uuid
+            prev_pose = self.find_pose_in_frame(prev_frame, uuid)
+            prev_prev_pose = self.find_pose_in_frame(prev_prev_frame, uuid)
+
+            if prev_pose and prev_prev_pose:
+                velocity = self.calculate_velocity(prev_prev_pose, prev_pose)
+                self.velocities[uuid] = velocity
+            else:
+                self.velocities[uuid] = np.zeros(3)  # No movement if no corresponding box found
+
+    def find_pose_in_frame(self, frame, track_uuid: str):
+        """
+        Find the pose of the box according to track_uuid
+        """
+        for box, pose in frame.boxes.valid_boxes():
+            if box.track_uuid == track_uuid:
+                return pose
+        return None
+
+    def calculate_velocity(self, pose1: PoseInfo, pose2: PoseInfo) -> np.ndarray:
+        """
+        Calculate displacement between two poses (suppose time interval=1 and use it as velocity).
+        """
+        translation1 = pose1.sensor_to_global.translation
+        translation2 = pose2.sensor_to_global.translation
+        velocity = translation2 - translation1  # Update the pose of the RenderableBox
+        return velocity
+
+    def apply_velocity(self):
+        """
+        Apply stored velocities to the boxes in the current frame.
+        """
+        self.compute_velocities()
+
+        current_frame = self.frames[self.current_frame_index]
+        last_frame = self.frames[self.current_frame_index - 1]
+
+        for key, renderable_box in self.clickable_geometries.items():
+            # for box, pose in current_frame.boxes.valid_boxes():
+            uuid = renderable_box.base_box.track_uuid
+            if uuid in self.velocities:
+                last_pose = self.find_pose_in_frame(last_frame, uuid)
+                if last_pose:
+                    # Update the current pose based on the last pose and velocity
+                    new_translation = last_pose.sensor_to_global.translation + self.velocities[uuid]
+                    # Create a new SE3 object for the new global pose
+                    new_global_pose = SE3(
+                        rotation_matrix=last_pose.sensor_to_global.rotation_matrix,
+                        translation=new_translation,
+                    )
+
+                    renderable_box.update_from_global(new_global_pose)
