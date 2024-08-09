@@ -117,40 +117,34 @@ def setup_visualizer(state_manager, annotation_saver, frames):
 
     # Register key callbacks
     # Use WASD keys for translation, Q and E keys for yaw
-    vis.register_key_callback(ord("W"), state_manager.forward_press)
-    vis.register_key_callback(ord("A"), state_manager.left_press)
-    vis.register_key_callback(ord("D"), state_manager.right_press)
-    vis.register_key_callback(ord("Z"), state_manager.down_press)
-    vis.register_key_callback(ord("X"), state_manager.up_press)
-    vis.register_key_callback(ord("Q"), state_manager.yaw_clockwise_press)
-    vis.register_key_callback(ord("E"), state_manager.yaw_counterclockwise_press)
+    vis.register_key_action_callback(ord("W"), state_manager.forward_press)
+    vis.register_key_action_callback(ord("A"), state_manager.left_press)
+    vis.register_key_action_callback(ord("D"), state_manager.right_press)
+    vis.register_key_action_callback(ord("Z"), state_manager.down_press)
+    vis.register_key_action_callback(ord("X"), state_manager.up_press)
+    vis.register_key_action_callback(ord("Q"), state_manager.yaw_clockwise_press)
+    vis.register_key_action_callback(ord("E"), state_manager.yaw_counterclockwise_press)
     # Use arrow keys for pitch and roll
-    vis.register_key_callback(GLFW_KEY_UP, state_manager.pitch_up_press)
-    vis.register_key_callback(GLFW_KEY_DOWN, state_manager.pitch_down_press)
-    vis.register_key_callback(GLFW_KEY_RIGHT, state_manager.roll_clockwise_press)
-    vis.register_key_callback(GLFW_KEY_LEFT, state_manager.roll_counterclockwise_press)
+    vis.register_key_action_callback(GLFW_KEY_UP, state_manager.pitch_up_press)
+    vis.register_key_action_callback(GLFW_KEY_DOWN, state_manager.pitch_down_press)
+    vis.register_key_action_callback(GLFW_KEY_RIGHT, state_manager.roll_clockwise_press)
+    vis.register_key_action_callback(GLFW_KEY_LEFT, state_manager.roll_counterclockwise_press)
     # Use , and . keys for going forward and backward through the frames
-    vis.register_key_callback(ord(","), lambda vis: state_manager.backward_frame_press(vis))
-    vis.register_key_callback(ord("."), lambda vis: state_manager.forward_frame_press(vis))
-    # Press Shift to fine tune
-    vis.register_key_action_callback(GLFW_KEY_LEFT_SHIFT, state_manager.shift_actions)
-    # Use the 'Ctrl+X' to save, 'S' to translate
-    vis.register_key_action_callback(
-        ord("S"),
-        lambda vis, action, mods: state_manager.key_S_actions(vis, action, mods),
-    )
-    # Use enter to zoom in
-    vis.register_key_action_callback(
-        GLFW_KEY_ENTER,
-        lambda vis, action, mods: state_manager.zoom_press(vis, action, mods),
-    )
-    # Use space to toggle box
-    vis.register_key_action_callback(
-        GLFW_KEY_SPACE, lambda vis, action, mods: state_manager.toggle_box(vis, action, mods)
-    )
+    vis.register_key_callback(ord(","), state_manager.backward_frame_press)
+    vis.register_key_callback(ord("."), state_manager.forward_frame_press)
+    # Use 'V' to toggle postion adjustment mode
     vis.register_key_callback(ord("V"), state_manager.toggle_propagate_with_velocity)
 
-    vis.create_window()
+    # Use the 'Ctrl+S' to save, 'S' to translate
+    vis.register_key_action_callback(ord("S"), state_manager.key_S_actions)
+    # Use 'Enter' to zoom in
+    vis.register_key_action_callback(GLFW_KEY_ENTER, state_manager.zoom_press)
+    # Use 'Space' to toggle box
+    vis.register_key_action_callback(GLFW_KEY_SPACE, state_manager.toggle_box)
+
+    initial_title = f"Frame: {state_manager.current_frame_index} | Mode: Position"
+    vis.create_window(window_name=initial_title)
+    # vis.create_window()
     # render_option = vis.get_render_option()
     # render_option.mesh_show_wireframe = True
     # render_option.light_on = False

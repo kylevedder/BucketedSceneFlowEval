@@ -130,7 +130,8 @@ class ViewStateManager:
         self.selection_axes: o3d.geometry.TriangleMesh | None = None
         self.selected_mesh_id: str | None = None
         self.current_frame_index = 0
-        self.tuning_scale = 0.1
+        self.default_tuning_scale = 0.1
+        self.fine_tuning_scale = 0.02
         self.annotation_saver = annotation_saver
         self.frames = frames
         self.rolling_window_size = rolling_window_size
@@ -138,9 +139,11 @@ class ViewStateManager:
         # the two blow is used for zoom
         self.is_zoomed = False
         self.original_view = None
+        self.zoom_level = 0.06  # Default zoom level
+        self.camera_relative_position = None
         # Used for velocity
         self.propagate_with_velocity = False
-        self.velocities = {}
+        self.velocities: dict[str, SE3] = {}
         # Used for toggle box
         self.current_box_index = -1
 
@@ -174,76 +177,181 @@ class ViewStateManager:
         vis.update_geometry(selected_mesh.wireframe_o3d())
         vis.update_geometry(self.selection_axes)
 
-    def forward_press(self, vis):
-        if self.selected_mesh_id is None:
-            return
-        self._update_selection(vis, forward=self.tuning_scale)
-        print("forward_press")
+        if self.is_zoomed:
+            self.zoom_to_box(vis)
+        if self.propagate_with_velocity:
+            self.apply_velocity(vis)
 
-    def backward_press(self, vis):
+    def forward_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, forward=-self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, forward=self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, forward=self.fine_tuning_scale)
+
+    def backward_press(self, vis, action, mods):
+        if self.selected_mesh_id is None:
+            return
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, forward=-self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, forward=-self.fine_tuning_scale)
         print("backward_press")
 
-    def left_press(self, vis):
+    def left_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, left=self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, left=self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, left=self.fine_tuning_scale)
         print("left_press")
 
-    def right_press(self, vis):
+    def right_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, left=-self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, left=-self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, left=-self.fine_tuning_scale)
+
         print("right_press")
 
-    def up_press(self, vis):
+    def up_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, up=self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, up=self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, up=self.fine_tuning_scale)
         print("up_press")
 
-    def down_press(self, vis):
+    def down_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, up=-self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, up=-self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, up=-self.fine_tuning_scale)
         print("down_press")
 
-    def yaw_clockwise_press(self, vis):
+    def yaw_clockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, yaw=self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, yaw=self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, yaw=self.fine_tuning_scale)
         print("yaw_clockwise_press")
 
-    def yaw_counterclockwise_press(self, vis):
+    def yaw_counterclockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, yaw=-self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, yaw=-self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, yaw=-self.fine_tuning_scale)
+
         print("yaw_counterclockwise_press")
 
-    def pitch_up_press(self, vis):
+    def pitch_up_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, pitch=self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, pitch=self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, pitch=self.fine_tuning_scale)
         print("pitch_up_press")
 
-    def pitch_down_press(self, vis):
+    def pitch_down_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, pitch=-self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, pitch=-self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, pitch=-self.fine_tuning_scale)
+
         print("pitch_down_press")
 
-    def roll_clockwise_press(self, vis):
+    def roll_clockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, roll=self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, roll=self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, roll=self.fine_tuning_scale)
+
         print("roll_clockwise_press")
 
-    def roll_counterclockwise_press(self, vis):
+    def roll_counterclockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
             return
-        self._update_selection(vis, roll=-self.tuning_scale)
+        actions = ["release", "press", "repeat"]
+        mods_name = ["shift", "ctrl", "alt", "cmd"]
+        action = actions[action]
+        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        if action == "press" or action == "repeat":
+            if mods == []:
+                self._update_selection(vis, roll=-self.default_tuning_scale)
+            if mods == ["shift"]:
+                self._update_selection(vis, roll=-self.fine_tuning_scale)
+
         print("roll_counterclockwise_press")
 
     def forward_frame_press(self, vis):
@@ -251,38 +359,25 @@ class ViewStateManager:
         if self.current_frame_index < len(self.frames) - 1:
             self.current_frame_index += 1
             self.render_pc_and_boxes(vis)
-            if self.propagate_with_velocity:
-                self.apply_velocity()
-            self.render_pc_and_boxes(vis)
+            self.update_window_title(vis)
 
     def backward_frame_press(self, vis):
         # self.annotation_saver.save(self.frames)
         self.current_frame_index = self.current_frame_index - 1
         self.current_frame_index = max(0, self.current_frame_index)
         self.render_pc_and_boxes(vis)
-
-    def shift_actions(self, vis, action, mods):
-        actions = ["release", "press", "repeat"]
-        action = actions[action]
-        if action == "press":
-            self.tuning_scale = 0.02
-        elif action == "release":
-            self.tuning_scale = 0.1
+        self.update_window_title(vis)
 
     def key_S_actions(self, vis, action, mods):
         actions = ["release", "press", "repeat"]
         mods_name = ["shift", "ctrl", "alt", "cmd"]
-        action = actions[action]
-        mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
+        _action = actions[action]
+        _mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
 
-        if action == "press" or action == "repeat":
-            if mods == []:
-                self.backward_press(vis)
-            elif mods == ["shift"]:
-                self.tuning_scale = 0.02
-                self.backward_press(vis)
-                self.tuning_scale = 0.1
-            elif mods == ["ctrl"]:
+        if _action == "press" or _action == "repeat":
+            if _mods == [] or _mods == ["shift"]:
+                self.backward_press(vis, action, mods)
+            elif _mods == ["ctrl"]:
                 self.annotation_saver.save(self.frames)
 
     def on_mouse_move(self, vis, x, y):
@@ -327,13 +422,12 @@ class ViewStateManager:
             self.pick_mesh(vis, self.prior_mouse_position[0], self.prior_mouse_position[1])
 
         print(f"on_mouse_button: {button}, {action}, {mods}")
-        if button == "right" and action == "down":
-            self.pick_mesh(vis, self.prior_mouse_position[0], self.prior_mouse_position[1])
+        # if button == "right" and action == "down":
+        #     self.pick_mesh(vis, self.prior_mouse_position[0], self.prior_mouse_position[1])
 
-    def select_mesh(self, vis, mesh_id: str):
-        self.selected_mesh_id = mesh_id
+    def select_mesh(self, vis, mesh_id: str, reset_bounding_box: bool = False):
         if self.selection_axes is not None:
-            vis.remove_geometry(self.selection_axes, reset_bounding_box=False)
+            vis.remove_geometry(self.selection_axes, reset_bounding_box=reset_bounding_box)
         self.selection_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=2)
         # o3d.geometry.TriangleMesh.create_sphere(radius=1)
 
@@ -344,16 +438,57 @@ class ViewStateManager:
         self.selection_axes.translate(center, relative=False)
         # Use the oriented bounding box rotation as the rotation of the axes
         self.selection_axes.rotate(rotation_matrix)
-        vis.add_geometry(self.selection_axes, reset_bounding_box=False)
-        # self.render_selected_mesh_trajectory(vis)
+        vis.add_geometry(self.selection_axes, reset_bounding_box=reset_bounding_box)
 
-    def deselect_mesh(self, vis):
-        self.selected_mesh_id = None
+        if self.selected_mesh_id:
+            vis.remove_geometry(
+                self.clickable_geometries[self.selected_mesh_id].wireframe_o3d(),
+                reset_bounding_box=reset_bounding_box,
+            )
+            vis.add_geometry(
+                self.clickable_geometries[mesh_id].wireframe_o3d(),
+                reset_bounding_box=reset_bounding_box,
+            )
+        else:
+            # Remove all other meshes from visualization
+            for idx, renderable_box in self.clickable_geometries.items():
+                if idx != mesh_id:
+                    vis.remove_geometry(
+                        renderable_box.wireframe_o3d(), reset_bounding_box=reset_bounding_box
+                    )
+        self.selected_mesh_id = mesh_id
+        # Show trajectory of selected mesh
+        self.render_selected_mesh_trajectory(vis)
+        # if self.is_zoomed == True:
+        self.zoom_to_box(vis)
+        base_bounding_box = self.clickable_geometries[self.selected_mesh_id].base_box
+        print(
+            f"Selected mesh: {base_bounding_box.track_uuid}, category: {base_bounding_box.category}"
+        )
+
+    def deselect_mesh(self, vis, reset_bounding_box: bool = False):
 
         if self.selection_axes is not None:
-            vis.remove_geometry(self.selection_axes, reset_bounding_box=False)
+            vis.remove_geometry(self.selection_axes, reset_bounding_box=reset_bounding_box)
             self.selection_axes = None
+
+        if self.is_zoomed:
+            view_control = vis.get_view_control()
+            # view_control.convert_from_pinhole_camera_parameters(self.original_view)
+            self.is_zoomed = False
+
+        # Re-add all meshes to the visualization
+        if self.selected_mesh_id is not None:
             self.clear_trajectory_geometries(vis)
+            vis.remove_geometry(
+                self.clickable_geometries[self.selected_mesh_id].wireframe_o3d(),
+                reset_bounding_box=reset_bounding_box,
+            )
+            for idx, renderable_box in self.clickable_geometries.items():
+                vis.add_geometry(
+                    renderable_box.wireframe_o3d(), reset_bounding_box=reset_bounding_box
+                )
+            self.selected_mesh_id = None
 
     def pick_mesh(self, vis, x, y, visualize_click: bool = False):
         view_control = vis.get_view_control()
@@ -416,8 +551,12 @@ class ViewStateManager:
 
         closest_mesh_id = min(closest_mesh_lookup, key=closest_mesh_lookup.get)
         print(f"Selected mesh: {closest_mesh_id}")
-        self.selected_mesh_id = closest_mesh_id
         self.select_mesh(vis, closest_mesh_id)
+
+    def update_window_title(self, vis):
+        mode = "Velocity" if self.propagate_with_velocity else "Position"
+        new_title = f"Frame: {self.current_frame_index} | Mode: {mode}"
+        vis.create_window(window_name=new_title, visible=False)
 
     def rolling_window_range(self):
         """
@@ -430,15 +569,15 @@ class ViewStateManager:
 
         return start_index, end_index
 
-    def clear_trajectory_geometries(self, vis):
+    def clear_trajectory_geometries(self, vis, reset_bounding_box: bool = False):
         """
         Removes the trajectory geometries from the visualizer
         """
         for geometry in self.trajectory_geometries:
-            vis.remove_geometry(geometry, reset_bounding_box=False)
+            vis.remove_geometry(geometry, reset_bounding_box=reset_bounding_box)
         self.trajectory_geometries.clear()
 
-    def render_selected_mesh_trajectory(self, vis):
+    def render_selected_mesh_trajectory(self, vis, reset_bounding_box: bool = False):
         """
         Adds the trajectory geometries for the selected mesh
         """
@@ -459,7 +598,7 @@ class ViewStateManager:
                     if box.track_uuid == selected_box_uuid:
                         box_geom = RenderableBox(box, pose_info, color=[0, 0.5, 0])
                         wireframe = box_geom.wireframe_o3d()
-                        vis.add_geometry(wireframe, reset_bounding_box=False)
+                        vis.add_geometry(wireframe, reset_bounding_box=reset_bounding_box)
                         self.trajectory_geometries.append(wireframe)
 
     def render_pc_and_boxes(self, vis, reset_bounding_box: bool = False):
@@ -468,9 +607,12 @@ class ViewStateManager:
         """
         current_frame_index = self.current_frame_index
         start_index, end_index = self.rolling_window_range()
-
+        if self.selected_mesh_id is not None:
+            last_selected_box = self.clickable_geometries[self.selected_mesh_id]
+            last_selected_uuid = last_selected_box.base_box.track_uuid
         vis.clear_geometries()
         self.clickable_geometries = {}
+
         # Loop over the frames and display pointclouds
         for i in range(start_index, end_index):
             frame = self.frames[i]
@@ -492,6 +634,21 @@ class ViewStateManager:
         # Add axes at the origin
         axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=5)
         vis.add_geometry(axes, reset_bounding_box=reset_bounding_box)
+
+        # Select the same box from last frame if exists
+        if self.selected_mesh_id is not None:
+            found = False
+            for box_id, box in self.clickable_geometries.items():
+                if box.base_box.track_uuid == last_selected_uuid:
+                    self.selected_mesh_id = None
+                    self.select_mesh(vis, box_id)
+                    found = True
+                    break
+            if not found:
+                self.deselect_mesh(vis)
+
+        if self.propagate_with_velocity:
+            self.apply_velocity(vis)
 
     def get_annotations(self) -> list[dict]:
         """
@@ -527,27 +684,30 @@ class ViewStateManager:
         mods = [mods_name[i] for i in range(4) if mods & (1 << i)]
 
         if action == "press":
-            ctr = vis.get_view_control()
+            view_control = vis.get_view_control()
             if mods == ["ctrl"] and self.original_view is not None:
-                ctr.convert_from_pinhole_camera_parameters(self.original_view)
+                view_control.convert_from_pinhole_camera_parameters(self.original_view)
                 self.is_zoomed = False
             elif mods == [] and self.selected_mesh_id:
-                if not self.is_zoomed:
-                    self.original_view = ctr.convert_to_pinhole_camera_parameters()
-                    self.is_zoomed = True
                 self.zoom_to_box(vis)
 
     def zoom_to_box(self, vis):
         assert self.selected_mesh_id is not None, "No box selected. Cannot zoom to box."
 
-        ctr = vis.get_view_control()
+        view_control = vis.get_view_control()
         selected_box = self.clickable_geometries[self.selected_mesh_id]
         box_center = selected_box.pose.sensor_to_global.translation
 
-        ctr.set_lookat(box_center)
-        ctr.set_front([0, 0, -1])
-        ctr.set_up([0, -1, 0])
-        ctr.set_zoom(0.1)
+        if not self.is_zoomed:
+            # Zoom to the box for the first time
+            self.original_view = view_control.convert_to_pinhole_camera_parameters()
+            self.is_zoomed = True
+
+        # Adjust the camera position based on the box movement
+        view_control.set_lookat(box_center)
+        view_control.set_front([0, 0, -1])
+        view_control.set_up([0, -1, 0])
+        view_control.set_zoom(self.zoom_level)
 
     def toggle_box(self, vis, action, mods):
         """
@@ -576,11 +736,7 @@ class ViewStateManager:
                 self.current_box_index = (self.current_box_index - 1) % len(box_indices)
 
             new_mesh_id = box_indices[self.current_box_index]
-            self.selected_mesh_id = new_mesh_id
             self.select_mesh(vis, new_mesh_id)
-            print(f"Selected mesh: {new_mesh_id}")
-            if self.is_zoomed == True:
-                self.zoom_to_box(vis)
 
             # print(f"Toggled to box {new_mesh_id}")
 
@@ -591,32 +747,34 @@ class ViewStateManager:
         self.propagate_with_velocity = not self.propagate_with_velocity
         print(f"Propagate with velocity: {'On' if self.propagate_with_velocity else 'Off'}")
         if self.propagate_with_velocity:
-            self.compute_velocities()
+            self.apply_velocity(vis)
+        self.update_window_title(vis)
 
-    def compute_velocities(self):
+    def compute_velocities(self) -> bool:
         """
-        Compute velocities for all the meshes.
+        Compute velocities for all the meshes in current frame.
         """
-        if self.current_frame_index < 2:
-            return  # Need at least two frames to calculate velocity
+        if self.current_frame_index < 1:
+            return False  # Need at least two frames to calculate velocity
         self.velocities.clear()
 
         current_frame = self.frames[self.current_frame_index]
         prev_frame = self.frames[self.current_frame_index - 1]
-        prev_prev_frame = self.frames[self.current_frame_index - 2]
 
         for box, pose in current_frame.boxes.valid_boxes():
             uuid = box.track_uuid
+            current_pose = self.find_pose_in_frame(current_frame, uuid)
             prev_pose = self.find_pose_in_frame(prev_frame, uuid)
-            prev_prev_pose = self.find_pose_in_frame(prev_prev_frame, uuid)
 
-            if prev_pose and prev_prev_pose:
-                velocity = self.calculate_velocity(prev_prev_pose, prev_pose)
+            if current_pose and prev_pose:
+                velocity = self.calculate_velocity(prev_pose, current_pose)
                 self.velocities[uuid] = velocity
-            else:
-                self.velocities[uuid] = np.zeros(3)  # No movement if no corresponding box found
 
-    def find_pose_in_frame(self, frame, track_uuid: str):
+            else:
+                self.velocities[uuid] = SE3.identity()  # No movement if no corresponding box found
+        return True
+
+    def find_pose_in_frame(self, frame, track_uuid: str) -> PoseInfo | None:
         """
         Find the pose of the box according to track_uuid
         """
@@ -625,36 +783,50 @@ class ViewStateManager:
                 return pose
         return None
 
-    def calculate_velocity(self, pose1: PoseInfo, pose2: PoseInfo) -> np.ndarray:
+    def calculate_velocity(self, pose1: PoseInfo, pose2: PoseInfo) -> SE3:
         """
         Calculate displacement between two poses (suppose time interval=1 and use it as velocity).
         """
-        translation1 = pose1.sensor_to_global.translation
-        translation2 = pose2.sensor_to_global.translation
-        velocity = translation2 - translation1  # Update the pose of the RenderableBox
+
+        translation_velocity = (
+            pose2.sensor_to_global.translation - pose1.sensor_to_global.translation
+        )
+        relative_transform = pose1.sensor_to_global.inverse().compose(pose2.sensor_to_global)
+
+        rotation_velocity = relative_transform.rotation_matrix
+        velocity = SE3(rotation_matrix=rotation_velocity, translation=translation_velocity)
+
         return velocity
 
-    def apply_velocity(self):
+    def apply_velocity(self, vis):
         """
         Apply stored velocities to the boxes in the current frame.
         """
-        self.compute_velocities()
+        get_velocity = self.compute_velocities()
+        if get_velocity:
 
-        current_frame = self.frames[self.current_frame_index]
-        last_frame = self.frames[self.current_frame_index - 1]
+            for offset in range(1, 3):  # Apply velocity to the next two frames
+                target_frame_index = self.current_frame_index + offset
+                if target_frame_index >= len(self.frames):
+                    break
 
-        for key, renderable_box in self.clickable_geometries.items():
-            # for box, pose in current_frame.boxes.valid_boxes():
-            uuid = renderable_box.base_box.track_uuid
-            if uuid in self.velocities:
-                last_pose = self.find_pose_in_frame(last_frame, uuid)
-                if last_pose:
-                    # Update the current pose based on the last pose and velocity
-                    new_translation = last_pose.sensor_to_global.translation + self.velocities[uuid]
-                    # Create a new SE3 object for the new global pose
-                    new_global_pose = SE3(
-                        rotation_matrix=last_pose.sensor_to_global.rotation_matrix,
-                        translation=new_translation,
-                    )
+                target_frame = self.frames[target_frame_index]
+                current_frame = self.frames[self.current_frame_index]
 
-                    renderable_box.update_from_global(new_global_pose)
+                for uuid, velocity in self.velocities.items():
+                    current_pose = self.find_pose_in_frame(current_frame, uuid)
+                    if current_pose:
+                        # Calculate the new pose by composing the current pose with the velocity SE3
+                        new_global_pose = current_pose.sensor_to_global
+                        for i in range(offset):
+                            new_global_pose = new_global_pose.compose(velocity)
+
+                        # Update the pose in the target frame
+                        for box, pose in target_frame.boxes.valid_boxes():
+                            if box.track_uuid == uuid:
+                                pose.sensor_to_ego = pose.ego_to_global.inverse().compose(
+                                    new_global_pose
+                                )
+                                break
+            self.clear_trajectory_geometries(vis)
+            self.render_selected_mesh_trajectory(vis)
