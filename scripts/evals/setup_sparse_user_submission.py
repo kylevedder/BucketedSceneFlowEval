@@ -16,14 +16,17 @@ def _unzip_submission(working_dir: Path, submission_zip: Path, every_kth: int) -
 
     # If the submission zip is actually a directory, symlink it to the submission dir
     if submission_zip.is_dir():
+        print("Submission zip is a directory, symlinking it to the submission dir.")
         # Iterate over every sequence folder
-        for sequence_folder in submission_zip.glob("*"):
+        for sequence_folder in tqdm.tqdm(sorted(submission_zip.glob("*"))):
             sequence_folder_name = sequence_folder.name
             user_sequence_folder = submission_dir / sequence_folder_name
             user_sequence_folder.mkdir(parents=True, exist_ok=False)
             for idx, user_file in enumerate(sorted(sequence_folder.glob("*.feather"))):
                 if idx % every_kth == 0:
-                    shutil.copy(user_file, user_sequence_folder / user_file.name)
+                    # Symlink the file to the user sequence folder
+                    user_file_symlink = user_sequence_folder / user_file.name
+                    user_file_symlink.symlink_to(user_file)
 
         return submission_dir
 
