@@ -13,6 +13,10 @@ from bucketed_scene_flow_eval.utils.glfw_key_ids import *
 
 
 def _update_o3d_mesh_pose(mesh: o3d.geometry.TriangleMesh, start_pose: SE3, target_pose: SE3):
+    # # Compute the relative transformation from start_pose to target_pose
+    # relative_transform = target_pose.compose(start_pose.inverse())
+    # # Apply the combined transformation to the mesh
+    # mesh.transform(relative_transform.transform_matrix)
     global_translation = target_pose.translation - start_pose.translation
     global_rotation = target_pose.rotation_matrix @ np.linalg.inv(start_pose.rotation_matrix)
 
@@ -61,10 +65,10 @@ class RenderableBox:
         return self.pose.sensor_to_global.compose(local_frame_offset_se3)
 
     def update_from_global(self, global_target_se3: SE3):
-        _update_o3d_mesh_pose(self.o3d_wireframe, self.pose.sensor_to_global, global_target_se3)
-        _update_o3d_mesh_pose(self.o3d_triangle_mesh, self.pose.sensor_to_global, global_target_se3)
         # We only edit sensor to ego; ego to global stays fixed for the box
         # because the ego vehicle position never changes.
+        _update_o3d_mesh_pose(self.o3d_wireframe, self.pose.sensor_to_global, global_target_se3)
+        _update_o3d_mesh_pose(self.o3d_triangle_mesh, self.pose.sensor_to_global, global_target_se3)
         self.pose.sensor_to_ego = self.pose.ego_to_global.inverse().compose(global_target_se3)
 
     def triangle_mesh_o3d(self) -> o3d.geometry.TriangleMesh:
@@ -137,13 +141,15 @@ class ViewStateManager:
         self.rolling_window_size = rolling_window_size
         self.trajectory_geometries: list[RenderableBox] = []
         # the two blow is used for zoom
-        self.is_zoomed = False
+        self.is_zoomed = True
         self.original_view = None
         self.zoom_level = 0.06  # Default zoom level
         self.camera_relative_position = None
         # Used for velocity
         self.propagate_with_velocity = False
         self.velocities: dict[str, SE3] = {}
+        self.lock_z_axis = False
+        self.show_trajectory = True
         # Used for toggle box
         self.current_box_index = -1
 
@@ -177,8 +183,8 @@ class ViewStateManager:
         vis.update_geometry(selected_mesh.wireframe_o3d())
         vis.update_geometry(self.selection_axes)
 
-        if self.is_zoomed:
-            self.zoom_to_box(vis)
+        # if self.is_zoomed:
+        #     self.zoom_to_box(vis)
         if self.propagate_with_velocity:
             self.apply_velocity(vis)
 
@@ -194,6 +200,7 @@ class ViewStateManager:
                 self._update_selection(vis, forward=self.default_tuning_scale)
             if mods == ["shift"]:
                 self._update_selection(vis, forward=self.fine_tuning_scale)
+            print("forward_press")
 
     def backward_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -207,7 +214,7 @@ class ViewStateManager:
                 self._update_selection(vis, forward=-self.default_tuning_scale)
             if mods == ["shift"]:
                 self._update_selection(vis, forward=-self.fine_tuning_scale)
-        print("backward_press")
+            print("backward_press")
 
     def left_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -221,7 +228,7 @@ class ViewStateManager:
                 self._update_selection(vis, left=self.default_tuning_scale)
             if mods == ["shift"]:
                 self._update_selection(vis, left=self.fine_tuning_scale)
-        print("left_press")
+            print("left_press")
 
     def right_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -236,7 +243,7 @@ class ViewStateManager:
             if mods == ["shift"]:
                 self._update_selection(vis, left=-self.fine_tuning_scale)
 
-        print("right_press")
+            print("right_press")
 
     def up_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -250,7 +257,7 @@ class ViewStateManager:
                 self._update_selection(vis, up=self.default_tuning_scale)
             if mods == ["shift"]:
                 self._update_selection(vis, up=self.fine_tuning_scale)
-        print("up_press")
+            print("up_press")
 
     def down_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -264,7 +271,7 @@ class ViewStateManager:
                 self._update_selection(vis, up=-self.default_tuning_scale)
             if mods == ["shift"]:
                 self._update_selection(vis, up=-self.fine_tuning_scale)
-        print("down_press")
+            print("down_press")
 
     def yaw_clockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -278,7 +285,7 @@ class ViewStateManager:
                 self._update_selection(vis, yaw=self.default_tuning_scale)
             if mods == ["shift"]:
                 self._update_selection(vis, yaw=self.fine_tuning_scale)
-        print("yaw_clockwise_press")
+            print("yaw_clockwise_press")
 
     def yaw_counterclockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -293,7 +300,7 @@ class ViewStateManager:
             if mods == ["shift"]:
                 self._update_selection(vis, yaw=-self.fine_tuning_scale)
 
-        print("yaw_counterclockwise_press")
+            print("yaw_counterclockwise_press")
 
     def pitch_up_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -307,7 +314,7 @@ class ViewStateManager:
                 self._update_selection(vis, pitch=self.default_tuning_scale)
             if mods == ["shift"]:
                 self._update_selection(vis, pitch=self.fine_tuning_scale)
-        print("pitch_up_press")
+            print("pitch_up_press")
 
     def pitch_down_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -322,7 +329,7 @@ class ViewStateManager:
             if mods == ["shift"]:
                 self._update_selection(vis, pitch=-self.fine_tuning_scale)
 
-        print("pitch_down_press")
+            print("pitch_down_press")
 
     def roll_clockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -337,7 +344,7 @@ class ViewStateManager:
             if mods == ["shift"]:
                 self._update_selection(vis, roll=self.fine_tuning_scale)
 
-        print("roll_clockwise_press")
+            print("roll_clockwise_press")
 
     def roll_counterclockwise_press(self, vis, action, mods):
         if self.selected_mesh_id is None:
@@ -352,7 +359,7 @@ class ViewStateManager:
             if mods == ["shift"]:
                 self._update_selection(vis, roll=-self.fine_tuning_scale)
 
-        print("roll_counterclockwise_press")
+            print("roll_counterclockwise_press")
 
     def forward_frame_press(self, vis):
         # self.annotation_saver.save(self.frames)
@@ -458,9 +465,11 @@ class ViewStateManager:
                     )
         self.selected_mesh_id = mesh_id
         # Show trajectory of selected mesh
-        self.render_selected_mesh_trajectory(vis)
-        # if self.is_zoomed == True:
-        self.zoom_to_box(vis)
+        if self.show_trajectory:
+            self.clear_trajectory_geometries(vis)
+            self.render_selected_mesh_trajectory(vis)
+        if self.is_zoomed is True:
+            self.zoom_to_box(vis)
         base_bounding_box = self.clickable_geometries[self.selected_mesh_id].base_box
         print(
             f"Selected mesh: {base_bounding_box.track_uuid}, category: {base_bounding_box.category}"
@@ -475,7 +484,7 @@ class ViewStateManager:
         if self.is_zoomed:
             view_control = vis.get_view_control()
             # view_control.convert_from_pinhole_camera_parameters(self.original_view)
-            self.is_zoomed = False
+            # self.is_zoomed = False
 
         # Re-add all meshes to the visualization
         if self.selected_mesh_id is not None:
@@ -689,6 +698,7 @@ class ViewStateManager:
                 view_control.convert_from_pinhole_camera_parameters(self.original_view)
                 self.is_zoomed = False
             elif mods == [] and self.selected_mesh_id:
+                self.is_zoomed = True
                 self.zoom_to_box(vis)
 
     def zoom_to_box(self, vis):
@@ -750,6 +760,25 @@ class ViewStateManager:
             self.apply_velocity(vis)
         self.update_window_title(vis)
 
+    def toggle_lock_z_axis(self, vis):
+        """
+        Toggle the lock_z_axis feature on and off.
+        """
+        self.lock_z_axis = not self.lock_z_axis
+        print(f"Lock z axis: {'On' if self.lock_z_axis else 'Off'}")
+        if self.propagate_with_velocity:
+            self.apply_velocity(vis)
+
+    def toggle_trajectory_visibility(self, vis):
+        """
+        Toggle the visibility of the trajectory.
+        """
+        self.show_trajectory = not self.show_trajectory
+        if not self.show_trajectory:
+            self.clear_trajectory_geometries(vis)
+        else:
+            self.render_selected_mesh_trajectory(vis)
+
     def compute_velocities(self) -> bool:
         """
         Compute velocities for all the meshes in current frame.
@@ -787,14 +816,13 @@ class ViewStateManager:
         """
         Calculate displacement between two poses (suppose time interval=1 and use it as velocity).
         """
-
-        translation_velocity = (
-            pose2.sensor_to_global.translation - pose1.sensor_to_global.translation
-        )
         relative_transform = pose1.sensor_to_global.inverse().compose(pose2.sensor_to_global)
 
-        rotation_velocity = relative_transform.rotation_matrix
-        velocity = SE3(rotation_matrix=rotation_velocity, translation=translation_velocity)
+        # velocity = SE3(SE3.identity().rotation_matrix, relative_transform.translation)
+        velocity = SE3(
+            self.normalize_rotation_matrix(relative_transform.rotation_matrix),
+            relative_transform.translation,
+        )
 
         return velocity
 
@@ -804,8 +832,9 @@ class ViewStateManager:
         """
         get_velocity = self.compute_velocities()
         if get_velocity:
-
-            for offset in range(1, 3):  # Apply velocity to the next two frames
+            half_window_size = self.rolling_window_size // 2
+            # Apply velocity to the future frames that will be displayed in the scene
+            for offset in range(1, half_window_size + 1):
                 target_frame_index = self.current_frame_index + offset
                 if target_frame_index >= len(self.frames):
                     break
@@ -816,11 +845,23 @@ class ViewStateManager:
                 for uuid, velocity in self.velocities.items():
                     current_pose = self.find_pose_in_frame(current_frame, uuid)
                     if current_pose:
+                        # Project the velocity onto the XY plane
+                        xy_velocity_translation = velocity.translation.copy()
+                        xy_velocity_translation[2] = 0  # Set the Z component to 0
+                        xy_velocity = SE3(
+                            rotation_matrix=velocity.rotation_matrix,
+                            translation=xy_velocity_translation,
+                        )
                         # Calculate the new pose by composing the current pose with the velocity SE3
                         new_global_pose = current_pose.sensor_to_global
+                        # velocity =
+                        print(velocity)
+                        print(SE3.identity())
                         for i in range(offset):
-                            new_global_pose = new_global_pose.compose(velocity)
-
+                            if self.lock_z_axis:
+                                new_global_pose = new_global_pose.compose(xy_velocity)
+                            else:
+                                new_global_pose = new_global_pose.compose(velocity)
                         # Update the pose in the target frame
                         for box, pose in target_frame.boxes.valid_boxes():
                             if box.track_uuid == uuid:
@@ -828,5 +869,11 @@ class ViewStateManager:
                                     new_global_pose
                                 )
                                 break
-            self.clear_trajectory_geometries(vis)
-            self.render_selected_mesh_trajectory(vis)
+            if self.show_trajectory:
+                self.clear_trajectory_geometries(vis)
+                self.render_selected_mesh_trajectory(vis)
+
+    def normalize_rotation_matrix(self, matrix):
+        # Use Singular Value Decomposition (SVD) to orthogonalize the rotation matrix
+        U, _, Vt = np.linalg.svd(matrix)
+        return np.dot(U, Vt)

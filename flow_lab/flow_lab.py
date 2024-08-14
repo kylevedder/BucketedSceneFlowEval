@@ -132,8 +132,10 @@ def setup_visualizer(state_manager, annotation_saver, frames):
     # Use , and . keys for going forward and backward through the frames
     vis.register_key_callback(ord(","), state_manager.backward_frame_press)
     vis.register_key_callback(ord("."), state_manager.forward_frame_press)
-    # Use 'V' to toggle postion adjustment mode
+    # Use 'V' to toggle postion adjustment mode, "L" to toggle z axis lock
     vis.register_key_callback(ord("V"), state_manager.toggle_propagate_with_velocity)
+    vis.register_key_callback(ord("L"), state_manager.toggle_lock_z_axis)
+    vis.register_key_callback(ord("T"), state_manager.toggle_trajectory_visibility)
 
     # Use the 'Ctrl+S' to save, 'S' to translate
     vis.register_key_action_callback(ord("S"), state_manager.key_S_actions)
