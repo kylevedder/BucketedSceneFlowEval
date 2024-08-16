@@ -50,7 +50,9 @@ class WaymoOpenCausalSceneFlow(CausalSeqLoaderDataset):
         log_subset: list[str] | None = None,
         eval_args=dict(),
     ) -> None:
-        self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(root_dir)
+        self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(
+            root_dir, log_subset=log_subset
+        )
         super().__init__(
             sequence_loader=self.sequence_loader,
             subsequence_length=subsequence_length,
@@ -59,7 +61,6 @@ class WaymoOpenCausalSceneFlow(CausalSeqLoaderDataset):
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,
-            log_subset=log_subset,
         )
 
     def evaluator(self) -> Evaluator:
@@ -78,7 +79,9 @@ class WaymoOpenNonCausalSceneFlow(NonCausalSeqLoaderDataset):
         log_subset: list[str] | None = None,
         eval_args=dict(),
     ) -> None:
-        self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(root_dir)
+        self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(
+            root_dir, log_subset=log_subset
+        )
         super().__init__(
             sequence_loader=self.sequence_loader,
             subsequence_length=subsequence_length,
@@ -87,7 +90,6 @@ class WaymoOpenNonCausalSceneFlow(NonCausalSeqLoaderDataset):
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,
-            log_subset=log_subset,
         )
 
     def evaluator(self) -> Evaluator:
