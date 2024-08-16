@@ -47,6 +47,7 @@ class WaymoOpenCausalSceneFlow(CausalSeqLoaderDataset):
         eval_type: str = "bucketed_epe",
         with_rgb: bool = True,
         use_cache: bool = True,
+        log_subset: list[str] | None = None,
         eval_args=dict(),
     ) -> None:
         self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(root_dir)
@@ -58,6 +59,7 @@ class WaymoOpenCausalSceneFlow(CausalSeqLoaderDataset):
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,
+            log_subset=log_subset,
         )
 
     def evaluator(self) -> Evaluator:
@@ -73,6 +75,7 @@ class WaymoOpenNonCausalSceneFlow(NonCausalSeqLoaderDataset):
         eval_type: str = "bucketed_epe",
         with_rgb: bool = True,
         use_cache: bool = True,
+        log_subset: list[str] | None = None,
         eval_args=dict(),
     ) -> None:
         self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(root_dir)
@@ -84,6 +87,7 @@ class WaymoOpenNonCausalSceneFlow(NonCausalSeqLoaderDataset):
             eval_type=eval_type,
             eval_args=eval_args,
             use_cache=use_cache,
+            log_subset=log_subset,
         )
 
     def evaluator(self) -> Evaluator:
