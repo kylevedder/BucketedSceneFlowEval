@@ -826,7 +826,7 @@ class ViewStateManager:
 
         return velocity
 
-    def apply_velocity(self, vis):
+    def apply_velocity_to_all(self, vis):
         """
         Apply stored velocities to the boxes in the current frame.
         """
@@ -854,9 +854,6 @@ class ViewStateManager:
                         )
                         # Calculate the new pose by composing the current pose with the velocity SE3
                         new_global_pose = current_pose.sensor_to_global
-                        # velocity =
-                        print(velocity)
-                        print(SE3.identity())
                         for i in range(offset):
                             if self.lock_z_axis:
                                 new_global_pose = new_global_pose.compose(xy_velocity)
@@ -877,3 +874,60 @@ class ViewStateManager:
         # Use Singular Value Decomposition (SVD) to orthogonalize the rotation matrix
         U, _, Vt = np.linalg.svd(matrix)
         return np.dot(U, Vt)
+
+    def apply_velocity(self, vis):
+        """
+        Apply stored velocities to the selected mesh in the current frame.
+        """
+        if not self.selected_mesh_id:
+            return  # No mesh selected, nothing to apply
+
+        get_velocity = self.compute_velocities()
+        if get_velocity:
+            selected_box = self.clickable_geometries[self.selected_mesh_id]
+            uuid = selected_box.base_box.track_uuid
+
+            if uuid not in self.velocities:
+                return  # No velocity for the selected mesh
+
+            half_window_size = self.rolling_window_size // 2
+            velocity = self.velocities[uuid]
+
+            # Apply velocity to the future frames that will be displayed in the scene
+            for offset in range(1, half_window_size + 1):
+                target_frame_index = self.current_frame_index + offset
+                if target_frame_index >= len(self.frames):
+                    break
+
+                target_frame = self.frames[target_frame_index]
+                current_frame = self.frames[self.current_frame_index]
+
+                current_pose = self.find_pose_in_frame(current_frame, uuid)
+                if current_pose:
+                    # Project the velocity onto the XY plane
+                    xy_velocity_translation = velocity.translation.copy()
+                    xy_velocity_translation[2] = 0  # Set the Z component to 0
+                    xy_velocity = SE3(
+                        rotation_matrix=velocity.rotation_matrix,
+                        translation=xy_velocity_translation,
+                    )
+
+                    # Calculate the new pose by composing the current pose with the velocity SE3
+                    new_global_pose = current_pose.sensor_to_global
+                    for i in range(offset):
+                        if self.lock_z_axis:
+                            new_global_pose = new_global_pose.compose(xy_velocity)
+                        else:
+                            new_global_pose = new_global_pose.compose(velocity)
+
+                    # Update the pose in the target frame
+                    for box, pose in target_frame.boxes.valid_boxes():
+                        if box.track_uuid == uuid:
+                            pose.sensor_to_ego = pose.ego_to_global.inverse().compose(
+                                new_global_pose
+                            )
+                            break
+
+            if self.show_trajectory:
+                self.clear_trajectory_geometries(vis)
+                self.render_selected_mesh_trajectory(vis)

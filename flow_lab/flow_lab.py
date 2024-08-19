@@ -23,6 +23,8 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser(description="Scene flow data visualization and annotation.")
 
+    parser = argparse.ArgumentParser(description="Scene flow data visualization and annotation.")
+
     parser.add_argument(
         "--dataset_name",
         type=str,
@@ -110,7 +112,6 @@ def preprocess_box_frames(
 
 def setup_visualizer(state_manager, annotation_saver, frames):
     vis = o3d.visualization.VisualizerWithKeyCallback()
-
     vis.register_mouse_move_callback(state_manager.on_mouse_move)
     vis.register_mouse_scroll_callback(state_manager.on_mouse_scroll)
     vis.register_mouse_button_callback(state_manager.on_mouse_button)

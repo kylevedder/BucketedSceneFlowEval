@@ -25,7 +25,7 @@ class AnnotationSaver:
                 pose = pose_info.sensor_to_ego
                 rotation_matrix = pose.transform_matrix[:3, :3]
                 rotation = R.from_matrix(rotation_matrix)
-                qw, qx, qy, qz = rotation.as_quat()
+                qx, qy, qz, qw = rotation.as_quat()
 
                 tx, ty, tz = pose.transform_matrix[:3, 3]
 
