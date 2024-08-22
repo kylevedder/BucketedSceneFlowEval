@@ -50,6 +50,8 @@ class WaymoSupervisedSceneFlowSequence(AbstractAVLidarSequence):
         return f"WaymoRawSequence with {len(self)} frames"
 
     def __len__(self):
+        if self.flow_files is not None:
+            return len(self.flow_files)
         return len(self.sequence_files)
 
     def _load_idx(self, idx: int):
