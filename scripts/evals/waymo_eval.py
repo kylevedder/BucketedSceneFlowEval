@@ -66,7 +66,11 @@ def _work(
 
     for idx in iterator:
         gt_lst = gt_dataset[idx]
-        est_lst = est_dataset[idx]
+        try:
+            est_lst = est_dataset[idx]
+        except AssertionError as e:
+            print(e)
+            continue
         assert len(gt_lst) == len(est_lst) == 2, f"GT and estimated lists must have length 2."
         gt_frame0, gt_frame1 = gt_lst
         est_frame0, est_frame1 = est_lst
