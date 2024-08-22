@@ -65,7 +65,7 @@ class WaymoSupervisedSceneFlowSequence(AbstractAVLidarSequence):
         if self.flow_files is not None:
             flow_path = self.flow_files[idx]
 
-            flow_df = load_feather(flow_path)
+            flow_df = load_feather(flow_path, verbose=False)
             flow = flow_df[["flow_tx_m", "flow_ty_m", "flow_tz_m"]].values
             marked_is_valid = flow_df["is_valid"].values
             flow = flow.astype(np.float32)
