@@ -18,7 +18,7 @@ from bucketed_scene_flow_eval.interfaces import (
     AbstractAVLidarSequence,
     CachedSequenceLoader,
 )
-from bucketed_scene_flow_eval.utils import load_pickle
+from bucketed_scene_flow_eval.utils import load_feather, load_pickle
 
 CATEGORY_MAP = {
     0: "BACKGROUND",
@@ -30,9 +30,20 @@ CATEGORY_MAP = {
 
 
 class WaymoSupervisedSceneFlowSequence(AbstractAVLidarSequence):
-    def __init__(self, sequence_folder: Path, verbose: bool = False):
+    def __init__(self, sequence_folder: Path, flow_folder: Path | None, verbose: bool = False):
         self.sequence_folder = Path(sequence_folder)
         self.sequence_files = sorted(self.sequence_folder.glob("*.pkl"))
+        if flow_folder is not None:
+            self.flow_folder = Path(flow_folder)
+            self.flow_files = sorted(self.flow_folder.glob("*.feather"))
+            assert len(self.sequence_files) == len(self.flow_files), (
+                f"number of frames in {self.sequence_folder} does not match number of frames in "
+                f"{self.flow_folder}"
+            )
+        else:
+            self.flow_folder = None
+            self.flow_files = None
+
         assert len(self.sequence_files) > 0, f"no frames found in {self.sequence_folder}"
 
     def __repr__(self) -> str:
@@ -49,6 +60,12 @@ class WaymoSupervisedSceneFlowSequence(AbstractAVLidarSequence):
         pkl = load_pickle(pickle_path, verbose=False)
         pc = PointCloud(pkl["car_frame_pc"])
         flow = pkl["flow"]
+        if self.flow_folder is not None:
+            flow_path = self.flow_files[idx]
+            flow = load_feather(flow_path).to_numpy()
+            assert len(flow) == len(
+                pc
+            ), f"number of points in flow {len(flow)} does not match number of points in pc {len(pc)}"
         labels = pkl["label"]
         pose = SE3.from_array(pkl["pose"])
         return pc, flow, labels, pose
@@ -145,6 +162,7 @@ class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
     def __init__(
         self,
         sequence_dir: Path,
+        flow_dir: Path | None = None,
         log_subset: Optional[list[str]] = None,
         verbose: bool = False,
         with_rgb: bool = False,
@@ -159,6 +177,16 @@ class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
         sequence_dir_lst = sorted(self.dataset_dir.glob("*/"))
 
         self.log_lookup = {e.name: e for e in sequence_dir_lst}
+        if flow_dir is not None:
+            flow_dir = Path(flow_dir)
+            flow_dir_lst = sorted(flow_dir.glob("*/"))
+            assert len(sequence_dir_lst) == len(flow_dir_lst), (
+                f"number of sequences in {self.dataset_dir} does not match number of sequences in "
+                f"{flow_dir}; {len(sequence_dir_lst)} vs {len(flow_dir_lst)}"
+            )
+            self.flow_lookup: dict[str, Path | None] = {e.name: e for e in flow_dir_lst}
+        else:
+            self.flow_lookup = {k: None for k in self.log_lookup.keys()}
 
         # Intersect with log_subset
         if log_subset is not None:
@@ -179,7 +207,8 @@ class WaymoSupervisedSceneFlowSequenceLoader(CachedSequenceLoader):
 
     def _load_sequence_uncached(self, log_id: str) -> WaymoSupervisedSceneFlowSequence:
         sequence_folder = self.log_lookup[log_id]
-        return WaymoSupervisedSceneFlowSequence(sequence_folder, verbose=self.verbose)
+        flow_folder = self.flow_lookup[log_id]
+        return WaymoSupervisedSceneFlowSequence(sequence_folder, flow_folder, verbose=self.verbose)
 
     @staticmethod
     def category_ids() -> list[int]:

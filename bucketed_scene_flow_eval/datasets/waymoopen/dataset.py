@@ -42,6 +42,7 @@ class WaymoOpenCausalSceneFlow(CausalSeqLoaderDataset):
     def __init__(
         self,
         root_dir: Path,
+        flow_folder: Path | None = None,
         subsequence_length: int = 2,
         cache_root: Path = Path("/tmp/"),
         eval_type: str = "bucketed_epe",
@@ -51,7 +52,7 @@ class WaymoOpenCausalSceneFlow(CausalSeqLoaderDataset):
         eval_args=dict(),
     ) -> None:
         self.sequence_loader = WaymoSupervisedSceneFlowSequenceLoader(
-            root_dir, log_subset=log_subset
+            root_dir, log_subset=log_subset, with_rgb=with_rgb, flow_dir=flow_folder
         )
         super().__init__(
             sequence_loader=self.sequence_loader,
