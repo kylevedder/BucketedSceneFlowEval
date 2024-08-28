@@ -13,10 +13,14 @@ ColorType = Union[np.ndarray, tuple[float, float, float], list[tuple[float, floa
 
 
 class O3DVisualizer:
-    def __init__(self, point_size: float = 0.1):
+    def __init__(self, point_size: float = 0.1, add_world_frame: bool = True):
         self.point_size = point_size
         self.geometry_list = []
 
+        if add_world_frame:
+            self.add_world_frame()
+
+    def add_world_frame(self):
         world_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1)
         self.add_geometry(world_frame)
 

@@ -16,3 +16,14 @@ class Evaluator(ABC):
     @abstractmethod
     def compute_results(self, save_results: bool = True) -> dict[Any, Any]:
         raise NotImplementedError
+
+
+class EmptyEvaluator(Evaluator):
+    def __init__(self):
+        pass
+
+    def eval(self, predictions: EgoLidarFlow, gt: TimeSyncedSceneFlowFrame):
+        pass
+
+    def compute_results(self, save_results: bool = True) -> dict[Any, Any]:
+        return {}

@@ -90,6 +90,17 @@ def load_pickle(filepath: Path, verbose: bool = True):
         return pickle.load(f)
 
 
+def load_pcd(filepath: Path, verbose: bool = True) -> np.ndarray:
+    filepath = Path(filepath)
+    assert filepath.exists(), f"{filepath} does not exist"
+    if verbose:
+        print(f"Loading {filepath} of size {_compute_size_metric(filepath)}")
+    import open3d as o3d
+
+    pcd = o3d.io.read_point_cloud(str(filepath))
+    return np.asarray(pcd.points)
+
+
 def save_pickle(filepath: Path, pkl, verbose: bool = True):
     filepath = Path(filepath)
     if verbose:
@@ -169,6 +180,20 @@ def save_feather(filename: Path, df, verbose: bool = True):
         print(f"\rSaved {filename} of size {_compute_size_metric(filename)}")
 
 
+def save_pcd(filename: Path, pcd, verbose: bool = True):
+    filename = Path(filename)
+    if verbose:
+        print(f"Saving {filename}", end="")
+    if filename.exists():
+        filename.unlink()
+    filename.parent.mkdir(parents=True, exist_ok=True)
+    import open3d as o3d
+
+    o3d.io.write_point_cloud(str(filename), pcd)
+    if verbose:
+        print(f"\rSaved {filename} of size {_compute_size_metric(filename)}")
+
+
 def save_by_extension(filename: Path, contents, verbose: bool = True):
     filename = Path(filename)
     # Make parents if they don't exist
@@ -187,6 +212,8 @@ def save_by_extension(filename: Path, contents, verbose: bool = True):
         save_csv(filename, contents, verbose=verbose)
     elif filename.suffix == ".feather":
         save_feather(filename, contents, verbose=verbose)
+    elif filename.suffix == ".pcd":
+        save_pcd(filename, contents, verbose=verbose)
     else:
         raise ValueError(f"Unknown file extension: {filename.suffix}")
 
@@ -207,6 +234,8 @@ def load_by_extension(filename: Path, verbose: bool = True):
         return load_csv(filename, verbose=verbose)
     elif filename.suffix == ".feather":
         return load_feather(filename, verbose=verbose)
+    elif filename.suffix == ".pcd":
+        return load_pcd(filename, verbose=verbose)
     else:
         raise ValueError(f"Unknown file extension: {filename.suffix}")
 

@@ -2,6 +2,7 @@ from bucketed_scene_flow_eval.datasets.argoverse2 import (
     Argoverse2CausalSceneFlow,
     Argoverse2NonCausalSceneFlow,
 )
+from bucketed_scene_flow_eval.datasets.orbbec_astra import OrbbecAstra
 from bucketed_scene_flow_eval.datasets.waymoopen import (
     WaymoOpenCausalSceneFlow,
     WaymoOpenNonCausalSceneFlow,
@@ -20,6 +21,7 @@ importable_classes = [
     # NuScenesNonCausalSceneFlow,
     WaymoOpenCausalSceneFlow,
     WaymoOpenNonCausalSceneFlow,
+    OrbbecAstra,
 ]
 name_to_class_lookup = {cls.__name__.lower(): cls for cls in importable_classes}
 

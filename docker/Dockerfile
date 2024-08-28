@@ -29,7 +29,7 @@ WORKDIR /nuscenes-devkit
 RUN pip install -e setup
 
 # Latest Open3D, because 0.18.0 has a bunch of bugs related to missing visualization functions
-RUN pip install https://github.com/isl-org/Open3D/releases/download/main-devel/open3d-0.18.0+90810a3-cp311-cp311-manylinux_2_27_x86_64.whl
+RUN pip install https://github.com/isl-org/Open3D/releases/download/main-devel/open3d-0.18.0+18a47ef-cp311-cp311-manylinux_2_31_x86_64.whl
 
 ENV PYTHONPATH=/bucketed_scene_flow_eval:${PYTHONPATH}
 COPY bashrc /root/.bashrc

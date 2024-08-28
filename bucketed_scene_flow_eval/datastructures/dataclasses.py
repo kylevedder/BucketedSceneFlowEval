@@ -41,6 +41,10 @@ class PoseInfo:
     def __repr__(self) -> str:
         return f"PoseInfo(sensor_to_ego={self.sensor_to_ego}, ego_to_global={self.ego_to_global})"
 
+    @staticmethod
+    def identity() -> "PoseInfo":
+        return PoseInfo(SE3.identity(), SE3.identity())
+
 
 @dataclass
 class EgoLidarFlow:
