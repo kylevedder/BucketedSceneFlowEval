@@ -1,6 +1,7 @@
 from .camera_projection import CameraModel, CameraProjection
 from .dataclasses import (
     BoundingBox,
+    ColoredSupervisedPointCloudFrame,
     EgoLidarDistance,
     EgoLidarFlow,
     MaskArray,
@@ -18,6 +19,7 @@ from .dataclasses import (
     TimeSyncedSceneFlowFrame,
     VectorArray,
 )
+from .line_mesh import LineMesh
 from .o3d_visualizer import O3DVisualizer
 from .pointcloud import PointCloud, from_fixed_array, to_fixed_array
 from .rgb_image import RGBImage, RGBImageCrop
@@ -37,6 +39,9 @@ __all__ = [
     "SemanticClassId",
     "SemanticClassIdArray",
     "SupervisedPointCloudFrame",
+    "ColoredSupervisedPointCloudFrame",
+    "TimeSyncedSceneFlowBoxFrame",
+    "TimeSyncedSceneFlowFrame",
     "TimeSyncedAVLidarData",
     "TimeSyncedBaseAuxilaryData",
     "TimeSyncedRawFrame",

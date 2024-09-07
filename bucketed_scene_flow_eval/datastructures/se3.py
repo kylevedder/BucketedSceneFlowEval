@@ -33,9 +33,11 @@ class SE3:
 
     @staticmethod
     def from_rot_x_y_z_translation_x_y_z(rx, ry, rz, tx, ty, tz) -> "SE3":
-        rotation_matrix = Quaternion(axis=[1, 0, 0], angle=rx).rotation_matrix @ Quaternion(
-            axis=[0, 1, 0], angle=ry
-        ).rotation_matrix @ Quaternion(axis=[0, 0, 1], angle=rz).rotation_matrix
+        rotation_matrix = (
+            Quaternion(axis=[1, 0, 0], angle=rx).rotation_matrix
+            @ Quaternion(axis=[0, 1, 0], angle=ry).rotation_matrix
+            @ Quaternion(axis=[0, 0, 1], angle=rz).rotation_matrix
+        )
         translation = np.array([tx, ty, tz])
         return SE3(rotation_matrix, translation)
 
@@ -62,6 +64,13 @@ class SE3:
         return SE3(
             rotation_matrix=self.rotation_matrix,
             translation=self.translation + translation,
+        )
+
+    def scale(self, scale: float) -> "SE3":
+        """Return a new SE3 instance with the given scale applied."""
+        return SE3(
+            rotation_matrix=self.rotation_matrix * scale,
+            translation=self.translation * scale,
         )
 
     def transform_points(self, point_cloud: np.ndarray) -> np.ndarray:

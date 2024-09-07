@@ -6,6 +6,7 @@ import numpy as np
 import open3d as o3d
 
 from .dataclasses import EgoLidarFlow, PointCloudFrame, RGBFrame, VectorArray
+from .line_mesh import LineMesh
 from .pointcloud import PointCloud
 from .se3 import SE3
 
@@ -13,8 +14,11 @@ ColorType = Union[np.ndarray, tuple[float, float, float], list[tuple[float, floa
 
 
 class O3DVisualizer:
-    def __init__(self, point_size: float = 0.1, add_world_frame: bool = True):
+    def __init__(
+        self, point_size: float = 0.1, line_width: float = 1.0, add_world_frame: bool = True
+    ):
         self.point_size = point_size
+        self.line_width = line_width
         self.geometry_list = []
 
         if add_world_frame:
@@ -192,16 +196,14 @@ class O3DVisualizer:
         for i in range(len(trajectory) - 1):
             self.add_sphere(trajectory[i], radius, color)
 
-        # Add line set between trajectory points
-        line_set = o3d.geometry.LineSet()
-        line_set.points = o3d.utility.Vector3dVector(trajectory)
-        line_set.lines = o3d.utility.Vector2iVector(
+        points = o3d.utility.Vector3dVector(trajectory)
+        lines = o3d.utility.Vector2iVector(
             np.array([[i, i + 1] for i in range(len(trajectory) - 1)])
         )
-        line_set.colors = o3d.utility.Vector3dVector(
-            np.tile(np.array(color), (len(trajectory) - 1, 1))
-        )
-        self.add_geometry(line_set)
+        colors = o3d.utility.Vector3dVector(np.tile(np.array(color), (len(trajectory) - 1, 1)))
+
+        line_mesh = LineMesh(points=points, lines=lines, colors=colors, radius=self.line_width / 20)
+        self.add_geometry(line_mesh.cylinder_segments)
 
     def render(self, vis, reset_view: bool = True):
         for geometry in self.geometry_list:
@@ -210,7 +212,9 @@ class O3DVisualizer:
     def run(self, vis=o3d.visualization.Visualizer()):
         print("Running visualizer on geometry list of length", len(self.geometry_list))
         vis.create_window(window_name="Benchmark Visualizer")
-        vis.get_render_option().point_size = self.point_size
+
+        ro = vis.get_render_option()
+        ro.point_size = self.point_size
 
         self.render(vis)
 

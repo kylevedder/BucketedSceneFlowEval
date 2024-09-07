@@ -235,6 +235,26 @@ class SupervisedPointCloudFrame(PointCloudFrame):
 
 
 @dataclass
+class ColoredSupervisedPointCloudFrame(SupervisedPointCloudFrame):
+    colors: np.ndarray
+
+    def __post_init__(self):
+        assert isinstance(
+            self.colors, np.ndarray
+        ), f"colors must be an ndarray, got {type(self.colors)}"
+        assert self.colors.ndim == 2, f"colors must be a 2D array, got {self.colors.ndim}"
+        assert self.colors.shape[1] == 3, f"colors must have 3 columns, got {self.colors.shape[1]}"
+        assert len(self.colors) == len(
+            self.full_pc
+        ), f"colors must have the same length as full_pc, got {len(self.colors)} and {len(self.full_pc)}"
+        assert self.colors.dtype == np.float32, f"colors must be float32, got {self.colors.dtype}"
+        # Ensure all colors are between 0 and 1
+        assert np.all(
+            (self.colors >= 0) & (self.colors <= 1)
+        ), f"colors must be between 0 and 1, got min {np.min(self.colors)} and max {np.max(self.colors)}"
+
+
+@dataclass
 class RGBFrame:
     rgb: RGBImage
     pose: PoseInfo
